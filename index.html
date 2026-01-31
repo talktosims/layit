@@ -262,93 +262,30 @@
     </div>
 
     <div id="proj" class="panel">
-        <!-- Laser Position & Coverage Section -->
+        <!-- Laser Export Section -->
         <div class="section">
-            <h3>📏 Laser Position</h3>
+            <h3>🔴 LayIt Laser Export</h3>
+            <p style="font-size:11px;color:#aaa;margin-bottom:12px">Export your tile pattern for the LayIt Laser projector. The laser will project your exact pattern onto the wall or floor at actual size.</p>
             
-            <!-- When laser NOT connected: show slider -->
-            <div id="distanceSliderSection">
-                <label style="font-size:12px;color:#aaa;">Distance from wall</label>
-                <div style="display:flex;align-items:center;gap:10px;margin:10px 0;">
-                    <input type="range" id="distanceSlider" min="3" max="15" value="6" step="0.5" 
-                           oninput="updateFromDistance()" style="flex:1;">
-                    <span id="distanceValue" style="font-size:18px;font-weight:bold;color:#fff;min-width:50px;">6 ft</span>
-                </div>
-            </div>
-            
-            <!-- When laser connected: show detected distance -->
-            <div id="detectedDistanceSection" style="display:none;">
-                <div style="background:#1a3a1a;border-radius:8px;padding:12px;text-align:center;">
-                    <div style="font-size:11px;color:#4CAF50;">● Laser Connected</div>
-                    <div style="font-size:24px;font-weight:bold;color:#fff;margin:5px 0;" id="detectedDistance">6.2 ft</div>
-                    <div style="font-size:11px;color:#888;">from wall (detected)</div>
-                </div>
-            </div>
-            
-            <!-- Coverage & Quality Result -->
-            <div id="coverageResult" style="margin-top:15px;">
-                <!-- Filled by JS -->
-            </div>
-        </div>
-        
-        <!-- Projection Mode Section -->
-        <div class="section" id="projectionModeSection">
-            <h3>📐 Projection</h3>
-            
-            <!-- Full Wall Mode -->
-            <div id="fullWallMode" style="display:none;">
-                <div style="background:#1a3a1a;border-radius:8px;padding:15px;text-align:center;margin-bottom:15px;">
-                    <div style="font-size:28px;">✓</div>
-                    <div style="font-size:16px;color:#4CAF50;font-weight:bold;">Full Wall Coverage</div>
-                    <div style="font-size:11px;color:#888;margin-top:4px;">No segments needed</div>
-                </div>
-                
-                <button class="btn-primary" onclick="projectFullWall()" style="font-size:18px;padding:20px;width:100%;background:linear-gradient(135deg, #e94560, #c73e54);">
-                    🔴 Project Full Wall
-                </button>
-            </div>
-            
-            <!-- Segmented Mode -->
-            <div id="segmentedMode" style="display:none;">
-                <div id="segmentGrid" style="margin-bottom:15px;">
-                    <!-- Filled by JS -->
-                </div>
-                
-                <div id="segmentInfo" style="text-align:center;margin-bottom:15px;">
-                    <!-- Filled by JS -->
-                </div>
-                
-                <button id="projectSegmentBtn" class="btn-primary" onclick="projectCurrentSegment()" style="font-size:18px;padding:20px;width:100%;background:linear-gradient(135deg, #e94560, #c73e54);">
-                    🔴 Project Segment 1
-                </button>
-                
-                <button id="markCompleteBtn" class="btn-success" onclick="markSegmentComplete()" style="margin-top:10px;width:100%;display:none;">
-                    ✓ Mark Segment Complete
-                </button>
-            </div>
-            
-            <!-- No Wall Dimensions -->
-            <div id="noWallMode">
-                <div style="text-align:center;padding:20px;color:#666;">
-                    <div style="font-size:14px;">Enter wall dimensions first</div>
-                    <div style="font-size:12px;margin-top:5px;">🧱 Wall tab</div>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Export Section (simple) -->
-        <div class="section">
-            <h3>💾 Export File</h3>
             <div class="field">
-                <label>Format</label>
+                <label>Export Format</label>
                 <select id="laserFormat">
                     <option value="layit">LayIt Laser (.layit)</option>
                     <option value="svg">SVG Vector (.svg)</option>
                     <option value="dxf">DXF CAD (.dxf)</option>
                 </select>
             </div>
-            <button class="btn-secondary" onclick="exportLaser()" style="width:100%;">
-                📥 Download
+            
+            <div class="field">
+                <label>Export Area</label>
+                <select id="laserArea">
+                    <option value="wall">Full Wall Only</option>
+                    <option value="pattern">Visible Pattern</option>
+                </select>
+            </div>
+            
+            <button class="btn-primary" onclick="exportLaser()" style="font-size:18px;padding:20px;margin-top:10px;background:linear-gradient(135deg, #e94560, #c73e54);">
+                🔴 Export for Laser
             </button>
         </div>
         
@@ -437,301 +374,6 @@
 // Projector setup variables
 var projSection = 'full'; // 'full', 'TL', 'TR', 'BL', 'BR'
 var calibrationMode = false;
-
-// ==================== SEGMENT PROJECTION SYSTEM ====================
-
-var segmentState = {
-    distance: 6,         // feet from wall
-    coverage: 52,        // inches - calculated from distance
-    segments: [],        
-    currentSegment: 0,
-    enabled: false
-};
-
-// Calculate coverage from distance (based on ±20° galvo scan angle)
-function getCoverageFromDistance(distanceFt) {
-    // At distance d, coverage ≈ 2 * d * tan(20°) ≈ 0.73 * d (in same units)
-    // Convert feet to inches, apply formula
-    return Math.round(distanceFt * 12 * 0.73);
-}
-
-// Get line quality info based on distance
-function getLineQuality(distanceFt) {
-    if (distanceFt <= 4) {
-        return { label: 'Excellent', color: '#4CAF50', icon: '✓', width: '1-2mm' };
-    } else if (distanceFt <= 6) {
-        return { label: 'Good', color: '#8BC34A', icon: '✓', width: '2-3mm' };
-    } else if (distanceFt <= 8) {
-        return { label: 'Fair', color: '#FF9800', icon: '⚠️', width: '3-4mm' };
-    } else if (distanceFt <= 10) {
-        return { label: 'Poor', color: '#FF5722', icon: '⚠️', width: '4-5mm' };
-    } else {
-        return { label: 'Low', color: '#f44336', icon: '✗', width: '5mm+' };
-    }
-}
-
-// Update everything when distance changes
-function updateFromDistance() {
-    var slider = document.getElementById('distanceSlider');
-    var distanceFt = parseFloat(slider.value);
-    
-    segmentState.distance = distanceFt;
-    segmentState.coverage = getCoverageFromDistance(distanceFt);
-    
-    // Update display
-    document.getElementById('distanceValue').textContent = distanceFt + ' ft';
-    
-    // Update coverage result display
-    updateCoverageDisplay();
-    
-    // Recalculate segments
-    calculateSegments();
-}
-
-// Update coverage display
-function updateCoverageDisplay() {
-    var container = document.getElementById('coverageResult');
-    if (!container) return;
-    
-    var dist = segmentState.distance;
-    var coverage = segmentState.coverage;
-    var quality = getLineQuality(dist);
-    
-    var html = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">';
-    
-    // Coverage box
-    html += '<div style="background:#0f3460;border-radius:8px;padding:12px;text-align:center;">';
-    html += '<div style="font-size:10px;color:#888;">Coverage</div>';
-    html += '<div style="font-size:18px;font-weight:bold;color:#fff;">' + coverage + '"</div>';
-    html += '<div style="font-size:10px;color:#666;">(' + (coverage/12).toFixed(1) + ' ft)</div>';
-    html += '</div>';
-    
-    // Quality box
-    html += '<div style="background:#0f3460;border-radius:8px;padding:12px;text-align:center;">';
-    html += '<div style="font-size:10px;color:#888;">Line Quality</div>';
-    html += '<div style="font-size:18px;font-weight:bold;color:' + quality.color + ';">' + quality.icon + ' ' + quality.label + '</div>';
-    html += '<div style="font-size:10px;color:#666;">~' + quality.width + '</div>';
-    html += '</div>';
-    
-    html += '</div>';
-    
-    container.innerHTML = html;
-}
-
-// Calculate segments needed based on wall size vs coverage
-function calculateSegments() {
-    var wallW = C.wall.tW;
-    var wallH = C.wall.lH;
-    var coverage = segmentState.coverage;
-    
-    // No wall dimensions yet
-    if (wallW <= 0 || wallH <= 0) {
-        segmentState.enabled = false;
-        segmentState.segments = [];
-        updateProjectionModeUI();
-        return;
-    }
-    
-    var cols = Math.ceil(wallW / coverage);
-    var rows = Math.ceil(wallH / coverage);
-    var total = cols * rows;
-    
-    // If fits in one shot, no segments needed
-    if (total <= 1) {
-        segmentState.enabled = false;
-        segmentState.segments = [];
-        updateProjectionModeUI();
-        return;
-    }
-    
-    // Build segment array (bottom-left first, then right, then up)
-    segmentState.enabled = true;
-    segmentState.segments = [];
-    segmentState.currentSegment = 0;
-    
-    var id = 0;
-    for (var row = 0; row < rows; row++) {
-        for (var col = 0; col < cols; col++) {
-            segmentState.segments.push({
-                id: id,
-                row: row,
-                col: col,
-                status: id === 0 ? 'ready' : 'locked'
-            });
-            id++;
-        }
-    }
-    
-    updateProjectionModeUI();
-}
-
-// Update the projection mode UI
-function updateProjectionModeUI() {
-    var fullWallMode = document.getElementById('fullWallMode');
-    var segmentedMode = document.getElementById('segmentedMode');
-    var noWallMode = document.getElementById('noWallMode');
-    
-    if (!fullWallMode || !segmentedMode || !noWallMode) return;
-    
-    // No wall dimensions
-    if (C.wall.tW <= 0 || C.wall.lH <= 0) {
-        fullWallMode.style.display = 'none';
-        segmentedMode.style.display = 'none';
-        noWallMode.style.display = 'block';
-        return;
-    }
-    
-    noWallMode.style.display = 'none';
-    
-    // Full wall mode
-    if (!segmentState.enabled) {
-        fullWallMode.style.display = 'block';
-        segmentedMode.style.display = 'none';
-        return;
-    }
-    
-    // Segmented mode
-    fullWallMode.style.display = 'none';
-    segmentedMode.style.display = 'block';
-    
-    var cols = Math.ceil(C.wall.tW / segmentState.coverage);
-    var rows = Math.ceil(C.wall.lH / segmentState.coverage);
-    
-    // Build segment grid
-    var gridHtml = '<div style="text-align:center;font-size:12px;color:#FF9800;margin-bottom:10px;">';
-    gridHtml += '⚠️ ' + segmentState.segments.length + ' segments needed';
-    gridHtml += '</div>';
-    
-    gridHtml += '<div style="display:grid;grid-template-columns:repeat(' + cols + ',1fr);gap:8px;max-width:240px;margin:0 auto;">';
-    
-    // Render from top to bottom visually
-    for (var row = rows - 1; row >= 0; row--) {
-        for (var col = 0; col < cols; col++) {
-            var seg = segmentState.segments.find(function(s) {
-                return s.row === row && s.col === col;
-            });
-            if (!seg) continue;
-            
-            var isCurrent = seg.id === segmentState.currentSegment;
-            var isComplete = seg.status === 'complete';
-            var isLocked = seg.status === 'locked';
-            
-            var bg = '#333', border = '#555', color = '#888', cursor = 'pointer', content = String(seg.id + 1);
-            
-            if (isComplete) {
-                bg = '#1a4a1a'; border = '#4CAF50'; color = '#4CAF50'; content = '✓';
-            } else if (isCurrent) {
-                bg = '#4a1a3a'; border = '#e94560'; color = '#fff';
-            } else if (isLocked) {
-                bg = '#252525'; border = '#3a3a3a'; color = '#555'; cursor = 'not-allowed';
-            }
-            
-            gridHtml += '<div onclick="selectSegment(' + seg.id + ')" style="';
-            gridHtml += 'background:' + bg + ';border:3px solid ' + border + ';border-radius:10px;';
-            gridHtml += 'padding:15px 10px;text-align:center;cursor:' + cursor + ';';
-            gridHtml += 'font-size:20px;font-weight:bold;color:' + color + ';';
-            gridHtml += '">' + content + '</div>';
-        }
-    }
-    gridHtml += '</div>';
-    gridHtml += '<div style="text-align:center;margin-top:8px;font-size:10px;color:#666;">⬆ Start bottom, work up</div>';
-    
-    document.getElementById('segmentGrid').innerHTML = gridHtml;
-    
-    // Current segment info
-    var current = segmentState.segments[segmentState.currentSegment];
-    var label = getSegmentLabel(current);
-    
-    var infoHtml = '<div style="font-size:16px;font-weight:bold;color:#fff;">Segment ' + (current.id + 1) + '</div>';
-    infoHtml += '<div style="font-size:12px;color:#888;">' + label + '</div>';
-    
-    document.getElementById('segmentInfo').innerHTML = infoHtml;
-    
-    // Update buttons
-    var projectBtn = document.getElementById('projectSegmentBtn');
-    var completeBtn = document.getElementById('markCompleteBtn');
-    
-    projectBtn.textContent = '🔴 Project Segment ' + (current.id + 1);
-    completeBtn.style.display = current.status !== 'complete' ? 'block' : 'none';
-    completeBtn.textContent = '✓ Mark Segment ' + (current.id + 1) + ' Complete';
-}
-
-// Get human-readable segment label
-function getSegmentLabel(segment) {
-    var rows = Math.ceil(C.wall.lH / segmentState.coverage);
-    var cols = Math.ceil(C.wall.tW / segmentState.coverage);
-    
-    var rowLabel = segment.row === 0 ? 'Bottom' : segment.row === rows - 1 ? 'Top' : 'Row ' + (segment.row + 1);
-    var colLabel = segment.col === 0 ? 'Left' : segment.col === cols - 1 ? 'Right' : 'Col ' + (segment.col + 1);
-    
-    if (cols === 1) return rowLabel;
-    if (rows === 1) return colLabel;
-    return rowLabel + '-' + colLabel;
-}
-
-// Select a segment
-function selectSegment(id) {
-    var segment = segmentState.segments[id];
-    if (!segment) return;
-    
-    if (segment.status === 'locked') {
-        // Find which segment needs to be done first
-        var needed = 1;
-        for (var i = 0; i < id; i++) {
-            if (segmentState.segments[i].status !== 'complete') { needed = i + 1; break; }
-        }
-        showToast('⚠️ Complete Segment ' + needed + ' first (bottom to top)', 2500);
-        return;
-    }
-    
-    segmentState.currentSegment = id;
-    updateProjectionModeUI();
-}
-
-// Mark current segment complete
-function markSegmentComplete() {
-    var current = segmentState.segments[segmentState.currentSegment];
-    current.status = 'complete';
-    
-    // Unlock next segment
-    var nextId = segmentState.currentSegment + 1;
-    if (nextId < segmentState.segments.length) {
-        segmentState.segments[nextId].status = 'ready';
-        segmentState.currentSegment = nextId;
-        showToast('✅ Done! Reposition laser for Segment ' + (nextId + 1), 3000);
-    } else {
-        showToast('🎉 All segments complete!', 4000);
-    }
-    
-    updateProjectionModeUI();
-}
-
-// Project full wall
-function projectFullWall() {
-    if (!laserConnected) {
-        showToast('Connect to laser first, or use Export', 2000);
-        return;
-    }
-    sendToLaser();
-}
-
-// Project current segment
-function projectCurrentSegment() {
-    if (!laserConnected) {
-        showToast('Connect to laser first, or use Export', 2000);
-        return;
-    }
-    var seg = segmentState.segments[segmentState.currentSegment];
-    showToast('🔴 Projecting Segment ' + (seg.id + 1), 2000);
-    sendToLaser();
-}
-
-// Initialize on page load
-function initLaserTab() {
-    updateFromDistance();
-}
-
-// ==================== END SEGMENT SYSTEM ====================
 
 function setSection(sec) {
     projSection = sec;
@@ -1766,7 +1408,6 @@ function updateWall() {
     C.wall.tW = parseFloat(document.getElementById('topW').value) || 0;
     C.wall.bV = parseFloat(document.getElementById('botVar').value) || 0;
     markUnsaved();
-    calculateSegments(); // Recalculate segments when wall changes
     draw();
     showTab('diagram');
 }
@@ -3972,7 +3613,7 @@ var laserDevice = null;
 
 function exportLaser() {
     var format = document.getElementById('laserFormat').value;
-    var area = 'wall'; // Always export wall area only
+    var area = document.getElementById('laserArea').value;
     
     // Get wall polygon
     var wallPts = getWallPolyInches();
@@ -4295,19 +3936,6 @@ function connectLaser() {
         document.getElementById('laserNotConnected').style.display = 'none';
         document.getElementById('laserConnected').style.display = 'block';
         document.getElementById('laserDeviceName').textContent = 'LayIt Laser Demo';
-        
-        // Switch to detected distance mode
-        document.getElementById('distanceSliderSection').style.display = 'none';
-        document.getElementById('detectedDistanceSection').style.display = 'block';
-        
-        // Simulate detected distance (would come from laser camera)
-        var detectedDist = 6.2;
-        document.getElementById('detectedDistance').textContent = detectedDist + ' ft';
-        segmentState.distance = detectedDist;
-        segmentState.coverage = getCoverageFromDistance(detectedDist);
-        updateCoverageDisplay();
-        calculateSegments();
-        
         showToast('✅ Connected!');
     }, 1000);
 }
@@ -4317,11 +3945,6 @@ function disconnectLaser() {
     laserDevice = null;
     document.getElementById('laserNotConnected').style.display = 'block';
     document.getElementById('laserConnected').style.display = 'none';
-    
-    // Switch back to slider mode
-    document.getElementById('distanceSliderSection').style.display = 'block';
-    document.getElementById('detectedDistanceSection').style.display = 'none';
-    
     showToast('🔌 Disconnected');
 }
 
@@ -4361,7 +3984,6 @@ function startLaserCalibration() {
 initTabs();
 generateAppIcon();
 updateVoidList();
-initLaserTab(); // Initialize laser position/coverage
 draw();
 </script>
 </body>
