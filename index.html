@@ -2222,7 +2222,8 @@ function handleCanvasTap(e) {
                 cutTileStates[key] = 1; // Mark as yellow/selected
                 detailTileData = tile; // Store for detail view
                 showDetailView(tile);
-                draw();
+                // Defer canvas redraw so the detail overlay paints immediately
+                setTimeout(function() { draw(); }, 50);
                 return;
             }
             
@@ -2818,6 +2819,31 @@ function drawDetailView() {
             }
         }
         
+        // Find the cut edge (edge in cut shape that's not on original tile)
+        // This is the actual cut line we need to draw
+        // MUST be computed before header so cut length is available
+        var cutLinePoints = [];
+        for (var i = 0; i < cutPointsInches.length; i++) {
+            var p1 = cutPointsInches[i];
+            var p2 = cutPointsInches[(i + 1) % cutPointsInches.length];
+
+            // Check if this edge is on any original tile edge
+            var isOnOriginalEdge = false;
+            for (var j = 0; j < tileVertsInches.length; j++) {
+                var t1 = tileVertsInches[j];
+                var t2 = tileVertsInches[(j + 1) % tileVertsInches.length];
+                var p1OnEdge = isPointOnSegment(p1.x, p1.y, t1[0], t1[1], t2[0], t2[1], 0.5);
+                var p2OnEdge = isPointOnSegment(p2.x, p2.y, t1[0], t1[1], t2[0], t2[1], 0.5);
+                if (p1OnEdge && p2OnEdge) {
+                    isOnOriginalEdge = true;
+                    break;
+                }
+            }
+            if (!isOnOriginalEdge) {
+                cutLinePoints.push({p1: p1, p2: p2});
+            }
+        }
+
         // Draw visualization
         var drawScale = Math.min(140 / tileW, 140 / tileH);
         var cx = size / 2;
@@ -2883,35 +2909,7 @@ function drawDetailView() {
             ctx.fill();
             ctx.stroke();
         }
-        
-        // Find the cut edge (edge in cut shape that's not on original tile)
-        // This is the actual cut line we need to draw
-        var cutLinePoints = [];
-        for (var i = 0; i < cutPointsInches.length; i++) {
-            var p1 = cutPointsInches[i];
-            var p2 = cutPointsInches[(i + 1) % cutPointsInches.length];
-            
-            // Check if this edge is on any original tile edge
-            var isOnOriginalEdge = false;
-            for (var j = 0; j < tileVertsInches.length; j++) {
-                var t1 = tileVertsInches[j];
-                var t2 = tileVertsInches[(j + 1) % tileVertsInches.length];
-                
-                // Both points must be on the same tile edge
-                var p1OnEdge = isPointOnSegment(p1.x, p1.y, t1[0], t1[1], t2[0], t2[1], 0.5);
-                var p2OnEdge = isPointOnSegment(p2.x, p2.y, t1[0], t1[1], t2[0], t2[1], 0.5);
-                
-                if (p1OnEdge && p2OnEdge) {
-                    isOnOriginalEdge = true;
-                    break;
-                }
-            }
-            
-            if (!isOnOriginalEdge) {
-                cutLinePoints.push({p1: p1, p2: p2});
-            }
-        }
-        
+
         // Draw cut line and measurements
         if (cutMarks.length >= 2) {
             var mark1 = cutMarks[0];
