@@ -1,0 +1,4368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="LayIt">
+    <meta name="theme-color" content="#1a1a2e">
+    <meta name="description" content="LayIt - Tile layout planner with laser projection export for DIY tile installation">
+    <title>LayIt</title>
+    
+    <!-- Favicon for browser tab -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%231a1a2e'/><polygon points='50,15 70,27 70,52 50,65 30,52 30,27' fill='%234CAF50'/><polygon points='30,52 30,77 50,90 50,65' fill='%23FF9800'/><polygon points='70,52 70,77 50,90 50,65' fill='%23FF9800'/></svg>">
+    
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: -apple-system, sans-serif; background: #1a1a2e; color: #fff; -webkit-tap-highlight-color: transparent; }
+        .tabs { display: flex; position: sticky; top: 0; z-index: 100; background: #16213e; }
+        .tab { flex: 1; padding: 12px; text-align: center; font-size: 14px; border: none; background: #16213e; color: #888; cursor: pointer; -webkit-appearance: none; }
+        .tab.active { background: #0f3460; color: #fff; border-bottom: 3px solid #e94560; }
+        .panel { display: none; padding: 15px; }
+        .panel.active { display: block; }
+        .section { background: #16213e; border-radius: 10px; padding: 15px; margin-bottom: 15px; }
+        .section h3 { font-size: 14px; color: #e94560; margin-bottom: 12px; }
+        .row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+        .field { margin-bottom: 10px; }
+        label { display: block; font-size: 11px; color: #aaa; margin-bottom: 4px; }
+        input, select { width: 100%; padding: 10px; font-size: 16px; border: 1px solid #333; border-radius: 6px; background: #0f0f1a; color: #fff; -webkit-appearance: none; appearance: none; }
+        select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%23888'%3E%3Cpath d='M6 8L1 3h10z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; }
+        button { padding: 12px; font-size: 14px; border: none; border-radius: 6px; width: 100%; margin-top: 10px; cursor: pointer; -webkit-appearance: none; }
+        .btn-primary { background: #e94560; color: #fff; }
+        .btn-secondary { background: #0f3460; color: #fff; }
+        .btn-success { background: #4CAF50; color: #fff; }
+        #canvasContainer { background: #fff; border-radius: 10px; overflow: hidden; }
+        canvas { display: block; width: 100%; touch-action: pan-x pan-y; }
+        .info-bar { background: #16213e; padding: 10px; border-radius: 10px; font-size: 12px; text-align: center; margin-bottom: 10px; }
+        .full { color: #4CAF50; } .partial { color: #FF9800; }
+        .void-item { display: flex; justify-content: space-between; background: #0f0f1a; padding: 10px; border-radius: 6px; margin-top: 8px; font-size: 12px; }
+        .void-item button { width: auto; padding: 6px 12px; margin: 0; }
+        .calc-result { font-size: 24px; font-weight: bold; color: #4CAF50; text-align: center; margin: 10px 0; }
+        input[type=number] { -moz-appearance: textfield; }
+        input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; }
+        .proj-ctrl { position: fixed; top: 10px; right: 10px; z-index: 1001; display: flex; gap: 8px; }
+        .proj-btn { padding: 15px 20px; font-size: 20px; background: #333; color: #fff; border: none; border-radius: 8px; cursor: pointer; }
+        .project-item { display: flex; justify-content: space-between; align-items: center; background: #0f0f1a; padding: 12px; border-radius: 8px; margin-bottom: 8px; }
+        .project-item.active { border: 2px solid #4CAF50; }
+        .project-item-info { flex: 1; }
+        .project-item-name { font-size: 14px; font-weight: 600; color: #fff; }
+        .project-item-date { font-size: 10px; color: #888; margin-top: 2px; }
+        .project-item-actions { display: flex; gap: 6px; }
+        .project-item-actions button { width: auto; padding: 8px 12px; margin: 0; font-size: 12px; }
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); z-index: 2000; align-items: center; justify-content: center; }
+        .modal-overlay.active { display: flex; }
+        .modal-box { background: #1a1a2e; border-radius: 12px; padding: 20px; max-width: 300px; text-align: center; }
+        .modal-box h3 { color: #e94560; margin-bottom: 10px; font-size: 18px; }
+        .modal-box p { color: #ccc; margin-bottom: 20px; font-size: 14px; }
+        .modal-buttons { display: flex; gap: 10px; }
+        .modal-buttons button { flex: 1; padding: 12px; font-size: 16px; border: none; border-radius: 8px; cursor: pointer; }
+        .modal-cancel { background: #333; color: #fff; }
+        .modal-confirm { background: #e94560; color: #fff; }
+        
+        /* Optimize Menu */
+        .optimize-option { padding: 12px 15px; color: #eee; cursor: pointer; border-bottom: 1px solid #333; font-size: 14px; }
+        .optimize-option:last-child { border-bottom: none; }
+        .optimize-option:hover { background: #4CAF50; color: #fff; }
+        
+        /* Tile Detail View */
+        .detail-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.9); z-index: 2500; flex-direction: column; }
+        .detail-overlay.active { display: flex; }
+        .detail-header { padding: 10px; text-align: center; color: #FFEB3B; font-size: 18px; font-weight: bold; }
+        .detail-canvas-container { flex: 1; display: flex; align-items: center; justify-content: center; padding: 10px; overflow: hidden; touch-action: none; }
+        .detail-canvas-container canvas { background: #fff; border-radius: 8px; touch-action: none; cursor: grab; }
+        .detail-canvas-container canvas:active { cursor: grabbing; }
+        .detail-footer { padding: 15px; display: flex; gap: 10px; }
+        .detail-footer button { flex: 1; padding: 15px; font-size: 16px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; }
+        .detail-close { background: #333; color: #fff; }
+        .detail-done { background: #4CAF50; color: #fff; }
+    </style>
+</head>
+<body>
+    <!-- Tile Detail View -->
+    <div class="detail-overlay" id="detailOverlay">
+        <div class="detail-header">📐 Tile Cut Detail</div>
+        <div class="detail-canvas-container" id="detailCanvasContainer">
+            <canvas id="detailCanvas" width="600" height="600"></canvas>
+        </div>
+        <div style="text-align:center;color:#888;font-size:11px;padding:5px;">Pinch to zoom • Drag to pan</div>
+        <div class="detail-footer">
+            <button class="detail-close" onclick="closeDetailView(false)">✕ Close</button>
+            <button class="detail-done" onclick="closeDetailView(true)">✓ Mark as Cut</button>
+        </div>
+    </div>
+
+    <!-- Uncut confirmation modal -->
+    <div class="modal-overlay" id="uncutModal">
+        <div class="modal-box">
+            <h3>⚠️ Uncut Tile?</h3>
+            <p>Reset this tile back to pending (orange)?</p>
+            <div class="modal-buttons">
+                <button class="modal-cancel" onclick="closeUncutModal(false)">Cancel</button>
+                <button class="modal-confirm" onclick="closeUncutModal(true)">Yes, Reset</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Unlock warning modal -->
+    <div class="modal-overlay" id="unlockModal">
+        <div class="modal-box">
+            <h3>⚠️ Unlock Pattern?</h3>
+            <p id="unlockWarningText">You have tiles marked. Moving the pattern will make your cut progress INVALID.</p>
+            <div class="modal-buttons">
+                <button class="modal-cancel" onclick="closeUnlockModal(false)">Keep Locked</button>
+                <button class="modal-confirm" onclick="closeUnlockModal(true)">Unlock Anyway</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="tabs" id="tabBar">
+        <button class="tab active" data-tab="diagram">📐</button>
+        <button class="tab" data-tab="wall">🧱</button>
+        <button class="tab" data-tab="tile">🔷</button>
+        <button class="tab" data-tab="voids">⬛</button>
+        <button class="tab" data-tab="calc">🧮</button>
+        <button class="tab" data-tab="projects">📁</button>
+        <button class="tab" data-tab="proj">🔴</button>
+    </div>
+
+    <div id="diagram" class="panel active">
+        <div class="info-bar">
+            <span class="full">● Full: <b id="fullCount">0</b></span> &nbsp; 
+            <span class="partial">● Cut: <b id="partialCount">0</b></span> &nbsp;
+            <span style="color:#ff4444">● Done: <b id="cutDoneCount">0</b></span>
+        </div>
+        <div style="font-size:10px;color:#888;text-align:center;margin-bottom:10px;">Tap cut tile to cycle: Orange → Yellow (selected) → Red (cut) → Orange</div>
+        <div style="display:flex;gap:10px;align-items:center;margin-bottom:10px;">
+            <span>🔍</span><input type="range" id="zoom" min="4" max="100" value="5" step="1" oninput="updateZoom()" style="flex:1"><span id="zoomVal">5x</span>
+        </div>
+        <div style="display:flex;gap:10px;margin-bottom:10px;">
+            <button id="lockBtn" class="btn-secondary" onclick="toggleLock()" style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;">
+                <span id="lockIcon">🔓</span> <span id="lockText">Unlocked</span>
+            </button>
+            <button id="cutsBtn" class="btn-success" onclick="toggleCuts()" style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;">
+                <span id="cutsIcon">📐</span> <span id="cutsText">Cuts On</span>
+            </button>
+        </div>
+        <div style="font-size:9px;color:#666;text-align:center;margin-bottom:10px;" id="controlsHint">📱 One finger: pattern • Two fingers: pan & zoom | 💻 Drag: pattern • Shift+drag: pan • Scroll: zoom</div>
+        <div class="row">
+            <button class="btn-secondary" onclick="resetView()">📍 Reset View</button>
+            <div style="position:relative;flex:1;">
+                <button class="btn-success" onclick="toggleOptimizeMenu()" style="width:100%;" id="optimizeBtn">🎯 Optimize</button>
+                <div id="optimizeMenu" style="display:none;position:absolute;bottom:100%;left:0;right:0;background:#1a1a2e;border:1px solid #4CAF50;border-radius:8px;margin-bottom:5px;overflow:hidden;z-index:100;">
+                    <div class="optimize-option" onclick="runOptimize('fullTiles')">📦 Maximize Full Tiles</div>
+                    <div class="optimize-option" onclick="runOptimize('minSmallCuts')">🔪 Avoid Small Slivers</div>
+                    <div class="optimize-option" onclick="runOptimize('balanced')">⚖️ Balanced (Both)</div>
+                </div>
+            </div>
+        </div>
+        <button id="restoreBtn" class="btn-primary" onclick="restorePattern()" style="display:none;margin-bottom:10px;background:#ff9800;">⚠️ Restore Saved Pattern Position</button>
+        <div id="canvasContainer"><canvas id="canvas"></canvas></div>
+    </div>
+
+    <div id="wall" class="panel">
+        <div class="section"><h3>Wall Dimensions</h3>
+            <div class="field"><label>Left Height (in)</label><input type="number" id="leftH" value="70"></div>
+            <div class="field"><label>Right Variance (+ taller / - shorter)</label><input type="number" id="rightVar" value="0.5"></div>
+            <div class="field"><label>Top Width (in)</label><input type="number" id="topW" value="58"></div>
+            <div class="field"><label>Bottom Variance (+ wider / - narrower)</label><input type="number" id="botVar" value="0.25"></div>
+            <button class="btn-primary" onclick="updateWall()">🔄 Update</button>
+        </div>
+    </div>
+
+    <div id="tile" class="panel">
+        <div class="section"><h3>Tile Settings</h3>
+            <div class="row">
+                <div class="field"><label>Shape</label><select id="tileShape" onchange="onShape()"><option value="hexagon">Hexagon</option><option value="square">Square</option><option value="rectangle">Rectangle</option><option value="herringbone" selected>Herringbone</option></select></div>
+                <div class="field" id="orientDiv"><label>Orientation</label><select id="tileOrient"><option value="pointy">45° Right</option><option value="flat">45° Left</option></select></div>
+            </div>
+            <div class="row" id="patternDiv" style="display:none;">
+                <div class="field"><label>Pattern</label><select id="tilePattern" onchange="updateTile()">
+                    <option value="0">Stack Bond (0%)</option>
+                    <option value="0.5" selected>1/2 Brick (50%)</option>
+                    <option value="0.333">1/3 Brick (33%)</option>
+                    <option value="0.667">2/3 Brick (67%)</option>
+                </select></div>
+            </div>
+            <div class="row">
+                <div class="field"><label>Width (in)</label><input type="number" id="tileW" value="2"></div>
+                <div class="field"><label>Height (in)</label><input type="number" id="tileH" value="4"></div>
+            </div>
+            <div class="field"><label>Grout</label><select id="grout"><option value="0.0625">1/16"</option><option value="0.125" selected>1/8"</option><option value="0.25">1/4"</option></select></div>
+            <button class="btn-primary" onclick="updateTile()">🔄 Update</button>
+        </div>
+    </div>
+
+    <div id="voids" class="panel">
+        <div class="section"><h3>Voids</h3>
+            <div class="field"><label>Label</label><input type="text" id="voidLabel" placeholder="Niche"></div>
+            <div class="row"><div class="field"><label>From Left</label><input type="number" id="voidX"></div><div class="field"><label>From Bottom</label><input type="number" id="voidY"></div></div>
+            <div class="row"><div class="field"><label>Width</label><input type="number" id="voidW"></div><div class="field"><label>Height</label><input type="number" id="voidH"></div></div>
+            <button class="btn-success" onclick="addVoid()">+ Add</button>
+            <div id="voidList"></div>
+        </div>
+    </div>
+
+    <div id="calc" class="panel">
+        <div class="section"><h3>🧮 Tile Calculator</h3>
+            <div class="field"><label>Waste % (recommended 10-15%)</label><input type="number" id="waste" value="10"></div>
+            <button class="btn-primary" onclick="updateTileCount()" style="margin-bottom:10px;">🔢 Calculate Tiles</button>
+            <div class="calc-result" id="tilesNeeded">0 tiles</div>
+            <div style="font-size:11px;color:#888;text-align:center;margin-top:10px;">
+                Full tiles + Cut tiles + Waste buffer
+            </div>
+        </div>
+        <div class="section"><h3>💰 Cost Estimate</h3>
+            <div class="field"><label>Price per Tile ($)</label><input type="number" id="tilePrice" value="5" step="0.01"></div>
+            <div class="field"><label>Price per Box (optional)</label>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+                    <input type="number" id="boxPrice" placeholder="Box $" step="0.01">
+                    <input type="number" id="tilesPerBox" placeholder="Tiles/box">
+                </div>
+            </div>
+            <button class="btn-primary" onclick="updateCostEstimate()" style="margin-bottom:10px;">💰 Calculate Cost</button>
+            <div class="calc-result" id="costEstimate">$0.00</div>
+            <div style="font-size:11px;color:#888;text-align:center;" id="costBreakdown"></div>
+        </div>
+    </div>
+
+    <div id="projects" class="panel">
+        <div class="section">
+            <h3>📁 Current Project</h3>
+            <div class="field">
+                <label>Project Name</label>
+                <input type="text" id="projName" placeholder="My Tile Project" oninput="markUnsaved()">
+            </div>
+            <div id="saveStatus" style="font-size:11px;color:#888;margin-bottom:10px;">Not saved yet</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+                <button class="btn-primary" onclick="saveCurrentProject()">💾 Save</button>
+                <button class="btn-secondary" onclick="confirmNewProject()">📄 New</button>
+            </div>
+        </div>
+        
+        <div class="section">
+            <h3>📋 My Projects</h3>
+            <div id="projectList" style="max-height:250px;overflow-y:auto;">
+                <!-- Filled by JS -->
+            </div>
+            <div id="noProjects" style="font-size:12px;color:#666;text-align:center;padding:20px;">
+                No saved projects yet.<br>Save your first project above!
+            </div>
+        </div>
+        
+        <div class="section">
+            <h3>📤 Backup & Share</h3>
+            <p style="font-size:11px;color:#888;margin-bottom:10px;">Export to share or backup. Import to restore.</p>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+                <button class="btn-secondary" onclick="exportProject()">📤 Export</button>
+                <button class="btn-secondary" onclick="document.getElementById('importFile').click()">📥 Import</button>
+            </div>
+            <input type="file" id="importFile" accept=".json" style="display:none" onchange="importProject(event)">
+        </div>
+    </div>
+
+    <div id="proj" class="panel">
+        <!-- Laser Position & Coverage Section -->
+        <div class="section">
+            <h3>📏 Laser Position</h3>
+            
+            <!-- When laser NOT connected: show slider -->
+            <div id="distanceSliderSection">
+                <label style="font-size:12px;color:#aaa;">Distance from wall</label>
+                <div style="display:flex;align-items:center;gap:10px;margin:10px 0;">
+                    <input type="range" id="distanceSlider" min="3" max="15" value="6" step="0.5" 
+                           oninput="updateFromDistance()" style="flex:1;">
+                    <span id="distanceValue" style="font-size:18px;font-weight:bold;color:#fff;min-width:50px;">6 ft</span>
+                </div>
+            </div>
+            
+            <!-- When laser connected: show detected distance -->
+            <div id="detectedDistanceSection" style="display:none;">
+                <div style="background:#1a3a1a;border-radius:8px;padding:12px;text-align:center;">
+                    <div style="font-size:11px;color:#4CAF50;">● Laser Connected</div>
+                    <div style="font-size:24px;font-weight:bold;color:#fff;margin:5px 0;" id="detectedDistance">6.2 ft</div>
+                    <div style="font-size:11px;color:#888;">from wall (detected)</div>
+                </div>
+            </div>
+            
+            <!-- Coverage & Quality Result -->
+            <div id="coverageResult" style="margin-top:15px;">
+                <!-- Filled by JS -->
+            </div>
+        </div>
+        
+        <!-- Projection Mode Section -->
+        <div class="section" id="projectionModeSection">
+            <h3>📐 Projection</h3>
+            
+            <!-- Full Wall Mode -->
+            <div id="fullWallMode" style="display:none;">
+                <div style="background:#1a3a1a;border-radius:8px;padding:15px;text-align:center;margin-bottom:15px;">
+                    <div style="font-size:28px;">✓</div>
+                    <div style="font-size:16px;color:#4CAF50;font-weight:bold;">Full Wall Coverage</div>
+                    <div style="font-size:11px;color:#888;margin-top:4px;">No segments needed</div>
+                </div>
+                
+                <button class="btn-primary" onclick="projectFullWall()" style="font-size:18px;padding:20px;width:100%;background:linear-gradient(135deg, #e94560, #c73e54);">
+                    🔴 Project Full Wall
+                </button>
+            </div>
+            
+            <!-- Segmented Mode -->
+            <div id="segmentedMode" style="display:none;">
+                <div id="segmentGrid" style="margin-bottom:15px;">
+                    <!-- Filled by JS -->
+                </div>
+                
+                <div id="segmentInfo" style="text-align:center;margin-bottom:15px;">
+                    <!-- Filled by JS -->
+                </div>
+                
+                <button id="projectSegmentBtn" class="btn-primary" onclick="projectCurrentSegment()" style="font-size:18px;padding:20px;width:100%;background:linear-gradient(135deg, #e94560, #c73e54);">
+                    🔴 Project Segment 1
+                </button>
+                
+                <button id="markCompleteBtn" class="btn-success" onclick="markSegmentComplete()" style="margin-top:10px;width:100%;display:none;">
+                    ✓ Mark Segment Complete
+                </button>
+            </div>
+            
+            <!-- No Wall Dimensions -->
+            <div id="noWallMode">
+                <div style="text-align:center;padding:20px;color:#666;">
+                    <div style="font-size:14px;">Enter wall dimensions first</div>
+                    <div style="font-size:12px;margin-top:5px;">🧱 Wall tab</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Export Section (simple) -->
+        <div class="section">
+            <h3>💾 Export File</h3>
+            <div class="field">
+                <label>Format</label>
+                <select id="laserFormat">
+                    <option value="layit">LayIt Laser (.layit)</option>
+                    <option value="svg">SVG Vector (.svg)</option>
+                    <option value="dxf">DXF CAD (.dxf)</option>
+                </select>
+            </div>
+            <button class="btn-secondary" onclick="exportLaser()" style="width:100%;">
+                📥 Download
+            </button>
+        </div>
+        
+        <!-- Laser Connection Section -->
+        <div class="section">
+            <h3>📡 Connect to LayIt Laser</h3>
+            <p style="font-size:11px;color:#aaa;margin-bottom:12px">Connect directly to your LayIt Laser device via WiFi.</p>
+            
+            <div id="laserNotConnected">
+                <div class="field">
+                    <label>Laser Device</label>
+                    <select id="laserDevice">
+                        <option value="">Scanning...</option>
+                    </select>
+                </div>
+                
+                <button class="btn-success" onclick="connectLaser()" style="padding:15px;width:100%">
+                    🔗 Connect to Laser
+                </button>
+                
+                <button class="btn-secondary" onclick="scanLasers()" style="margin-top:8px;width:100%">
+                    🔄 Scan for Devices
+                </button>
+            </div>
+            
+            <div id="laserConnected" style="display:none;">
+                <div style="background:#1a3a1a;padding:15px;border-radius:8px;text-align:center;margin-bottom:12px;">
+                    <div style="font-size:12px;color:#4CAF50;">● Connected</div>
+                    <div style="font-size:18px;font-weight:bold;margin:8px 0;" id="laserDeviceName">LayIt Laser Pro</div>
+                    <div style="font-size:11px;color:#888;" id="laserStatus">Ready to project</div>
+                </div>
+                
+                <button class="btn-primary" onclick="sendToLaser()" style="padding:15px;width:100%;font-size:16px;">
+                    🔴 Project Pattern
+                </button>
+                
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px;">
+                    <button class="btn-secondary" onclick="laserPreview()">👁️ Preview</button>
+                    <button class="btn-secondary" onclick="laserStop()">⏹️ Stop</button>
+                </div>
+                
+                <button class="btn-secondary" onclick="disconnectLaser()" style="margin-top:10px;background:#992222;width:100%">
+                    🔌 Disconnect
+                </button>
+            </div>
+        </div>
+        
+        <!-- Laser Calibration Section -->
+        <div class="section">
+            <h3>🎯 Laser Calibration</h3>
+            <p style="font-size:11px;color:#aaa;margin-bottom:10px">Calibrate your laser for accurate 1:1 scale projection.</p>
+            
+            <button class="btn-secondary" onclick="startLaserCalibration()" style="padding:15px;width:100%">
+                📏 Start Calibration
+            </button>
+            
+            <div style="margin-top:10px;font-size:11px;color:#666;line-height:1.6">
+                <b>Calibration Steps:</b><br>
+                1. Laser projects a 12" square<br>
+                2. Measure with tape measure<br>
+                3. Adjust until sides = 12"<br>
+                4. Save calibration to device
+            </div>
+        </div>
+        
+        <!-- Laser Info Section -->
+        <div class="section">
+            <h3>💡 About LayIt Laser</h3>
+            <div style="font-size:11px;color:#aaa;line-height:1.8">
+                <b style="color:#e94560">What It Does:</b><br>
+                Projects your exact tile pattern onto walls/floors using a precision laser system. No more chalk lines or guesswork!<br><br>
+                
+                <b style="color:#e94560">Features:</b><br>
+                • 1:1 scale projection<br>
+                • WiFi connected to this app<br>
+                • Works in daylight (green laser)<br>
+                • Battery or plug-in powered<br><br>
+                
+                <b style="color:#e94560">Don't have a LayIt Laser?</b><br>
+                Export your pattern as SVG/DXF and use with any laser cutter or CNC for templates.
+            </div>
+        </div>
+    </div>
+
+<script>
+// Projector setup variables
+var projSection = 'full'; // 'full', 'TL', 'TR', 'BL', 'BR'
+var calibrationMode = false;
+
+// ==================== SEGMENT PROJECTION SYSTEM ====================
+
+var segmentState = {
+    distance: 6,         // feet from wall
+    coverage: 52,        // inches - calculated from distance
+    segments: [],        
+    currentSegment: 0,
+    enabled: false
+};
+
+// Calculate coverage from distance (based on ±20° galvo scan angle)
+function getCoverageFromDistance(distanceFt) {
+    // At distance d, coverage ≈ 2 * d * tan(20°) ≈ 0.73 * d (in same units)
+    // Convert feet to inches, apply formula
+    return Math.round(distanceFt * 12 * 0.73);
+}
+
+// Get line quality info based on distance
+function getLineQuality(distanceFt) {
+    if (distanceFt <= 4) {
+        return { label: 'Excellent', color: '#4CAF50', icon: '✓', width: '1-2mm' };
+    } else if (distanceFt <= 6) {
+        return { label: 'Good', color: '#8BC34A', icon: '✓', width: '2-3mm' };
+    } else if (distanceFt <= 8) {
+        return { label: 'Fair', color: '#FF9800', icon: '⚠️', width: '3-4mm' };
+    } else if (distanceFt <= 10) {
+        return { label: 'Poor', color: '#FF5722', icon: '⚠️', width: '4-5mm' };
+    } else {
+        return { label: 'Low', color: '#f44336', icon: '✗', width: '5mm+' };
+    }
+}
+
+// Update everything when distance changes
+function updateFromDistance() {
+    var slider = document.getElementById('distanceSlider');
+    var distanceFt = parseFloat(slider.value);
+    
+    segmentState.distance = distanceFt;
+    segmentState.coverage = getCoverageFromDistance(distanceFt);
+    
+    // Update display
+    document.getElementById('distanceValue').textContent = distanceFt + ' ft';
+    
+    // Update coverage result display
+    updateCoverageDisplay();
+    
+    // Recalculate segments
+    calculateSegments();
+}
+
+// Update coverage display
+function updateCoverageDisplay() {
+    var container = document.getElementById('coverageResult');
+    if (!container) return;
+    
+    var dist = segmentState.distance;
+    var coverage = segmentState.coverage;
+    var quality = getLineQuality(dist);
+    
+    var html = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">';
+    
+    // Coverage box
+    html += '<div style="background:#0f3460;border-radius:8px;padding:12px;text-align:center;">';
+    html += '<div style="font-size:10px;color:#888;">Coverage</div>';
+    html += '<div style="font-size:18px;font-weight:bold;color:#fff;">' + coverage + '"</div>';
+    html += '<div style="font-size:10px;color:#666;">(' + (coverage/12).toFixed(1) + ' ft)</div>';
+    html += '</div>';
+    
+    // Quality box
+    html += '<div style="background:#0f3460;border-radius:8px;padding:12px;text-align:center;">';
+    html += '<div style="font-size:10px;color:#888;">Line Quality</div>';
+    html += '<div style="font-size:18px;font-weight:bold;color:' + quality.color + ';">' + quality.icon + ' ' + quality.label + '</div>';
+    html += '<div style="font-size:10px;color:#666;">~' + quality.width + '</div>';
+    html += '</div>';
+    
+    html += '</div>';
+    
+    container.innerHTML = html;
+}
+
+// Calculate segments needed based on wall size vs coverage
+function calculateSegments() {
+    var wallW = C.wall.tW;
+    var wallH = C.wall.lH;
+    var coverage = segmentState.coverage;
+    
+    // No wall dimensions yet
+    if (wallW <= 0 || wallH <= 0) {
+        segmentState.enabled = false;
+        segmentState.segments = [];
+        updateProjectionModeUI();
+        return;
+    }
+    
+    var cols = Math.ceil(wallW / coverage);
+    var rows = Math.ceil(wallH / coverage);
+    var total = cols * rows;
+    
+    // If fits in one shot, no segments needed
+    if (total <= 1) {
+        segmentState.enabled = false;
+        segmentState.segments = [];
+        updateProjectionModeUI();
+        return;
+    }
+    
+    // Build segment array (bottom-left first, then right, then up)
+    segmentState.enabled = true;
+    segmentState.segments = [];
+    segmentState.currentSegment = 0;
+    
+    var id = 0;
+    for (var row = 0; row < rows; row++) {
+        for (var col = 0; col < cols; col++) {
+            segmentState.segments.push({
+                id: id,
+                row: row,
+                col: col,
+                status: id === 0 ? 'ready' : 'locked'
+            });
+            id++;
+        }
+    }
+    
+    updateProjectionModeUI();
+}
+
+// Update the projection mode UI
+function updateProjectionModeUI() {
+    var fullWallMode = document.getElementById('fullWallMode');
+    var segmentedMode = document.getElementById('segmentedMode');
+    var noWallMode = document.getElementById('noWallMode');
+    
+    if (!fullWallMode || !segmentedMode || !noWallMode) return;
+    
+    // No wall dimensions
+    if (C.wall.tW <= 0 || C.wall.lH <= 0) {
+        fullWallMode.style.display = 'none';
+        segmentedMode.style.display = 'none';
+        noWallMode.style.display = 'block';
+        return;
+    }
+    
+    noWallMode.style.display = 'none';
+    
+    // Full wall mode
+    if (!segmentState.enabled) {
+        fullWallMode.style.display = 'block';
+        segmentedMode.style.display = 'none';
+        return;
+    }
+    
+    // Segmented mode
+    fullWallMode.style.display = 'none';
+    segmentedMode.style.display = 'block';
+    
+    var cols = Math.ceil(C.wall.tW / segmentState.coverage);
+    var rows = Math.ceil(C.wall.lH / segmentState.coverage);
+    
+    // Build segment grid
+    var gridHtml = '<div style="text-align:center;font-size:12px;color:#FF9800;margin-bottom:10px;">';
+    gridHtml += '⚠️ ' + segmentState.segments.length + ' segments needed';
+    gridHtml += '</div>';
+    
+    gridHtml += '<div style="display:grid;grid-template-columns:repeat(' + cols + ',1fr);gap:8px;max-width:240px;margin:0 auto;">';
+    
+    // Render from top to bottom visually
+    for (var row = rows - 1; row >= 0; row--) {
+        for (var col = 0; col < cols; col++) {
+            var seg = segmentState.segments.find(function(s) {
+                return s.row === row && s.col === col;
+            });
+            if (!seg) continue;
+            
+            var isCurrent = seg.id === segmentState.currentSegment;
+            var isComplete = seg.status === 'complete';
+            var isLocked = seg.status === 'locked';
+            
+            var bg = '#333', border = '#555', color = '#888', cursor = 'pointer', content = String(seg.id + 1);
+            
+            if (isComplete) {
+                bg = '#1a4a1a'; border = '#4CAF50'; color = '#4CAF50'; content = '✓';
+            } else if (isCurrent) {
+                bg = '#4a1a3a'; border = '#e94560'; color = '#fff';
+            } else if (isLocked) {
+                bg = '#252525'; border = '#3a3a3a'; color = '#555'; cursor = 'not-allowed';
+            }
+            
+            gridHtml += '<div onclick="selectSegment(' + seg.id + ')" style="';
+            gridHtml += 'background:' + bg + ';border:3px solid ' + border + ';border-radius:10px;';
+            gridHtml += 'padding:15px 10px;text-align:center;cursor:' + cursor + ';';
+            gridHtml += 'font-size:20px;font-weight:bold;color:' + color + ';';
+            gridHtml += '">' + content + '</div>';
+        }
+    }
+    gridHtml += '</div>';
+    gridHtml += '<div style="text-align:center;margin-top:8px;font-size:10px;color:#666;">⬆ Start bottom, work up</div>';
+    
+    document.getElementById('segmentGrid').innerHTML = gridHtml;
+    
+    // Current segment info
+    var current = segmentState.segments[segmentState.currentSegment];
+    var label = getSegmentLabel(current);
+    
+    var infoHtml = '<div style="font-size:16px;font-weight:bold;color:#fff;">Segment ' + (current.id + 1) + '</div>';
+    infoHtml += '<div style="font-size:12px;color:#888;">' + label + '</div>';
+    
+    document.getElementById('segmentInfo').innerHTML = infoHtml;
+    
+    // Update buttons
+    var projectBtn = document.getElementById('projectSegmentBtn');
+    var completeBtn = document.getElementById('markCompleteBtn');
+    
+    projectBtn.textContent = '🔴 Project Segment ' + (current.id + 1);
+    completeBtn.style.display = current.status !== 'complete' ? 'block' : 'none';
+    completeBtn.textContent = '✓ Mark Segment ' + (current.id + 1) + ' Complete';
+}
+
+// Get human-readable segment label
+function getSegmentLabel(segment) {
+    var rows = Math.ceil(C.wall.lH / segmentState.coverage);
+    var cols = Math.ceil(C.wall.tW / segmentState.coverage);
+    
+    var rowLabel = segment.row === 0 ? 'Bottom' : segment.row === rows - 1 ? 'Top' : 'Row ' + (segment.row + 1);
+    var colLabel = segment.col === 0 ? 'Left' : segment.col === cols - 1 ? 'Right' : 'Col ' + (segment.col + 1);
+    
+    if (cols === 1) return rowLabel;
+    if (rows === 1) return colLabel;
+    return rowLabel + '-' + colLabel;
+}
+
+// Select a segment
+function selectSegment(id) {
+    var segment = segmentState.segments[id];
+    if (!segment) return;
+    
+    if (segment.status === 'locked') {
+        // Find which segment needs to be done first
+        var needed = 1;
+        for (var i = 0; i < id; i++) {
+            if (segmentState.segments[i].status !== 'complete') { needed = i + 1; break; }
+        }
+        showToast('⚠️ Complete Segment ' + needed + ' first (bottom to top)', 2500);
+        return;
+    }
+    
+    segmentState.currentSegment = id;
+    updateProjectionModeUI();
+}
+
+// Mark current segment complete
+function markSegmentComplete() {
+    var current = segmentState.segments[segmentState.currentSegment];
+    current.status = 'complete';
+    
+    // Unlock next segment
+    var nextId = segmentState.currentSegment + 1;
+    if (nextId < segmentState.segments.length) {
+        segmentState.segments[nextId].status = 'ready';
+        segmentState.currentSegment = nextId;
+        showToast('✅ Done! Reposition laser for Segment ' + (nextId + 1), 3000);
+    } else {
+        showToast('🎉 All segments complete!', 4000);
+    }
+    
+    updateProjectionModeUI();
+}
+
+// Project full wall
+function projectFullWall() {
+    if (!laserConnected) {
+        showToast('Connect to laser first, or use Export', 2000);
+        return;
+    }
+    sendToLaser();
+}
+
+// Project current segment
+function projectCurrentSegment() {
+    if (!laserConnected) {
+        showToast('Connect to laser first, or use Export', 2000);
+        return;
+    }
+    var seg = segmentState.segments[segmentState.currentSegment];
+    showToast('🔴 Projecting Segment ' + (seg.id + 1), 2000);
+    sendToLaser();
+}
+
+// Initialize on page load
+function initLaserTab() {
+    updateFromDistance();
+}
+
+// ==================== END SEGMENT SYSTEM ====================
+
+function setSection(sec) {
+    projSection = sec;
+}
+
+function updateSectionButtons() {
+    // Legacy function - no longer used
+}
+
+// Legacy projector functions - kept as stubs for compatibility
+function updateProjSetup() {
+    // Removed - projector mode replaced with laser export
+}
+
+function startCalibration() {
+    // Removed - use startLaserCalibration instead
+    showToast('Use Laser Calibration instead');
+}
+
+function drawCalibration() {
+    var container = document.getElementById('canvasContainer');
+    cv.width = window.innerWidth * 2;
+    cv.height = window.innerHeight * 2;
+    
+    cx.setTransform(1, 0, 0, 1, 0, 0);
+    cx.scale(2, 2);
+    
+    // White background
+    cx.fillStyle = '#ffffff';
+    cx.fillRect(0, 0, cv.width, cv.height);
+    
+    var centerX = cv.width / 4;
+    var centerY = cv.height / 4 - 50;
+    
+    // Draw 12" calibration line
+    // At correct scale, this should be 12 inches when projected
+    var s = C.view.z; // Use current zoom as scale reference
+    var lineLength = 12 * s; // 12 inches at current scale
+    
+    cx.strokeStyle = '#000000';
+    cx.lineWidth = 4;
+    cx.beginPath();
+    cx.moveTo(centerX - lineLength, centerY);
+    cx.lineTo(centerX + lineLength, centerY);
+    cx.stroke();
+    
+    // Draw end markers
+    cx.beginPath();
+    cx.moveTo(centerX - lineLength, centerY - 20);
+    cx.lineTo(centerX - lineLength, centerY + 20);
+    cx.moveTo(centerX + lineLength, centerY - 20);
+    cx.lineTo(centerX + lineLength, centerY + 20);
+    cx.stroke();
+    
+    // Label
+    cx.fillStyle = '#000000';
+    cx.font = 'bold 24px sans-serif';
+    cx.textAlign = 'center';
+    cx.fillText('← 12 INCHES →', centerX, centerY - 40);
+    
+    // Zoom hint
+    cx.font = '16px sans-serif';
+    cx.fillText('Current app zoom: ' + C.view.z + 'x', centerX, centerY + 60);
+    cx.fillText('Adjust projector distance/zoom until line = 12"', centerX, centerY + 90);
+}
+
+function confirmCalibration() {
+    calibrationMode = false;
+    alert('✅ Calibration saved!\n\nYour projector is now set to display actual-size patterns.\n\nLaunch the projector to see your tile layout!');
+    exitProj();
+}
+
+// Initialize setup calculator
+setTimeout(updateProjSetup, 100);
+let C = {
+    wall: { lH: 70, rV: 0.5, tW: 58, bV: 0.25 },
+    tile: { sh: 'herringbone', or: 'pointy', w: 2, h: 4, gr: 0.125, pattern: 0 },
+    voids: [{ l: 'Niche', x: 27.75, y: 37, w: 13.25, h: 12 }],
+    view: { z: 5, ox: 0, oy: 0 }
+};
+
+let drag = { on: false, sx: 0, sy: 0, dx: 0, dy: 0 };
+let full = 0, part = 0, projMode = false;
+
+// Track cut tile states: 0=orange(pending), 1=yellow(selected), 2=red(cut)
+var cutTileStates = {};
+var cutTilesData = []; // Store cut tile info for tap detection
+var cutDoneCount = 0;
+
+const cv = document.getElementById('canvas');
+const cx = cv.getContext('2d');
+
+// Generate unique key for a tile based on position
+function tileKey(row, col) {
+    return row + ',' + col;
+}
+
+// Handle tap on canvas to cycle cut tile state
+var pendingUncutKey = null;
+var detailTileData = null; // Store tile data for detail view
+
+function handleCanvasTap(e) {
+    if (projMode) return; // No tapping in projector mode
+    
+    // Only allow cut tile interactions when pattern is locked
+    if (!patternLocked) {
+        // Show a hint to lock the pattern first
+        showLockHint();
+        return;
+    }
+    
+    var rect = cv.getBoundingClientRect();
+    var scaleX = cv.width / rect.width;
+    var scaleY = cv.height / rect.height;
+    var tapX = (e.clientX - rect.left) * scaleX / 2; // Divide by 2 for retina scale
+    var tapY = (e.clientY - rect.top) * scaleY / 2;
+    
+    // Check if tap is on any cut tile
+    for (var i = 0; i < cutTilesData.length; i++) {
+        var tile = cutTilesData[i];
+        if (isPointInTile(tapX, tapY, tile.x, tile.y, tile.tw, tile.th, tile.verts)) {
+            var key = tile.key;
+            var currentState = cutTileStates[key] || 0;
+            
+            // If tile is red (state 2), show confirmation modal
+            if (currentState === 2) {
+                pendingUncutKey = key;
+                document.getElementById('uncutModal').classList.add('active');
+                return;
+            }
+            
+            // If tile is orange (state 0), show detail view and mark yellow
+            if (currentState === 0) {
+                cutTileStates[key] = 1; // Mark as yellow/selected
+                detailTileData = tile; // Store for detail view
+                showDetailView(tile);
+                draw();
+                return;
+            }
+            
+            // If tile is yellow (state 1), mark as red/cut
+            if (currentState === 1) {
+                cutTileStates[key] = 2;
+                draw();
+                return;
+            }
+            
+            return;
+        }
+    }
+}
+
+function showLockHint() {
+    // Brief visual hint to lock the pattern first
+    var lockBtn = document.getElementById('lockBtn');
+    var originalBg = lockBtn.style.background;
+    
+    // Flash the lock button
+    lockBtn.style.background = '#ff9800';
+    lockBtn.style.transform = 'scale(1.05)';
+    
+    setTimeout(function() {
+        lockBtn.style.background = originalBg;
+        lockBtn.style.transform = 'scale(1)';
+    }, 300);
+    
+    // Also show a brief tooltip message
+    var hint = document.createElement('div');
+    hint.textContent = '🔒 Lock pattern first to mark tiles';
+    hint.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(0,0,0,0.9);color:#fff;padding:15px 25px;border-radius:8px;font-size:14px;z-index:9999;text-align:center;';
+    document.body.appendChild(hint);
+    
+    setTimeout(function() {
+        hint.remove();
+    }, 1500);
+}
+
+function closeUncutModal(confirmed) {
+    document.getElementById('uncutModal').classList.remove('active');
+    
+    if (confirmed && pendingUncutKey) {
+        cutTileStates[pendingUncutKey] = 0; // Reset to orange
+        draw();
+    }
+    pendingUncutKey = null;
+}
+
+// ============ TILE DETAIL VIEW ============
+
+// Detail view zoom/pan state
+var detailZoom = 1;
+var detailPanX = 0;
+var detailPanY = 0;
+var detailTouchStartDist = 0;
+var detailTouchStartZoom = 1;
+var detailLastTouchX = 0;
+var detailLastTouchY = 0;
+var detailIsPanning = false;
+var detailPinchCenterX = 0;
+var detailPinchCenterY = 0;
+var detailStartPanX = 0;
+var detailStartPanY = 0;
+
+function showDetailView(tile) {
+    // Reset zoom/pan for new tile
+    detailZoom = 1;
+    detailPanX = 0;
+    detailPanY = 0;
+    
+    // Store tile data for redrawing on zoom
+    window.currentDetailTile = tile;
+    
+    // Draw the detail
+    drawDetailView();
+    
+    // Show overlay
+    document.getElementById('detailOverlay').classList.add('active');
+    
+    // Set up touch handlers
+    setupDetailTouchHandlers();
+}
+
+function setupDetailTouchHandlers() {
+    var canvas = document.getElementById('detailCanvas');
+    
+    canvas.ontouchstart = function(e) {
+        e.preventDefault();
+        if (e.touches.length === 2) {
+            // Pinch start
+            var dx = e.touches[0].clientX - e.touches[1].clientX;
+            var dy = e.touches[0].clientY - e.touches[1].clientY;
+            detailTouchStartDist = Math.sqrt(dx * dx + dy * dy);
+            detailTouchStartZoom = detailZoom;
+            // Store pinch center
+            detailPinchCenterX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+            detailPinchCenterY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+            // Store current pan
+            detailStartPanX = detailPanX;
+            detailStartPanY = detailPanY;
+        } else if (e.touches.length === 1) {
+            // Pan start
+            detailLastTouchX = e.touches[0].clientX;
+            detailLastTouchY = e.touches[0].clientY;
+            detailIsPanning = true;
+        }
+    };
+    
+    canvas.ontouchmove = function(e) {
+        e.preventDefault();
+        if (e.touches.length === 2) {
+            // Pinch zoom - zoom towards pinch center
+            var dx = e.touches[0].clientX - e.touches[1].clientX;
+            var dy = e.touches[0].clientY - e.touches[1].clientY;
+            var dist = Math.sqrt(dx * dx + dy * dy);
+            var scaleChange = dist / detailTouchStartDist;
+            var newZoom = Math.max(0.5, Math.min(5, detailTouchStartZoom * scaleChange));
+            
+            // Get current pinch center
+            var rect = canvas.getBoundingClientRect();
+            var currentCenterX = (e.touches[0].clientX + e.touches[1].clientX) / 2 - rect.left;
+            var currentCenterY = (e.touches[0].clientY + e.touches[1].clientY) / 2 - rect.top;
+            
+            // Calculate the point that should stay fixed (the original pinch center)
+            // Convert to world coordinates using start zoom and pan
+            var startPinchX = detailPinchCenterX - rect.left;
+            var startPinchY = detailPinchCenterY - rect.top;
+            
+            var size = 400;
+            var worldX = (startPinchX - detailStartPanX - size/2) / detailTouchStartZoom + size/2;
+            var worldY = (startPinchY - detailStartPanY - size/2) / detailTouchStartZoom + size/2;
+            
+            // Calculate new pan to keep that world point under the current pinch center
+            detailPanX = currentCenterX - size/2 - (worldX - size/2) * newZoom;
+            detailPanY = currentCenterY - size/2 - (worldY - size/2) * newZoom;
+            
+            detailZoom = newZoom;
+            drawDetailView();
+        } else if (e.touches.length === 1 && detailIsPanning) {
+            // Pan
+            var dx = e.touches[0].clientX - detailLastTouchX;
+            var dy = e.touches[0].clientY - detailLastTouchY;
+            detailPanX += dx;
+            detailPanY += dy;
+            detailLastTouchX = e.touches[0].clientX;
+            detailLastTouchY = e.touches[0].clientY;
+            drawDetailView();
+        }
+    };
+    
+    canvas.ontouchend = function(e) {
+        detailIsPanning = false;
+    };
+    
+    // Mouse wheel zoom for desktop - zoom towards cursor
+    canvas.onwheel = function(e) {
+        e.preventDefault();
+        var rect = canvas.getBoundingClientRect();
+        var cx = e.clientX - rect.left;
+        var cy = e.clientY - rect.top;
+        
+        var oldZoom = detailZoom;
+        var delta = e.deltaY > 0 ? 0.9 : 1.1;
+        var newZoom = Math.max(0.5, Math.min(5, detailZoom * delta));
+        
+        // Convert cursor position to world coordinates
+        var size = 400;
+        var worldX = (cx - detailPanX - size/2) / oldZoom + size/2;
+        var worldY = (cy - detailPanY - size/2) / oldZoom + size/2;
+        
+        // Calculate new pan to keep that world point under the cursor
+        detailPanX = cx - size/2 - (worldX - size/2) * newZoom;
+        detailPanY = cy - size/2 - (worldY - size/2) * newZoom;
+        
+        detailZoom = newZoom;
+        drawDetailView();
+    };
+    
+    // Mouse drag for desktop
+    canvas.onmousedown = function(e) {
+        detailLastTouchX = e.clientX;
+        detailLastTouchY = e.clientY;
+        detailIsPanning = true;
+    };
+    
+    canvas.onmousemove = function(e) {
+        if (detailIsPanning) {
+            var dx = e.clientX - detailLastTouchX;
+            var dy = e.clientY - detailLastTouchY;
+            detailPanX += dx;
+            detailPanY += dy;
+            detailLastTouchX = e.clientX;
+            detailLastTouchY = e.clientY;
+            drawDetailView();
+        }
+    };
+    
+    canvas.onmouseup = function() {
+        detailIsPanning = false;
+    };
+    
+    canvas.onmouseleave = function() {
+        detailIsPanning = false;
+    };
+}
+
+function drawDetailView() {
+    var tile = window.currentDetailTile;
+    if (!tile) return;
+    
+    var canvas = document.getElementById('detailCanvas');
+    var ctx = canvas.getContext('2d');
+    
+    // Larger canvas size for better detail
+    var size = 400;
+    canvas.width = size * 2; // Retina
+    canvas.height = size * 2;
+    canvas.style.width = size + 'px';
+    canvas.style.height = size + 'px';
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.scale(2, 2);
+    
+    // Clear canvas
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, size, size);
+    
+    // Apply zoom and pan - zoom from center, then apply pan
+    ctx.save();
+    ctx.translate(detailPanX, detailPanY);
+    ctx.translate(size / 2, size / 2);
+    ctx.scale(detailZoom, detailZoom);
+    ctx.translate(-size / 2, -size / 2);
+    
+    var scale = tile.scale;
+    var tileCenterX = tile.x;
+    var tileCenterY = tile.y;
+    
+    // Get full tile vertices in inches
+    var tileVertsInches = [];
+    for (var i = 0; i < tile.verts.length; i++) {
+        tileVertsInches.push([
+            (tile.verts[i][0] - tileCenterX) / scale,
+            (tile.verts[i][1] - tileCenterY) / scale
+        ]);
+    }
+    
+    // Get tile bounding box
+    var tileMinX = tileVertsInches[0][0], tileMaxX = tileVertsInches[0][0];
+    var tileMinY = tileVertsInches[0][1], tileMaxY = tileVertsInches[0][1];
+    for (var i = 1; i < tileVertsInches.length; i++) {
+        tileMinX = Math.min(tileMinX, tileVertsInches[i][0]);
+        tileMaxX = Math.max(tileMaxX, tileVertsInches[i][0]);
+        tileMinY = Math.min(tileMinY, tileVertsInches[i][1]);
+        tileMaxY = Math.max(tileMaxY, tileVertsInches[i][1]);
+    }
+    
+    var tileW = tileMaxX - tileMinX;
+    var tileH = tileMaxY - tileMinY;
+    
+    // Calculate cuts needed
+    var cuts = [];
+    
+    // Check wall cuts - find how much is outside the wall on each side
+    var wallCutLeft = 0, wallCutRight = 0, wallCutTop = 0, wallCutBottom = 0;
+    
+    // Get wall intersections to find actual cut amounts
+    for (var i = 0; i < tile.verts.length; i++) {
+        var v1 = tile.verts[i];
+        var v2 = tile.verts[(i + 1) % tile.verts.length];
+        
+        // Check if this edge crosses the wall
+        for (var j = 0; j < tile.wall.length; j++) {
+            var w1 = tile.wall[j];
+            var w2 = tile.wall[(j + 1) % tile.wall.length];
+            var inter = lineIntersect(v1, v2, w1, w2);
+            if (inter) {
+                var ix = (inter[0] - tileCenterX) / scale;
+                var iy = (inter[1] - tileCenterY) / scale;
+                
+                // Determine which side this intersection is on
+                if (Math.abs(ix - tileMinX) < 0.5) {
+                    wallCutLeft = Math.max(wallCutLeft, Math.abs(tileMinX - ix));
+                }
+                if (Math.abs(ix - tileMaxX) < 0.5) {
+                    wallCutRight = Math.max(wallCutRight, Math.abs(tileMaxX - ix));
+                }
+            }
+        }
+    }
+    
+    // Check which vertices are outside wall and calculate cut from edge
+    for (var i = 0; i < tile.verts.length; i++) {
+        if (!inPoly(tile.verts[i], tile.wall)) {
+            var vx = (tile.verts[i][0] - tileCenterX) / scale;
+            var vy = (tile.verts[i][1] - tileCenterY) / scale;
+            
+            // Find distance from tile edge to where cut happens
+            if (vx <= tileMinX + 0.1) wallCutLeft = Math.max(wallCutLeft, tileW);
+            if (vx >= tileMaxX - 0.1) wallCutRight = Math.max(wallCutRight, tileW);
+            if (vy <= tileMinY + 0.1) wallCutTop = Math.max(wallCutTop, tileH);
+            if (vy >= tileMaxY - 0.1) wallCutBottom = Math.max(wallCutBottom, tileH);
+        }
+    }
+    
+    // Calculate the remaining piece dimensions after wall cuts
+    var pieceW = tileW;
+    var pieceH = tileH;
+    
+    // Get cut points to find actual remaining dimensions
+    var cutPoints = getCutPoints(tile.verts, tile.wall, tile.voidPolys);
+    if (cutPoints.length >= 3) {
+        var cpMinX = Infinity, cpMaxX = -Infinity;
+        var cpMinY = Infinity, cpMaxY = -Infinity;
+        for (var i = 0; i < cutPoints.length; i++) {
+            var cx = (cutPoints[i][0] - tileCenterX) / scale;
+            var cy = (cutPoints[i][1] - tileCenterY) / scale;
+            cpMinX = Math.min(cpMinX, cx);
+            cpMaxX = Math.max(cpMaxX, cx);
+            cpMinY = Math.min(cpMinY, cy);
+            cpMaxY = Math.max(cpMaxY, cy);
+        }
+        pieceW = cpMaxX - cpMinX;
+        pieceH = cpMaxY - cpMinY;
+    }
+    
+    // Check void notch
+    var voidNotch = null;
+    if (tile.voidPolys && tile.voidPolys.length > 0) {
+        for (var vi = 0; vi < tile.voidPolys.length; vi++) {
+            var voidPoly = tile.voidPolys[vi];
+            
+            // Get void bounds in tile-relative inches
+            var vMinX = Infinity, vMaxX = -Infinity;
+            var vMinY = Infinity, vMaxY = -Infinity;
+            for (var i = 0; i < voidPoly.length; i++) {
+                var vx = (voidPoly[i][0] - tileCenterX) / scale;
+                var vy = (voidPoly[i][1] - tileCenterY) / scale;
+                vMinX = Math.min(vMinX, vx);
+                vMaxX = Math.max(vMaxX, vx);
+                vMinY = Math.min(vMinY, vy);
+                vMaxY = Math.max(vMaxY, vy);
+            }
+            
+            // Check overlap with tile
+            if (vMaxX > tileMinX && vMinX < tileMaxX && vMaxY > tileMinY && vMinY < tileMaxY) {
+                // Calculate notch (intersection of void with tile)
+                var notchL = Math.max(vMinX, tileMinX);
+                var notchR = Math.min(vMaxX, tileMaxX);
+                var notchT = Math.max(vMinY, tileMinY);
+                var notchB = Math.min(vMaxY, tileMaxY);
+                
+                var notchW = notchR - notchL;
+                var notchH = notchB - notchT;
+                
+                if (notchW > 0.1 && notchH > 0.1) {
+                    // Determine corner
+                    var corner = '';
+                    if (notchL <= tileMinX + 0.1 && notchT <= tileMinY + 0.1) corner = 'top-left';
+                    else if (notchR >= tileMaxX - 0.1 && notchT <= tileMinY + 0.1) corner = 'top-right';
+                    else if (notchL <= tileMinX + 0.1 && notchB >= tileMaxY - 0.1) corner = 'bottom-left';
+                    else if (notchR >= tileMaxX - 0.1 && notchB >= tileMaxY - 0.1) corner = 'bottom-right';
+                    else corner = 'interior';
+                    
+                    voidNotch = { w: notchW, h: notchH, corner: corner };
+                }
+            }
+        }
+    }
+    
+    // Now draw the detail view
+    ctx.fillStyle = '#333';
+    ctx.font = 'bold 16px sans-serif';
+    ctx.textAlign = 'center';
+    
+    // Different display based on cut type
+    if (voidNotch) {
+        // VOID NOTCH CUT
+        ctx.fillText('Cut notch from ' + voidNotch.corner + ':', size / 2, 35);
+        
+        // Big notch dimensions
+        ctx.fillStyle = '#4CAF50';
+        ctx.font = 'bold 32px sans-serif';
+        ctx.fillText(toFraction(voidNotch.w) + ' × ' + toFraction(voidNotch.h), size / 2, 80);
+        
+        // Draw tile with notch visualization
+        var drawScale = Math.min(150 / tileW, 150 / tileH);
+        var cx = size / 2;
+        var cy = size / 2 + 40;
+        
+        // Full tile outline (SOLID)
+        ctx.strokeStyle = '#333';
+        ctx.fillStyle = '#FFEB3B';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        for (var i = 0; i < tileVertsInches.length; i++) {
+            var px = cx + tileVertsInches[i][0] * drawScale;
+            var py = cy + tileVertsInches[i][1] * drawScale;
+            if (i === 0) ctx.moveTo(px, py);
+            else ctx.lineTo(px, py);
+        }
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+        
+        // Notch rectangle position
+        var nl, nr, nt, nb;
+        if (voidNotch.corner === 'top-left') {
+            nl = cx + tileMinX * drawScale;
+            nt = cy + tileMinY * drawScale;
+        } else if (voidNotch.corner === 'top-right') {
+            nl = cx + (tileMaxX - voidNotch.w) * drawScale;
+            nt = cy + tileMinY * drawScale;
+        } else if (voidNotch.corner === 'bottom-left') {
+            nl = cx + tileMinX * drawScale;
+            nt = cy + (tileMaxY - voidNotch.h) * drawScale;
+        } else {
+            nl = cx + (tileMaxX - voidNotch.w) * drawScale;
+            nt = cy + (tileMaxY - voidNotch.h) * drawScale;
+        }
+        nr = nl + voidNotch.w * drawScale;
+        nb = nt + voidNotch.h * drawScale;
+        
+        // Draw RED DASHED cut lines (just the two interior lines of the notch)
+        ctx.strokeStyle = '#f44336';
+        ctx.lineWidth = 3;
+        ctx.setLineDash([8, 4]);
+        
+        // Draw only the two cut lines (not the edges that are on tile border)
+        ctx.beginPath();
+        if (voidNotch.corner === 'top-left') {
+            // Cut lines go right then down from corner
+            ctx.moveTo(nl, nb); // Left edge, bottom of notch
+            ctx.lineTo(nr, nb); // Horizontal cut
+            ctx.lineTo(nr, nt); // Vertical cut
+        } else if (voidNotch.corner === 'top-right') {
+            // Cut lines go left then down
+            ctx.moveTo(nr, nb);
+            ctx.lineTo(nl, nb); // Horizontal cut
+            ctx.lineTo(nl, nt); // Vertical cut
+        } else if (voidNotch.corner === 'bottom-left') {
+            // Cut lines go right then up
+            ctx.moveTo(nl, nt);
+            ctx.lineTo(nr, nt); // Horizontal cut
+            ctx.lineTo(nr, nb); // Vertical cut
+        } else {
+            // bottom-right: Cut lines go left then up
+            ctx.moveTo(nr, nt);
+            ctx.lineTo(nl, nt); // Horizontal cut
+            ctx.lineTo(nl, nb); // Vertical cut
+        }
+        ctx.stroke();
+        ctx.setLineDash([]);
+        
+        // Dimension labels parallel to cut lines but OFFSET to the side
+        ctx.fillStyle = '#f44336';
+        ctx.font = 'bold 13px sans-serif';
+        
+        var labelOffset = 18; // Distance from line
+        
+        // Position labels based on corner - beside the cut lines
+        if (voidNotch.corner === 'top-left') {
+            // Horizontal cut is at bottom of notch, vertical cut is at right of notch
+            ctx.fillText(toFraction(voidNotch.w), (nl + nr) / 2, nb + labelOffset); // Below horizontal line
+            ctx.save();
+            ctx.translate(nr + labelOffset, (nt + nb) / 2);
+            ctx.rotate(-Math.PI / 2);
+            ctx.fillText(toFraction(voidNotch.h), 0, 0); // Right of vertical line
+            ctx.restore();
+        } else if (voidNotch.corner === 'top-right') {
+            // Horizontal cut is at bottom of notch, vertical cut is at left of notch
+            ctx.fillText(toFraction(voidNotch.w), (nl + nr) / 2, nb + labelOffset); // Below horizontal line
+            ctx.save();
+            ctx.translate(nl - labelOffset, (nt + nb) / 2);
+            ctx.rotate(-Math.PI / 2);
+            ctx.fillText(toFraction(voidNotch.h), 0, 0); // Left of vertical line
+            ctx.restore();
+        } else if (voidNotch.corner === 'bottom-left') {
+            // Horizontal cut is at top of notch, vertical cut is at right of notch
+            ctx.fillText(toFraction(voidNotch.w), (nl + nr) / 2, nt - labelOffset + 5); // Above horizontal line
+            ctx.save();
+            ctx.translate(nr + labelOffset, (nt + nb) / 2);
+            ctx.rotate(-Math.PI / 2);
+            ctx.fillText(toFraction(voidNotch.h), 0, 0); // Right of vertical line
+            ctx.restore();
+        } else {
+            // bottom-right: Horizontal cut is at top, vertical cut is at left
+            ctx.fillText(toFraction(voidNotch.w), (nl + nr) / 2, nt - labelOffset + 5); // Above horizontal line
+            ctx.save();
+            ctx.translate(nl - labelOffset, (nt + nb) / 2);
+            ctx.rotate(-Math.PI / 2);
+            ctx.fillText(toFraction(voidNotch.h), 0, 0); // Left of vertical line
+            ctx.restore();
+        }
+        
+    } else if (pieceW < tileW - 0.1 || pieceH < tileH - 0.1) {
+        // EDGE CUT - tile is cut by wall edge
+        
+        // Find actual wall intersection points to determine real cuts
+        var wallIntersections = [];
+        if (tile.wall && tile.verts) {
+            for (var i = 0; i < tile.verts.length; i++) {
+                var v1 = tile.verts[i];
+                var v2 = tile.verts[(i + 1) % tile.verts.length];
+                for (var j = 0; j < tile.wall.length; j++) {
+                    var w1 = tile.wall[j];
+                    var w2 = tile.wall[(j + 1) % tile.wall.length];
+                    var inter = lineIntersect(v1, v2, w1, w2);
+                    if (inter) {
+                        wallIntersections.push({
+                            x: (inter[0] - tileCenterX) / scale,
+                            y: (inter[1] - tileCenterY) / scale
+                        });
+                    }
+                }
+            }
+        }
+        
+        // Determine cut direction based on intersection points
+        var hasHorizontalCut = false;
+        var hasVerticalCut = false;
+        var cutLineX = 0;
+        var cutLineY = 0;
+        var cutAmountW = 0;
+        var cutAmountH = 0;
+        
+        if (wallIntersections.length >= 2) {
+            // Check if intersections form a roughly vertical or horizontal line
+            var p1 = wallIntersections[0];
+            var p2 = wallIntersections[1];
+            var dx = Math.abs(p2.x - p1.x);
+            var dy = Math.abs(p2.y - p1.y);
+            
+            if (dy > dx * 2) {
+                // Vertical cut (wall runs vertically through tile)
+                hasVerticalCut = true;
+                cutLineX = (p1.x + p2.x) / 2;
+                // Calculate how much is cut off
+                if (cutLineX > 0) {
+                    cutAmountW = tileMaxX - cutLineX;
+                } else {
+                    cutAmountW = cutLineX - tileMinX;
+                }
+            } else if (dx > dy * 2) {
+                // Horizontal cut (wall runs horizontally through tile)
+                hasHorizontalCut = true;
+                cutLineY = (p1.y + p2.y) / 2;
+                // Calculate how much is cut off
+                if (cutLineY > 0) {
+                    cutAmountH = tileMaxY - cutLineY;
+                } else {
+                    cutAmountH = cutLineY - tileMinY;
+                }
+            } else {
+                // Diagonal cut - treat as single angled cut
+                hasVerticalCut = true;
+                cutLineX = (p1.x + p2.x) / 2;
+                cutAmountW = Math.abs(tileMaxX - tileMinX - pieceW);
+            }
+        }
+        
+        // Header text
+        var headerText = 'Cut tile:';
+        if (hasVerticalCut && cutAmountW > 0.1) {
+            headerText = 'Cut ' + toFraction(Math.abs(cutAmountW)) + ' from edge:';
+        } else if (hasHorizontalCut && cutAmountH > 0.1) {
+            headerText = 'Cut ' + toFraction(Math.abs(cutAmountH)) + ' from edge:';
+        }
+        ctx.fillText(headerText, size / 2, 35);
+        
+        // Big piece dimensions (what remains)
+        ctx.fillStyle = '#4CAF50';
+        ctx.font = 'bold 32px sans-serif';
+        ctx.fillText(toFraction(pieceW) + ' × ' + toFraction(pieceH), size / 2, 75);
+        
+        // Draw visualization
+        var drawScale = Math.min(140 / tileW, 140 / tileH);
+        var cx = size / 2;
+        var cy = size / 2 + 50;
+        
+        // Full tile (solid yellow)
+        ctx.fillStyle = '#FFEB3B';
+        ctx.strokeStyle = '#333';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        for (var i = 0; i < tileVertsInches.length; i++) {
+            var px = cx + tileVertsInches[i][0] * drawScale;
+            var py = cy + tileVertsInches[i][1] * drawScale;
+            if (i === 0) ctx.moveTo(px, py);
+            else ctx.lineTo(px, py);
+        }
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+        
+        // Draw the actual cut line through the intersections
+        if (wallIntersections.length >= 2) {
+            ctx.strokeStyle = '#f44336';
+            ctx.lineWidth = 3;
+            ctx.setLineDash([8, 4]);
+            
+            ctx.beginPath();
+            var p1 = wallIntersections[0];
+            var p2 = wallIntersections[1];
+            ctx.moveTo(cx + p1.x * drawScale, cy + p1.y * drawScale);
+            ctx.lineTo(cx + p2.x * drawScale, cy + p2.y * drawScale);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            
+            // Label the cut amount
+            ctx.fillStyle = '#f44336';
+            ctx.font = 'bold 13px sans-serif';
+            var midX = cx + (p1.x + p2.x) / 2 * drawScale;
+            var midY = cy + (p1.y + p2.y) / 2 * drawScale;
+            
+            var cutAmount = hasVerticalCut ? Math.abs(cutAmountW) : Math.abs(cutAmountH);
+            if (cutAmount > 0.1) {
+                // Position label to the side of the cut line
+                if (hasVerticalCut) {
+                    var labelX = midX + (cutLineX > 0 ? 20 : -20);
+                    ctx.save();
+                    ctx.translate(labelX, midY);
+                    ctx.rotate(-Math.PI / 2);
+                    ctx.fillText(toFraction(cutAmount), 0, 0);
+                    ctx.restore();
+                } else {
+                    var labelY = midY + (cutLineY > 0 ? 20 : -20);
+                    ctx.fillText(toFraction(cutAmount), midX, labelY);
+                }
+            }
+        }
+        
+    } else {
+        // Full tile - shouldn't happen for cut tiles but fallback
+        ctx.fillText('Full tile:', size / 2, 35);
+        ctx.fillStyle = '#4CAF50';
+        ctx.font = 'bold 32px sans-serif';
+        ctx.fillText(toFraction(tileW) + ' × ' + toFraction(tileH), size / 2, 80);
+    }
+    
+    // Restore context (undo zoom/pan transform)
+    ctx.restore();
+    
+    // Draw zoom level indicator (outside transform)
+    ctx.fillStyle = '#999';
+    ctx.font = '11px sans-serif';
+    ctx.textAlign = 'right';
+    ctx.fillText(Math.round(detailZoom * 100) + '%', size - 10, size - 10);
+    ctx.textAlign = 'center';
+    
+    // Tile size reference
+    ctx.fillText('Tile size: ' + toFraction(tileW) + ' × ' + toFraction(tileH), size / 2, size - 25);
+}
+
+// Helper: draw arrow head
+function drawArrow(ctx, x, y, dir) {
+    var s = 5;
+    ctx.beginPath();
+    if (dir === 'right') {
+        ctx.moveTo(x, y);
+        ctx.lineTo(x + s, y - s/2);
+        ctx.lineTo(x + s, y + s/2);
+    } else if (dir === 'left') {
+        ctx.moveTo(x, y);
+        ctx.lineTo(x - s, y - s/2);
+        ctx.lineTo(x - s, y + s/2);
+    } else if (dir === 'up') {
+        ctx.moveTo(x, y);
+        ctx.lineTo(x - s/2, y - s);
+        ctx.lineTo(x + s/2, y - s);
+    } else if (dir === 'down') {
+        ctx.moveTo(x, y);
+        ctx.lineTo(x - s/2, y + s);
+        ctx.lineTo(x + s/2, y + s);
+    }
+    ctx.closePath();
+    ctx.fill();
+}
+
+// Helper: draw rounded rectangle
+function roundRect(ctx, x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.lineTo(x + w - r, y);
+    ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+    ctx.lineTo(x + w, y + h - r);
+    ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+    ctx.lineTo(x + r, y + h);
+    ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+    ctx.lineTo(x, y + r);
+    ctx.quadraticCurveTo(x, y, x + r, y);
+    ctx.closePath();
+}
+
+// Get ordered cut polygon points
+function getCutPoints(verts, wall, voidPolys) {
+    var points = [];
+    
+    // Add tile vertices that are inside wall and not in void
+    for (var i = 0; i < verts.length; i++) {
+        if (inPoly(verts[i], wall)) {
+            var inVoid = false;
+            for (var vi = 0; vi < voidPolys.length; vi++) {
+                if (inPoly(verts[i], voidPolys[vi])) {
+                    inVoid = true;
+                    break;
+                }
+            }
+            if (!inVoid) {
+                points.push(verts[i].slice());
+            }
+        }
+    }
+    
+    // Add wall intersection points
+    for (var i = 0; i < verts.length; i++) {
+        var v1 = verts[i];
+        var v2 = verts[(i + 1) % verts.length];
+        for (var j = 0; j < wall.length; j++) {
+            var w1 = wall[j];
+            var w2 = wall[(j + 1) % wall.length];
+            var inter = lineIntersect(v1, v2, w1, w2);
+            if (inter) {
+                var inVoid = false;
+                for (var vi = 0; vi < voidPolys.length; vi++) {
+                    if (inPoly(inter, voidPolys[vi])) {
+                        inVoid = true;
+                        break;
+                    }
+                }
+                if (!inVoid) {
+                    points.push(inter);
+                }
+            }
+        }
+    }
+    
+    // Add void intersection points
+    for (var vi = 0; vi < voidPolys.length; vi++) {
+        var voidPoly = voidPolys[vi];
+        for (var i = 0; i < verts.length; i++) {
+            var v1 = verts[i];
+            var v2 = verts[(i + 1) % verts.length];
+            for (var j = 0; j < voidPoly.length; j++) {
+                var w1 = voidPoly[j];
+                var w2 = voidPoly[(j + 1) % voidPoly.length];
+                var inter = lineIntersect(v1, v2, w1, w2);
+                if (inter && inPoly(inter, wall)) {
+                    points.push(inter);
+                }
+            }
+        }
+        // Add void corners that are inside the tile
+        for (var j = 0; j < voidPoly.length; j++) {
+            if (isPointInPolygon(voidPoly[j], verts) && inPoly(voidPoly[j], wall)) {
+                points.push(voidPoly[j].slice());
+            }
+        }
+    }
+    
+    if (points.length < 3) return points;
+    
+    // Order points by angle from centroid (convex hull approach)
+    var cx = 0, cy = 0;
+    for (var i = 0; i < points.length; i++) {
+        cx += points[i][0];
+        cy += points[i][1];
+    }
+    cx /= points.length;
+    cy /= points.length;
+    
+    points.sort(function(a, b) {
+        return Math.atan2(a[1] - cy, a[0] - cx) - Math.atan2(b[1] - cy, b[0] - cx);
+    });
+    
+    // Remove duplicates
+    var cleaned = [points[0]];
+    for (var i = 1; i < points.length; i++) {
+        var last = cleaned[cleaned.length - 1];
+        var dist = Math.sqrt(Math.pow(points[i][0] - last[0], 2) + Math.pow(points[i][1] - last[1], 2));
+        if (dist > 1) {
+            cleaned.push(points[i]);
+        }
+    }
+    
+    return cleaned;
+}
+
+// Check if point is inside a polygon (for void corners in tile)
+function isPointInPolygon(pt, poly) {
+    var inside = false;
+    for (var i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+        var xi = poly[i][0], yi = poly[i][1];
+        var xj = poly[j][0], yj = poly[j][1];
+        if (((yi > pt[1]) !== (yj > pt[1])) && (pt[0] < (xj - xi) * (pt[1] - yi) / (yj - yi) + xi)) {
+            inside = !inside;
+        }
+    }
+    return inside;
+}
+
+function closeDetailView(markAsCut) {
+    document.getElementById('detailOverlay').classList.remove('active');
+    
+    if (detailTileData) {
+        if (markAsCut) {
+            cutTileStates[detailTileData.key] = 2; // Mark as red/cut
+        } else {
+            // User cancelled - reset tile back to orange
+            cutTileStates[detailTileData.key] = 0;
+        }
+        draw();
+    }
+    detailTileData = null;
+}
+
+// ============ END TILE DETAIL VIEW ============
+
+// Check if point is inside a tile (simplified bounding box check)
+function isPointInTile(px, py, tx, ty, tw, th, verts) {
+    // If we have vertices, use them for more accurate hit detection
+    if (verts && verts.length > 0) {
+        var minX = verts[0][0], maxX = verts[0][0];
+        var minY = verts[0][1], maxY = verts[0][1];
+        for (var i = 1; i < verts.length; i++) {
+            minX = Math.min(minX, verts[i][0]);
+            maxX = Math.max(maxX, verts[i][0]);
+            minY = Math.min(minY, verts[i][1]);
+            maxY = Math.max(maxY, verts[i][1]);
+        }
+        // Add a little padding for easier tapping
+        var pad = 5;
+        return px >= minX - pad && px <= maxX + pad && py >= minY - pad && py <= maxY + pad;
+    }
+    
+    // Fallback to bounding box - use max of tw/th for both to be safe
+    var half = Math.max(tw, th) / 2;
+    return px >= tx - half && px <= tx + half && py >= ty - half && py <= ty + half;
+}
+
+// Prevent scroll changing inputs
+document.addEventListener('wheel', function(e) {
+    if (document.activeElement && document.activeElement.type === 'number') {
+        document.activeElement.blur();
+    }
+}, { passive: true });
+
+// Close optimize menu when clicking outside
+document.addEventListener('click', function(e) {
+    var menu = document.getElementById('optimizeMenu');
+    var btn = document.getElementById('optimizeBtn');
+    if (optimizeMenuOpen && !menu.contains(e.target) && e.target !== btn) {
+        closeOptimizeMenu();
+    }
+});
+
+function showTab(id) {
+    document.querySelectorAll('.panel').forEach(function(p) { p.classList.remove('active'); });
+    document.querySelectorAll('.tab').forEach(function(t) { t.classList.remove('active'); });
+    document.getElementById(id).classList.add('active');
+    
+    // Update active tab button
+    document.querySelectorAll('.tab').forEach(function(t) {
+        if (t.getAttribute('data-tab') === id) {
+            t.classList.add('active');
+        }
+    });
+    
+    if (id === 'diagram') draw();
+    if (id === 'projects') updateProjectList();
+}
+
+// Toast notification
+function showToast(msg) {
+    var existing = document.querySelector('.toast-notification');
+    if (existing) existing.remove();
+    
+    var toast = document.createElement('div');
+    toast.className = 'toast-notification';
+    toast.textContent = msg;
+    toast.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#333;color:#fff;padding:12px 20px;border-radius:8px;font-size:13px;z-index:9999;max-width:90%;text-align:center;';
+    document.body.appendChild(toast);
+    
+    setTimeout(function() {
+        toast.style.opacity = '0';
+        toast.style.transition = 'opacity 0.3s';
+        setTimeout(function() { toast.remove(); }, 300);
+    }, 3000);
+}
+
+function updateWall() {
+    C.wall.lH = parseFloat(document.getElementById('leftH').value) || 0;
+    C.wall.rV = parseFloat(document.getElementById('rightVar').value) || 0;
+    C.wall.tW = parseFloat(document.getElementById('topW').value) || 0;
+    C.wall.bV = parseFloat(document.getElementById('botVar').value) || 0;
+    markUnsaved();
+    calculateSegments(); // Recalculate segments when wall changes
+    draw();
+    showTab('diagram');
+}
+
+function updateTile() {
+    C.tile.sh = document.getElementById('tileShape').value;
+    C.tile.or = document.getElementById('tileOrient').value;
+    C.tile.pattern = parseFloat(document.getElementById('tilePattern').value) || 0;
+    var w = parseFloat(document.getElementById('tileW').value) || 0;
+    var h = parseFloat(document.getElementById('tileH').value) || 0;
+    C.tile.gr = parseFloat(document.getElementById('grout').value);
+    if (C.tile.sh === 'square') {
+        var s = w || h;
+        w = h = s;
+        document.getElementById('tileW').value = s;
+        document.getElementById('tileH').value = s;
+    }
+    // Herringbone ratio check
+    if (C.tile.sh === 'herringbone' && w > 0 && h > 0) {
+        var ratio = Math.max(w, h) / Math.min(w, h);
+        if (ratio < 2) {
+            showToast('⚠️ Herringbone works best with 2:1 ratio or longer (e.g., 2"×8")');
+        }
+    }
+    C.tile.w = w;
+    C.tile.h = h;
+    markUnsaved();
+    draw();
+    showTab('diagram');
+}
+
+function onShape() {
+    var s = document.getElementById('tileShape').value;
+    // Hide orientation for square tiles, show for herringbone
+    document.getElementById('orientDiv').style.display = s === 'square' ? 'none' : 'block';
+    // Show pattern option only for square and rectangle (not hexagon or herringbone)
+    document.getElementById('patternDiv').style.display = (s === 'square' || s === 'rectangle') ? 'block' : 'none';
+    if (s === 'square') {
+        document.getElementById('tileW').value = '';
+        document.getElementById('tileH').value = '';
+    }
+    // For herringbone, orientation means the direction of the pattern
+    if (s === 'herringbone') {
+        document.getElementById('tileOrient').innerHTML = '<option value="pointy">45° Right</option><option value="flat">45° Left</option>';
+        // Set default herringbone sizes (2" x 8" is classic)
+        if (!document.getElementById('tileW').value || !document.getElementById('tileH').value) {
+            document.getElementById('tileW').value = '2';
+            document.getElementById('tileH').value = '8';
+        }
+        // Show herringbone size hint
+        showToast('Herringbone tip: Use 2:1 to 4:1 ratio (e.g., 2"×8", 3"×12")');
+    } else if (s === 'hexagon') {
+        document.getElementById('tileOrient').innerHTML = '<option value="pointy">Vertical</option><option value="flat">Horizontal</option>';
+    } else {
+        document.getElementById('tileOrient').innerHTML = '<option value="pointy">Vertical</option><option value="flat">Horizontal</option>';
+    }
+}
+
+// Pattern lock state
+var patternLocked = false;
+var savedPatternPosition = null; // Saved position when locked with cut tiles
+var hasCutProgress = false; // Track if any tiles have been marked
+
+// Show cut dimensions state
+var showCuts = true;
+
+function countCutProgress() {
+    var count = 0;
+    for (var key in cutTileStates) {
+        if (cutTileStates[key] > 0) count++;
+    }
+    return count;
+}
+
+function toggleLock() {
+    var cutCount = countCutProgress();
+    
+    if (patternLocked) {
+        // UNLOCKING - warn if there's cut progress
+        if (cutCount > 0) {
+            document.getElementById('unlockWarningText').textContent = 
+                'You have ' + cutCount + ' tile(s) marked. Moving the pattern will make your cut progress INVALID.';
+            document.getElementById('unlockModal').classList.add('active');
+            return; // Wait for modal response
+        }
+        // No cut progress, just unlock
+        doUnlock();
+    } else {
+        // LOCKING - save position if there's cut progress
+        if (cutCount > 0) {
+            savedPatternPosition = { oxInches: C.view.oxInches || 0, oyInches: C.view.oyInches || 0 };
+        }
+        doLock();
+    }
+}
+
+function closeUnlockModal(confirmed) {
+    document.getElementById('unlockModal').classList.remove('active');
+    
+    if (confirmed) {
+        // Save current position AND cut states before unlocking so user can restore
+        savedPatternPosition = { 
+            oxInches: C.view.oxInches || 0, 
+            oyInches: C.view.oyInches || 0,
+            cutTileStates: JSON.parse(JSON.stringify(cutTileStates)) // Deep copy of cut states
+        };
+        document.getElementById('restoreBtn').style.display = 'block';
+        
+        // Clear all cut progress - reset all tiles to orange (pattern is about to move)
+        cutTileStates = {};
+        
+        doUnlock();
+        draw(); // Redraw to show reset tiles
+    }
+}
+
+function doLock() {
+    patternLocked = true;
+    var btn = document.getElementById('lockBtn');
+    var icon = document.getElementById('lockIcon');
+    var text = document.getElementById('lockText');
+    var hint = document.getElementById('controlsHint');
+    
+    btn.className = 'btn-success';
+    icon.textContent = '🔒';
+    text.textContent = 'Locked';
+    hint.textContent = '🔒 Pattern locked - pan & zoom freely without moving tiles';
+    hint.style.color = '#4CAF50';
+    // Hide restore button when locked (pattern is safe)
+    document.getElementById('restoreBtn').style.display = 'none';
+}
+
+function doUnlock() {
+    patternLocked = false;
+    var btn = document.getElementById('lockBtn');
+    var icon = document.getElementById('lockIcon');
+    var text = document.getElementById('lockText');
+    var hint = document.getElementById('controlsHint');
+    
+    btn.className = 'btn-secondary';
+    icon.textContent = '🔓';
+    text.textContent = 'Unlocked';
+    hint.textContent = '📱 One finger: pattern • Two fingers: pan & zoom | 💻 Drag: pattern • Shift+drag: pan • Scroll: zoom';
+    hint.style.color = '#666';
+}
+
+function restorePattern() {
+    if (savedPatternPosition) {
+        C.view.oxInches = savedPatternPosition.oxInches;
+        C.view.oyInches = savedPatternPosition.oyInches;
+        
+        // Restore the cut tile states (red tiles come back!)
+        if (savedPatternPosition.cutTileStates) {
+            cutTileStates = JSON.parse(JSON.stringify(savedPatternPosition.cutTileStates));
+        }
+        
+        document.getElementById('restoreBtn').style.display = 'none';
+        
+        // Auto-lock after restoring
+        if (!patternLocked) {
+            toggleLock();
+        }
+        draw();
+    }
+}
+
+function toggleCuts() {
+    showCuts = !showCuts;
+    var btn = document.getElementById('cutsBtn');
+    var icon = document.getElementById('cutsIcon');
+    var text = document.getElementById('cutsText');
+    
+    if (showCuts) {
+        btn.className = 'btn-success';
+        icon.textContent = '📐';
+        text.textContent = 'Cuts On';
+    } else {
+        btn.className = 'btn-secondary';
+        icon.textContent = '📐';
+        text.textContent = 'Cuts Off';
+    }
+    draw();
+}
+
+function resetView() {
+    C.view.panX = 0;
+    C.view.panY = 0;
+    // Only reset pattern offset if unlocked
+    if (!patternLocked) {
+        C.view.oxInches = 0;
+        C.view.oyInches = 0;
+    }
+    draw();
+}
+
+function updateZoom() {
+    C.view.z = parseFloat(document.getElementById('zoom').value);
+    document.getElementById('zoomVal').textContent = C.view.z + 'x';
+    draw();
+}
+
+function draw() {
+    var s = C.view.z;
+    var g = C.tile.gr;
+    var container = document.getElementById('canvasContainer');
+    
+    // Reset cut tiles data for tap detection
+    cutTilesData = [];
+    cutDoneCount = 0;
+    
+    // Calculate wall dimensions
+    var rH = C.wall.lH + C.wall.rV;
+    var bW = C.wall.tW + C.wall.bV;
+    var maxW = Math.max(C.wall.tW, bW);
+    var maxH = Math.max(C.wall.lH, rH);
+    
+    // Fixed viewport size - always use container size
+    var viewportWidth = container.offsetWidth;
+    var viewportHeight = Math.max(viewportWidth * 0.8, 400);
+    
+    if (projMode) {
+        cv.width = window.innerWidth * 2;
+        cv.height = window.innerHeight * 2;
+    } else {
+        cv.width = viewportWidth * 2;
+        cv.height = viewportHeight * 2;
+    }
+    
+    cx.setTransform(1, 0, 0, 1, 0, 0);
+    cx.scale(2, 2);
+    
+    // White background
+    cx.fillStyle = '#ffffff';
+    cx.fillRect(0, 0, cv.width, cv.height);
+    
+    // Check if we have valid dimensions
+    if (!C.wall.lH || !C.wall.tW || !C.tile.w || !C.tile.h) {
+        cx.fillStyle = '#666666';
+        cx.font = '16px sans-serif';
+        cx.textAlign = 'center';
+        cx.fillText('Enter wall and tile dimensions', cv.width / 4, cv.height / 4);
+        return;
+    }
+    
+    // Base offset to start drawing from
+    var baseOx = 40;
+    var baseOy = 40;
+    
+    // View pan offset (two-finger drag to navigate) - stored in pixels, that's fine for panning
+    if (!C.view.panX) C.view.panX = 0;
+    if (!C.view.panY) C.view.panY = 0;
+    var panX = C.view.panX + (pan.dx || 0);
+    var panY = C.view.panY + (pan.dy || 0);
+    
+    // Pattern offset - C.view.ox/oy are stored in INCHES, convert to pixels for drawing
+    // drag.dx/dy are in pixels at current zoom, so divide by zoom to get inches
+    if (!C.view.oxInches) C.view.oxInches = 0;
+    if (!C.view.oyInches) C.view.oyInches = 0;
+    var patternOxInches = C.view.oxInches + (drag.dx / s);
+    var patternOyInches = C.view.oyInches + (drag.dy / s);
+    var patternOx = patternOxInches * s; // Convert back to pixels for drawing
+    var patternOy = patternOyInches * s;
+    
+    // The origin for drawing wall - combines base offset with pan
+    var ox = baseOx + panX;
+    var oy = baseOy + panY;
+    var tw = C.tile.w * s;
+    var th = C.tile.h * s;
+    
+    // Wall polygon
+    var hDiff = rH - C.wall.lH;
+    var topRightY = oy - (hDiff * s);
+    var wall = [
+        [ox, oy],
+        [ox + C.wall.tW * s, topRightY],
+        [ox + bW * s, topRightY + rH * s],
+        [ox, oy + C.wall.lH * s]
+    ];
+    
+    // Void polygons
+    var voidPolys = [];
+    for (var vi = 0; vi < C.voids.length; vi++) {
+        var v = C.voids[vi];
+        voidPolys.push([
+            [ox + v.x * s, oy + (C.wall.lH - v.y - v.h) * s],
+            [ox + (v.x + v.w) * s, oy + (C.wall.lH - v.y - v.h) * s],
+            [ox + (v.x + v.w) * s, oy + (C.wall.lH - v.y) * s],
+            [ox + v.x * s, oy + (C.wall.lH - v.y) * s]
+        ]);
+    }
+    
+    // Calculate spacing (tile size + grout) in PIXELS for drawing
+    var groutPx = g * s; // Grout in pixels
+    var colSp, rowSp;
+    
+    // Also calculate spacing in INCHES for stable tile keys
+    var colSpInches, rowSpInches;
+    
+    if (C.tile.sh === 'hexagon') {
+        if (C.tile.or === 'flat') {
+            colSp = th * 0.75 + groutPx;
+            rowSp = tw + groutPx;
+            colSpInches = C.tile.h * 0.75 + g;
+            rowSpInches = C.tile.w + g;
+        } else {
+            colSp = tw + groutPx;
+            rowSp = th * 0.75 + groutPx;
+            colSpInches = C.tile.w + g;
+            rowSpInches = C.tile.h * 0.75 + g;
+        }
+    } else if (C.tile.sh === 'square') {
+        colSp = tw + groutPx;
+        rowSp = th + groutPx;
+        colSpInches = C.tile.w + g;
+        rowSpInches = C.tile.h + g;
+    } else if (C.tile.sh === 'herringbone') {
+        // Herringbone geometry - CORRECT FORMULA
+        // colSp = lg × 0.5 × √2 (half long side diagonal)
+        // rowSp = sm × √2 (short side diagonal)
+        var sm = Math.min(tw, th);
+        var lg = Math.max(tw, th);
+        var smIn = Math.min(C.tile.w, C.tile.h);
+        var lgIn = Math.max(C.tile.w, C.tile.h);
+        
+        var sqrt2 = Math.SQRT2;
+        
+        colSp = lg * 0.5 * sqrt2;
+        rowSp = sm * sqrt2;
+        colSpInches = lgIn * 0.5 * sqrt2;
+        rowSpInches = smIn * sqrt2;
+    } else {
+        var sm = Math.min(tw, th);
+        var lg = Math.max(tw, th);
+        var smIn = Math.min(C.tile.w, C.tile.h);
+        var lgIn = Math.max(C.tile.w, C.tile.h);
+        if (C.tile.or === 'pointy') {
+            colSp = sm + groutPx;
+            rowSp = lg + groutPx;
+            colSpInches = smIn + g;
+            rowSpInches = lgIn + g;
+        } else {
+            colSp = lg + groutPx;
+            rowSp = sm + groutPx;
+            colSpInches = lgIn + g;
+            rowSpInches = smIn + g;
+        }
+    }
+    
+    // Grid bounds - calculate how many tiles we need to draw based on viewport
+    // Use larger buffer for herringbone and offset patterns to ensure full edge coverage
+    // Buffer scales with tile ratio for very long tiles
+    var viewW = cv.width / 2;
+    var viewH = cv.height / 2;
+    var buffer = 4;
+    if (C.tile.sh === 'herringbone') {
+        var ratio = Math.max(tw, th) / Math.min(tw, th);
+        buffer = Math.max(20, Math.ceil(ratio * 8));
+    }
+    var startCol = Math.floor((-ox - patternOx) / colSp) - buffer;
+    var endCol = Math.ceil((viewW - ox - patternOx) / colSp) + buffer;
+    var startRow = Math.floor((-oy - patternOy) / rowSp) - buffer;
+    var endRow = Math.ceil((viewH - oy - patternOy) / rowSp) + buffer;
+    
+    full = 0;
+    part = 0;
+    var cutLabels = []; // Store cut dimensions to draw on top
+    
+    // Draw tiles
+    for (var row = startRow; row < endRow; row++) {
+        for (var col = startCol; col < endCol; col++) {
+            var x = ox + col * colSp + patternOx;
+            var y = oy + row * rowSp + patternOy;
+            
+            // Calculate stable tile position in inches for key
+            var tileXInches = col * colSpInches;
+            var tileYInches = row * rowSpInches;
+            
+            // Hex offset
+            if (C.tile.sh === 'hexagon') {
+                if (C.tile.or === 'pointy' && ((row % 2 + 2) % 2) === 1) {
+                    x += colSp / 2;
+                    tileXInches += colSpInches / 2;
+                }
+                if (C.tile.or === 'flat' && ((col % 2 + 2) % 2) === 1) {
+                    y += rowSp / 2;
+                    tileYInches += rowSpInches / 2;
+                }
+            }
+            
+            // Herringbone offset - odd columns shift by half row spacing
+            if (C.tile.sh === 'herringbone') {
+                var sm = Math.min(tw, th);
+                var smIn = Math.min(C.tile.w, C.tile.h);
+                var sqrt2 = Math.SQRT2;
+                
+                var rowSpacing = sm * sqrt2;
+                var rowSpacingIn = smIn * sqrt2;
+                
+                if (((col % 2 + 2) % 2) === 1) {
+                    y += rowSpacing / 2;
+                    tileYInches += rowSpacingIn / 2;
+                }
+            }
+            
+            // Brick pattern offset for square/rectangle tiles
+            if (C.tile.sh === 'square' || C.tile.sh === 'rectangle') {
+                var patternOffset = C.tile.pattern || 0;
+                if (patternOffset > 0 && ((row % 2 + 2) % 2) === 1) {
+                    var offsetAmount = colSp * patternOffset;
+                    var offsetAmountInches = colSpInches * patternOffset;
+                    x += offsetAmount;
+                    tileXInches += offsetAmountInches;
+                }
+            }
+            
+            // Create stable key based on tile position in inches (rounded to avoid float issues)
+            var stableKey = Math.round(tileXInches * 1000) + ',' + Math.round(tileYInches * 1000);
+            
+            var verts = getVerts(x, y, tw, th, row, col);
+            var allIn = true, anyIn = false;
+            
+            for (var i = 0; i < verts.length; i++) {
+                if (inPoly(verts[i], wall)) {
+                    anyIn = true;
+                } else {
+                    allIn = false;
+                }
+            }
+            
+            // Check void intersection
+            var touchesVoid = false;
+            var fullyInVoid = true;
+            
+            for (var vpi = 0; vpi < voidPolys.length; vpi++) {
+                var vp = voidPolys[vpi];
+                var allVertsInThisVoid = true;
+                
+                for (var i = 0; i < verts.length; i++) {
+                    if (inPoly(verts[i], vp)) {
+                        touchesVoid = true;
+                    } else {
+                        allVertsInThisVoid = false;
+                    }
+                }
+                // Also check if void corners are inside tile
+                for (var i = 0; i < vp.length; i++) {
+                    if (inPoly(vp[i], verts)) {
+                        touchesVoid = true;
+                    }
+                }
+                
+                if (!allVertsInThisVoid) {
+                    fullyInVoid = false;
+                }
+            }
+            
+            if (C.voids.length === 0) {
+                fullyInVoid = false;
+            }
+            
+            // Draw tile if it's in the wall and not fully in a void
+            if (anyIn && !fullyInVoid) {
+                var isCut = !allIn || touchesVoid;
+                var key = stableKey; // Use stable key based on position in inches
+                var tileState = cutTileStates[key] || 0; // 0=pending, 1=selected, 2=cut
+                
+                if (projMode) {
+                    cx.fillStyle = '#ffffff';
+                    cx.strokeStyle = '#000000';
+                    cx.lineWidth = 2;
+                } else if (isCut) {
+                    // Cut tile colors based on state
+                    if (tileState === 0) {
+                        // Orange - pending
+                        cx.fillStyle = '#FF9800';
+                        cx.strokeStyle = '#E65100';
+                    } else if (tileState === 1) {
+                        // Yellow - selected
+                        cx.fillStyle = '#FFEB3B';
+                        cx.strokeStyle = '#FBC02D';
+                    } else {
+                        // Red - cut/done
+                        cx.fillStyle = '#f44336';
+                        cx.strokeStyle = '#c62828';
+                        cutDoneCount++;
+                    }
+                    cx.lineWidth = tileState === 1 ? 3 : 1; // Thicker border when selected
+                } else {
+                    // Full tile - green
+                    cx.fillStyle = '#4CAF50';
+                    cx.strokeStyle = '#2E7D32';
+                    cx.lineWidth = 1;
+                }
+                
+                drawTile(x, y, tw, th, g * s, row, col);
+                cx.fill();
+                cx.stroke();
+                
+                // Store cut tile data for tap detection and dimensions
+                if (isCut && !projMode) {
+                    var cutDims = getCutDimensions(verts, wall, voidPolys, s);
+                    cutLabels.push({ x: x, y: y, text: cutDims || '?', state: tileState });
+                    // Store all data needed for detail view
+                    cutTilesData.push({ 
+                        key: key, 
+                        x: x, 
+                        y: y, 
+                        tw: tw, 
+                        th: th, 
+                        dims: cutDims,
+                        verts: verts.slice(), // Copy of tile vertices
+                        wall: wall, // Reference to wall polygon
+                        voidPolys: voidPolys, // Reference to void polygons
+                        scale: s // Current scale for converting back to inches
+                    });
+                }
+                
+                if (isCut) {
+                    part++;
+                } else {
+                    full++;
+                }
+            }
+        }
+    }
+    
+    // Draw wall border
+    cx.strokeStyle = projMode ? '#000000' : '#0D47A1';
+    cx.lineWidth = projMode ? 4 : 3;
+    cx.beginPath();
+    cx.moveTo(wall[0][0], wall[0][1]);
+    for (var i = 1; i < wall.length; i++) {
+        cx.lineTo(wall[i][0], wall[i][1]);
+    }
+    cx.closePath();
+    cx.stroke();
+    
+    // Draw voids (in both modes - important for tracing!)
+    if (projMode) {
+        // In projector mode: thick black outline for voids (for tracing)
+        cx.strokeStyle = '#000000';
+        cx.lineWidth = 4;
+        cx.fillStyle = '#dddddd';
+    } else {
+        cx.fillStyle = 'rgba(0,0,0,0.8)';
+        cx.strokeStyle = '#000000';
+        cx.lineWidth = 2;
+    }
+    
+    for (var vpi = 0; vpi < voidPolys.length; vpi++) {
+        var vp = voidPolys[vpi];
+        cx.beginPath();
+        cx.moveTo(vp[0][0], vp[0][1]);
+        for (var i = 1; i < vp.length; i++) {
+            cx.lineTo(vp[i][0], vp[i][1]);
+        }
+        cx.closePath();
+        cx.fill();
+        cx.stroke();
+    }
+    
+    // Draw cut dimension labels ON TOP of wall border and voids
+    if (!projMode && showCuts && cutLabels.length > 0) {
+        cx.textAlign = 'center';
+        cx.textBaseline = 'middle';
+        
+        // Scale font size with zoom level
+        var baseSize = Math.max(10, Math.min(s * 1.5, 40)); // Scale with zoom, min 10, max 40
+        var selectedSize = baseSize * 2; // Double size for selected tiles
+        
+        for (var i = 0; i < cutLabels.length; i++) {
+            var label = cutLabels[i];
+            var isSelected = label.state === 1;
+            var isDone = label.state === 2;
+            
+            // Font scales with zoom - selected is 2x bigger
+            var fontSize = isSelected ? selectedSize : baseSize;
+            cx.font = 'bold ' + fontSize + 'px sans-serif';
+            
+            // Draw background pill for readability
+            var textWidth = cx.measureText(label.text).width;
+            var pillHeight = fontSize * 1.6;
+            var pillY = label.y - pillHeight/2;
+            var pillPadding = fontSize * 0.5;
+            var pillRadius = fontSize * 0.3;
+            
+            // Different background colors based on state
+            if (isDone) {
+                cx.fillStyle = 'rgba(0,100,0,0.8)'; // Dark green for done
+            } else if (isSelected) {
+                cx.fillStyle = 'rgba(0,0,0,0.95)'; // Very dark for selected - more prominent
+            } else {
+                cx.fillStyle = 'rgba(0,0,0,0.7)';
+            }
+            
+            cx.beginPath();
+            cx.roundRect(label.x - textWidth/2 - pillPadding, pillY, textWidth + pillPadding * 2, pillHeight, pillRadius);
+            cx.fill();
+            
+            // Draw white text (or green checkmark for done)
+            cx.fillStyle = '#ffffff';
+            if (isDone) {
+                cx.fillText('✓ ' + label.text, label.x, label.y);
+            } else {
+                cx.fillText(label.text, label.x, label.y);
+            }
+        }
+    }
+    
+    // Update display
+    document.getElementById('fullCount').textContent = full;
+    document.getElementById('partialCount').textContent = part;
+    document.getElementById('cutDoneCount').textContent = cutDoneCount;
+    
+    var waste = parseFloat(document.getElementById('waste').value) || 10;
+    var total = full + part;
+    var withWaste = Math.ceil(total * (1 + waste / 100));
+    document.getElementById('tilesNeeded').textContent = withWaste + ' tiles';
+    
+    // Update cost estimate
+    if (typeof updateCostEstimate === 'function') {
+        updateCostEstimate();
+    }
+}
+
+function getVerts(x, y, tw, th, row, col) {
+    if (C.tile.sh === 'hexagon') {
+        if (C.tile.or === 'flat') {
+            var w = th, h = tw;
+            return [[x-w/4,y-h/2],[x+w/4,y-h/2],[x+w/2,y],[x+w/4,y+h/2],[x-w/4,y+h/2],[x-w/2,y]];
+        }
+        return [[x,y-th/2],[x+tw/2,y-th/4],[x+tw/2,y+th/4],[x,y+th/2],[x-tw/2,y+th/4],[x-tw/2,y-th/4]];
+    }
+    if (C.tile.sh === 'square') {
+        return [[x-tw/2,y-th/2],[x+tw/2,y-th/2],[x+tw/2,y+th/2],[x-tw/2,y+th/2]];
+    }
+    if (C.tile.sh === 'herringbone') {
+        // Herringbone: alternating diagonal stripes
+        // col determines which stripe (and thus which direction)
+        // Even columns lean right (+45°), odd columns lean left (-45°)
+        var w = Math.min(tw, th);  // short side
+        var h = Math.max(tw, th);  // long side
+        
+        // Direction based on column only (not row+col)
+        var angle = (col % 2 === 0) ? 45 : -45;
+        if (C.tile.or === 'flat') angle = -angle; // Flip pattern direction
+        
+        var rad = angle * Math.PI / 180;
+        var cos = Math.cos(rad);
+        var sin = Math.sin(rad);
+        
+        // Rectangle corners centered at origin
+        var corners = [
+            [-w/2, -h/2],
+            [w/2, -h/2],
+            [w/2, h/2],
+            [-w/2, h/2]
+        ];
+        
+        // Rotate each corner around center
+        return corners.map(function(c) {
+            return [
+                x + c[0] * cos - c[1] * sin,
+                y + c[0] * sin + c[1] * cos
+            ];
+        });
+    }
+    // Rectangle
+    var sm = Math.min(tw, th), lg = Math.max(tw, th);
+    var w = C.tile.or === 'pointy' ? sm : lg;
+    var h = C.tile.or === 'pointy' ? lg : sm;
+    return [[x-w/2,y-h/2],[x+w/2,y-h/2],[x+w/2,y+h/2],[x-w/2,y+h/2]];
+}
+
+function drawTile(x, y, tw, th, g, row, col) {
+    cx.beginPath();
+    if (C.tile.sh === 'hexagon') {
+        if (C.tile.or === 'flat') {
+            var w = th - g, h = tw - g;
+            cx.moveTo(x-w/4, y-h/2);
+            cx.lineTo(x+w/4, y-h/2);
+            cx.lineTo(x+w/2, y);
+            cx.lineTo(x+w/4, y+h/2);
+            cx.lineTo(x-w/4, y+h/2);
+            cx.lineTo(x-w/2, y);
+        } else {
+            var w = tw - g, h = th - g;
+            cx.moveTo(x, y-h/2);
+            cx.lineTo(x+w/2, y-h/4);
+            cx.lineTo(x+w/2, y+h/4);
+            cx.lineTo(x, y+h/2);
+            cx.lineTo(x-w/2, y+h/4);
+            cx.lineTo(x-w/2, y-h/4);
+        }
+    } else if (C.tile.sh === 'square') {
+        cx.rect(x - (tw-g)/2, y - (th-g)/2, tw - g, th - g);
+    } else if (C.tile.sh === 'herringbone') {
+        // Herringbone: rotated rectangle based on column stripe
+        var w = Math.min(tw, th) - g;
+        var h = Math.max(tw, th) - g;
+        
+        // Direction based on column only
+        var angle = (col % 2 === 0) ? 45 : -45;
+        if (C.tile.or === 'flat') angle = -angle;
+        
+        var rad = angle * Math.PI / 180;
+        var cos = Math.cos(rad);
+        var sin = Math.sin(rad);
+        
+        var corners = [[-w/2, -h/2], [w/2, -h/2], [w/2, h/2], [-w/2, h/2]];
+        
+        cx.moveTo(x + corners[0][0] * cos - corners[0][1] * sin, 
+                  y + corners[0][0] * sin + corners[0][1] * cos);
+        for (var i = 1; i < 4; i++) {
+            cx.lineTo(x + corners[i][0] * cos - corners[i][1] * sin,
+                      y + corners[i][0] * sin + corners[i][1] * cos);
+        }
+    } else {
+        var sm = Math.min(tw, th) - g, lg = Math.max(tw, th) - g;
+        var w = C.tile.or === 'pointy' ? sm : lg;
+        var h = C.tile.or === 'pointy' ? lg : sm;
+        cx.rect(x - w/2, y - h/2, w, h);
+    }
+    cx.closePath();
+}
+
+function inPoly(pt, poly) {
+    var inside = false;
+    for (var i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+        var xi = poly[i][0], yi = poly[i][1];
+        var xj = poly[j][0], yj = poly[j][1];
+        if (((yi > pt[1]) !== (yj > pt[1])) && (pt[0] < (xj - xi) * (pt[1] - yi) / (yj - yi) + xi)) {
+            inside = !inside;
+        }
+    }
+    return inside;
+}
+
+// Calculate line segment intersection point
+function lineIntersect(p1, p2, p3, p4) {
+    var d = (p1[0]-p2[0])*(p3[1]-p4[1]) - (p1[1]-p2[1])*(p3[0]-p4[0]);
+    if (Math.abs(d) < 0.0001) return null;
+    
+    var t = ((p1[0]-p3[0])*(p3[1]-p4[1]) - (p1[1]-p3[1])*(p3[0]-p4[0])) / d;
+    var u = -((p1[0]-p2[0])*(p1[1]-p3[1]) - (p1[1]-p2[1])*(p1[0]-p3[0])) / d;
+    
+    if (t >= 0 && t <= 1 && u >= 0 && u <= 1) {
+        return [p1[0] + t*(p2[0]-p1[0]), p1[1] + t*(p2[1]-p1[1])];
+    }
+    return null;
+}
+
+// Get all intersection points between a tile and a polygon (wall or void)
+function getIntersections(verts, poly) {
+    var intersections = [];
+    for (var i = 0; i < verts.length; i++) {
+        var v1 = verts[i];
+        var v2 = verts[(i+1) % verts.length];
+        for (var j = 0; j < poly.length; j++) {
+            var p1 = poly[j];
+            var p2 = poly[(j+1) % poly.length];
+            var inter = lineIntersect(v1, v2, p1, p2);
+            if (inter) {
+                intersections.push(inter);
+            }
+        }
+    }
+    return intersections;
+}
+
+// Calculate accurate cut dimensions for a partial tile
+function getCutDimensions(verts, wall, voidPolys, scale) {
+    // Collect all points that define the cut piece:
+    // 1. Tile vertices that are inside wall and not in any void
+    // 2. Intersection points with wall
+    // 3. Intersection points with voids
+    
+    var cutPoints = [];
+    
+    // Add tile vertices that are inside the valid area
+    for (var i = 0; i < verts.length; i++) {
+        var inWall = inPoly(verts[i], wall);
+        var inVoid = false;
+        for (var vi = 0; vi < voidPolys.length; vi++) {
+            if (inPoly(verts[i], voidPolys[vi])) {
+                inVoid = true;
+                break;
+            }
+        }
+        if (inWall && !inVoid) {
+            cutPoints.push(verts[i]);
+        }
+    }
+    
+    // Add intersection points with wall
+    var wallInters = getIntersections(verts, wall);
+    for (var i = 0; i < wallInters.length; i++) {
+        var inVoid = false;
+        for (var vi = 0; vi < voidPolys.length; vi++) {
+            if (inPoly(wallInters[i], voidPolys[vi])) {
+                inVoid = true;
+                break;
+            }
+        }
+        if (!inVoid) {
+            cutPoints.push(wallInters[i]);
+        }
+    }
+    
+    // Add intersection points with voids
+    for (var vi = 0; vi < voidPolys.length; vi++) {
+        var voidInters = getIntersections(verts, voidPolys[vi]);
+        for (var i = 0; i < voidInters.length; i++) {
+            if (inPoly(voidInters[i], wall)) {
+                cutPoints.push(voidInters[i]);
+            }
+        }
+    }
+    
+    if (cutPoints.length < 2) {
+        // Fallback to full tile size with ~ prefix
+        var minX = verts[0][0], maxX = verts[0][0];
+        var minY = verts[0][1], maxY = verts[0][1];
+        for (var i = 1; i < verts.length; i++) {
+            minX = Math.min(minX, verts[i][0]);
+            maxX = Math.max(maxX, verts[i][0]);
+            minY = Math.min(minY, verts[i][1]);
+            maxY = Math.max(maxY, verts[i][1]);
+        }
+        return '~' + toFraction((maxX-minX)/scale) + '×' + toFraction((maxY-minY)/scale);
+    }
+    
+    // Calculate bounding box of the cut piece
+    var minX = cutPoints[0][0], maxX = cutPoints[0][0];
+    var minY = cutPoints[0][1], maxY = cutPoints[0][1];
+    for (var i = 1; i < cutPoints.length; i++) {
+        minX = Math.min(minX, cutPoints[i][0]);
+        maxX = Math.max(maxX, cutPoints[i][0]);
+        minY = Math.min(minY, cutPoints[i][1]);
+        maxY = Math.max(maxY, cutPoints[i][1]);
+    }
+    
+    var widthIn = (maxX - minX) / scale;
+    var heightIn = (maxY - minY) / scale;
+    
+    // Format as fractions
+    return toFraction(widthIn) + ' × ' + toFraction(heightIn);
+}
+
+// Convert decimal inches to fractional string (to nearest 1/16)
+function toFraction(decimal) {
+    if (decimal <= 0) return '0';
+    
+    var whole = Math.floor(decimal);
+    var remainder = decimal - whole;
+    
+    // Round to nearest 1/16
+    var sixteenths = Math.round(remainder * 16);
+    
+    if (sixteenths === 0) {
+        return whole === 0 ? '0' : whole + '"';
+    }
+    if (sixteenths === 16) {
+        return (whole + 1) + '"';
+    }
+    
+    // Simplify fraction
+    var num = sixteenths;
+    var den = 16;
+    
+    // Reduce to lowest terms
+    if (num % 8 === 0) { num = num / 8; den = 2; }
+    else if (num % 4 === 0) { num = num / 4; den = 4; }
+    else if (num % 2 === 0) { num = num / 2; den = 8; }
+    
+    if (whole === 0) {
+        return num + '/' + den + '"';
+    }
+    return whole + '-' + num + '/' + den + '"';
+}
+
+// Drag and pan variables
+var pinch = { active: false, startDist: 0, startZoom: 1 };
+var pan = { on: false, sx: 0, sy: 0, dx: 0, dy: 0 };
+
+function getTouchDistance(touches) {
+    var dx = touches[0].clientX - touches[1].clientX;
+    var dy = touches[0].clientY - touches[1].clientY;
+    return Math.sqrt(dx * dx + dy * dy);
+}
+
+function getTouchCenter(touches) {
+    return {
+        x: (touches[0].clientX + touches[1].clientX) / 2,
+        y: (touches[0].clientY + touches[1].clientY) / 2
+    };
+}
+
+cv.addEventListener('touchstart', function(e) {
+    var r = cv.getBoundingClientRect();
+    
+    if (e.touches.length === 2) {
+        // Two fingers: pinch zoom + pan
+        e.preventDefault();
+        pinch.active = true;
+        pinch.startDist = getTouchDistance(e.touches);
+        pinch.startZoom = C.view.z;
+        
+        // Start pan tracking
+        var center = getTouchCenter(e.touches);
+        pan = { on: true, sx: center.x - r.left, sy: center.y - r.top, dx: 0, dy: 0 };
+        
+        drag.on = false; // Cancel any pattern drag
+    } else if (e.touches.length === 1) {
+        e.preventDefault();
+        var t = e.touches[0];
+        
+        if (patternLocked) {
+            // When locked, single touch = pan (not pattern adjust)
+            pan = { on: true, sx: t.clientX - r.left, sy: t.clientY - r.top, dx: 0, dy: 0 };
+            drag.on = false;
+        } else {
+            // When unlocked, single touch = pattern adjustment
+            drag = { on: true, sx: t.clientX - r.left, sy: t.clientY - r.top, dx: 0, dy: 0 };
+            pan.on = false;
+        }
+        pinch.active = false;
+    }
+});
+
+cv.addEventListener('touchmove', function(e) {
+    e.preventDefault();
+    var r = cv.getBoundingClientRect();
+    
+    if (e.touches.length === 2) {
+        // Two fingers: pinch zoom + pan
+        
+        // Handle zoom - zoom towards the pinch center
+        if (pinch.active) {
+            var currentDist = getTouchDistance(e.touches);
+            var scale = currentDist / pinch.startDist;
+            var newZoom = pinch.startZoom * scale;
+            
+            // Clamp zoom between 4 and 100
+            newZoom = Math.max(4, Math.min(100, newZoom));
+            
+            // Get pinch center relative to canvas
+            var center = getTouchCenter(e.touches);
+            var cx = center.x - r.left;
+            var cy = center.y - r.top;
+            
+            // Adjust pan to zoom towards pinch center
+            // The point under the pinch center should stay stationary
+            var zoomRatio = newZoom / C.view.z;
+            
+            // Calculate the point in "world" coordinates that's under the pinch center
+            // Then adjust pan so it stays there after zoom
+            var worldX = (cx - C.view.panX) / C.view.z;
+            var worldY = (cy - C.view.panY) / C.view.z;
+            
+            // After zoom, where would this point be without pan adjustment?
+            var newScreenX = worldX * newZoom;
+            var newScreenY = worldY * newZoom;
+            
+            // Adjust pan to keep the point under the finger
+            C.view.panX = cx - newScreenX;
+            C.view.panY = cy - newScreenY;
+            
+            C.view.z = newZoom;
+            
+            // Update slider
+            document.getElementById('zoom').value = Math.min(100, newZoom);
+            document.getElementById('zoomVal').textContent = newZoom.toFixed(1) + 'x';
+        }
+        
+        // Handle pan
+        if (pan.on) {
+            var center = getTouchCenter(e.touches);
+            pan.dx = (center.x - r.left) - pan.sx;
+            pan.dy = (center.y - r.top) - pan.sy;
+        }
+        
+        draw();
+    } else if (e.touches.length === 1) {
+        var t = e.touches[0];
+        
+        if (pan.on) {
+            // Single touch pan (when locked)
+            pan.dx = (t.clientX - r.left) - pan.sx;
+            pan.dy = (t.clientY - r.top) - pan.sy;
+            draw();
+        } else if (drag.on) {
+            // Single touch pattern adjustment (when unlocked)
+            drag.dx = (t.clientX - r.left) - drag.sx;
+            drag.dy = (t.clientY - r.top) - drag.sy;
+            draw();
+        }
+    }
+});
+
+function endDrag(e) {
+    // End pinch/pan if active
+    if (pinch.active || pan.on) {
+        var wasPan = pan.on && (Math.abs(pan.dx) > 5 || Math.abs(pan.dy) > 5);
+        
+        // Commit pan offset
+        if (pan.on) {
+            if (!C.view.panX) C.view.panX = 0;
+            if (!C.view.panY) C.view.panY = 0;
+            C.view.panX += pan.dx;
+            C.view.panY += pan.dy;
+            
+            // If it was just a tap (not a pan), check for tile tap
+            if (!wasPan && e) {
+                var clientX, clientY;
+                if (e.changedTouches && e.changedTouches.length > 0) {
+                    clientX = e.changedTouches[0].clientX;
+                    clientY = e.changedTouches[0].clientY;
+                } else if (e.clientX !== undefined) {
+                    clientX = e.clientX;
+                    clientY = e.clientY;
+                }
+                if (clientX !== undefined) {
+                    pan = { on: false, sx: 0, sy: 0, dx: 0, dy: 0 };
+                    pinch.active = false;
+                    handleCanvasTap({ clientX: clientX, clientY: clientY });
+                    return;
+                }
+            }
+            
+            pan = { on: false, sx: 0, sy: 0, dx: 0, dy: 0 };
+        }
+        pinch.active = false;
+        draw();
+        return;
+    }
+    
+    if (drag.on) {
+        var wasDrag = Math.abs(drag.dx) > 5 || Math.abs(drag.dy) > 5;
+        // Store pattern offset in inches (divide pixel drag by current zoom)
+        if (!C.view.oxInches) C.view.oxInches = 0;
+        if (!C.view.oyInches) C.view.oyInches = 0;
+        C.view.oxInches += drag.dx / C.view.z;
+        C.view.oyInches += drag.dy / C.view.z;
+        drag = { on: false, sx: 0, sy: 0, dx: 0, dy: 0 };
+        
+        // If it wasn't a drag (just a tap), check for tile tap
+        if (!wasDrag && e) {
+            var clientX, clientY;
+            if (e.changedTouches && e.changedTouches.length > 0) {
+                clientX = e.changedTouches[0].clientX;
+                clientY = e.changedTouches[0].clientY;
+            } else if (e.clientX !== undefined) {
+                clientX = e.clientX;
+                clientY = e.clientY;
+            }
+            if (clientX !== undefined) {
+                handleCanvasTap({ clientX: clientX, clientY: clientY });
+                return; // handleCanvasTap calls draw()
+            }
+        }
+        draw();
+    }
+}
+
+cv.addEventListener('touchend', endDrag);
+
+// Mouse wheel zoom (for laptop/desktop) - zooms towards cursor
+cv.addEventListener('wheel', function(e) {
+    e.preventDefault();
+    
+    // Get cursor position relative to canvas
+    var rect = cv.getBoundingClientRect();
+    var cx = e.clientX - rect.left;
+    var cy = e.clientY - rect.top;
+    
+    // Zoom in/out based on wheel direction
+    var zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
+    var newZoom = C.view.z * zoomFactor;
+    
+    // Clamp zoom between 4 and 100
+    newZoom = Math.max(4, Math.min(100, newZoom));
+    
+    // Adjust pan to zoom towards cursor position
+    var worldX = (cx - C.view.panX) / C.view.z;
+    var worldY = (cy - C.view.panY) / C.view.z;
+    
+    var newScreenX = worldX * newZoom;
+    var newScreenY = worldY * newZoom;
+    
+    C.view.panX = cx - newScreenX;
+    C.view.panY = cy - newScreenY;
+    
+    C.view.z = newZoom;
+    
+    // Update slider
+    document.getElementById('zoom').value = Math.min(100, newZoom);
+    document.getElementById('zoomVal').textContent = newZoom.toFixed(1) + 'x';
+    
+    draw();
+}, { passive: false });
+
+// Shift+drag for pan on desktop, regular drag for pattern
+var shiftDown = false;
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Shift') shiftDown = true;
+});
+document.addEventListener('keyup', function(e) {
+    if (e.key === 'Shift') shiftDown = false;
+});
+
+cv.addEventListener('mousedown', function(e) {
+    if (shiftDown || patternLocked) {
+        // Shift+click OR pattern locked = pan
+        pan = { on: true, sx: e.offsetX, sy: e.offsetY, dx: 0, dy: 0 };
+        drag.on = false;
+    } else {
+        // Regular click (unlocked) = pattern adjust
+        drag = { on: true, sx: e.offsetX, sy: e.offsetY, dx: 0, dy: 0 };
+        pan.on = false;
+    }
+});
+
+cv.addEventListener('mousemove', function(e) {
+    if (pan.on) {
+        pan.dx = e.offsetX - pan.sx;
+        pan.dy = e.offsetY - pan.sy;
+        draw();
+    } else if (drag.on) {
+        drag.dx = e.offsetX - drag.sx;
+        drag.dy = e.offsetY - drag.sy;
+        draw();
+    }
+});
+
+cv.addEventListener('mouseup', function(e) {
+    if (pan.on) {
+        var wasPan = Math.abs(pan.dx) > 5 || Math.abs(pan.dy) > 5;
+        
+        if (!C.view.panX) C.view.panX = 0;
+        if (!C.view.panY) C.view.panY = 0;
+        C.view.panX += pan.dx;
+        C.view.panY += pan.dy;
+        
+        // If it was just a click (not a pan), check for tile tap
+        if (!wasPan) {
+            pan = { on: false, sx: 0, sy: 0, dx: 0, dy: 0 };
+            handleCanvasTap({ clientX: e.clientX, clientY: e.clientY });
+            return;
+        }
+        
+        pan = { on: false, sx: 0, sy: 0, dx: 0, dy: 0 };
+        draw();
+    } else {
+        endDrag(e);
+    }
+});
+
+cv.addEventListener('mouseleave', function() {
+    if (pan.on) {
+        if (!C.view.panX) C.view.panX = 0;
+        if (!C.view.panY) C.view.panY = 0;
+        C.view.panX += pan.dx;
+        C.view.panY += pan.dy;
+        pan = { on: false, sx: 0, sy: 0, dx: 0, dy: 0 };
+    }
+    endDrag(null);
+});
+
+// Voids
+function addVoid() {
+    var v = {
+        l: document.getElementById('voidLabel').value || 'Void',
+        x: parseFloat(document.getElementById('voidX').value) || 0,
+        y: parseFloat(document.getElementById('voidY').value) || 0,
+        w: parseFloat(document.getElementById('voidW').value) || 0,
+        h: parseFloat(document.getElementById('voidH').value) || 0
+    };
+    if (v.w && v.h) {
+        C.voids.push(v);
+        markUnsaved();
+        updateVoidList();
+        draw();
+    }
+}
+
+function removeVoid(i) {
+    C.voids.splice(i, 1);
+    markUnsaved();
+    updateVoidList();
+    draw();
+}
+
+function updateVoidList() {
+    var html = '';
+    for (var i = 0; i < C.voids.length; i++) {
+        var v = C.voids[i];
+        html += '<div class="void-item"><span>' + v.l + ': ' + v.w + '"×' + v.h + '"</span><button class="btn-primary" onclick="removeVoid(' + i + ')">✕</button></div>';
+    }
+    document.getElementById('voidList').innerHTML = html;
+}
+
+var optimizeMenuOpen = false;
+
+function toggleOptimizeMenu() {
+    var menu = document.getElementById('optimizeMenu');
+    optimizeMenuOpen = !optimizeMenuOpen;
+    menu.style.display = optimizeMenuOpen ? 'block' : 'none';
+}
+
+function closeOptimizeMenu() {
+    optimizeMenuOpen = false;
+    document.getElementById('optimizeMenu').style.display = 'none';
+}
+
+function runOptimize(mode) {
+    closeOptimizeMenu();
+    
+    // Show loading state
+    var btn = document.getElementById('optimizeBtn');
+    var originalText = btn.innerHTML;
+    btn.innerHTML = '⏳ Optimizing...';
+    btn.disabled = true;
+    
+    // Run optimization after a brief delay to show the loading state
+    setTimeout(function() {
+        doOptimize(mode);
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+    }, 50);
+}
+
+function doOptimize(mode) {
+    var best = { score: -Infinity, x: 0, y: 0 };
+    var tileW = C.tile.w;
+    var tileH = C.tile.h;
+    var smallCutThreshold = 0.25; // 25% of tile dimension = small cut
+    
+    // Save current position
+    var origX = C.view.oxInches || 0;
+    var origY = C.view.oyInches || 0;
+    
+    // Try different offsets (in inches)
+    var stepX = tileW / 8;
+    var stepY = tileH / 8;
+    
+    for (var ox = 0; ox < tileW; ox += stepX) {
+        for (var oy = 0; oy < tileH; oy += stepY) {
+            C.view.oxInches = ox;
+            C.view.oyInches = oy;
+            
+            // Count tiles and analyze cuts
+            var results = countTilesForOptimize();
+            var score = 0;
+            
+            if (mode === 'fullTiles') {
+                // Maximize full tiles, penalize cut tiles
+                score = results.full * 100 - results.cut * 10;
+            } else if (mode === 'minSmallCuts') {
+                // Minimize small cuts (< 25% of tile)
+                score = -results.smallCuts * 100 + results.full * 10;
+            } else {
+                // Balanced - maximize full tiles AND minimize small cuts
+                score = results.full * 50 - results.cut * 5 - results.smallCuts * 100;
+            }
+            
+            if (score > best.score) {
+                best = { score: score, x: ox, y: oy, results: results };
+            }
+        }
+    }
+    
+    // Apply best position
+    C.view.oxInches = best.x;
+    C.view.oyInches = best.y;
+    draw();
+    
+    // Show results
+    if (best.results) {
+        console.log('Optimize results:', mode, 'Full:', best.results.full, 'Cut:', best.results.cut, 'Small cuts:', best.results.smallCuts);
+    }
+}
+
+// Count tiles for optimization (without drawing)
+function countTilesForOptimize() {
+    var s = C.view.z;
+    var g = C.tile.gr;
+    var fullCount = 0;
+    var cutCount = 0;
+    var smallCutCount = 0;
+    var smallCutThreshold = 0.25; // 25% of tile size
+    
+    var tw = C.tile.w * s;
+    var th = C.tile.h * s;
+    
+    var ox = 40;
+    var oy = 40;
+    
+    // Build wall polygon (same as draw function)
+    var rH = C.wall.lH + C.wall.rV;
+    var bW = C.wall.tW + C.wall.bV;
+    var hDiff = rH - C.wall.lH;
+    var topRightY = oy - (hDiff * s);
+    var wall = [
+        [ox, oy],
+        [ox + C.wall.tW * s, topRightY],
+        [ox + bW * s, topRightY + rH * s],
+        [ox, oy + C.wall.lH * s]
+    ];
+    
+    // Void polygons
+    var voidPolys = [];
+    for (var i = 0; i < C.voids.length; i++) {
+        var v = C.voids[i];
+        voidPolys.push([
+            [ox + v.x * s, oy + (C.wall.lH - v.y - v.h) * s],
+            [ox + (v.x + v.w) * s, oy + (C.wall.lH - v.y - v.h) * s],
+            [ox + (v.x + v.w) * s, oy + (C.wall.lH - v.y) * s],
+            [ox + v.x * s, oy + (C.wall.lH - v.y) * s]
+        ]);
+    }
+    
+    // Calculate spacing
+    var colSp, rowSp;
+    if (C.tile.sh === 'hexagon') {
+        if (C.tile.or === 'pointy') {
+            colSp = tw + g * s;
+            rowSp = th * 0.75 + g * s;
+        } else {
+            colSp = tw * 0.75 + g * s;
+            rowSp = th + g * s;
+        }
+    } else {
+        colSp = tw + g * s;
+        rowSp = th + g * s;
+    }
+    
+    var colSpInches = colSp / s;
+    var rowSpInches = rowSp / s;
+    
+    // Pattern offset in pixels
+    var patternOxInches = C.view.oxInches || 0;
+    var patternOyInches = C.view.oyInches || 0;
+    var patternOx = patternOxInches * s;
+    var patternOy = patternOyInches * s;
+    
+    // Calculate bounds
+    var startCol = Math.floor((-patternOx - tw) / colSp) - 2;
+    var endCol = Math.ceil((C.wall.tW * s - patternOx + tw) / colSp) + 2;
+    var startRow = Math.floor((-patternOy - th) / rowSp) - 2;
+    var endRow = Math.ceil((C.wall.lH * s - patternOy + th) / rowSp) + 2;
+    
+    for (var row = startRow; row <= endRow; row++) {
+        for (var col = startCol; col <= endCol; col++) {
+            var x = ox + col * colSp + patternOx;
+            var y = oy + row * rowSp + patternOy;
+            
+            var tileXInches = col * colSpInches;
+            var tileYInches = row * rowSpInches;
+            
+            // Hex offset
+            if (C.tile.sh === 'hexagon') {
+                if (C.tile.or === 'pointy' && ((row % 2 + 2) % 2) === 1) {
+                    x += colSp / 2;
+                    tileXInches += colSpInches / 2;
+                }
+                if (C.tile.or === 'flat' && ((col % 2 + 2) % 2) === 1) {
+                    y += rowSp / 2;
+                    tileYInches += rowSpInches / 2;
+                }
+            }
+            
+            // Brick pattern offset
+            if (C.tile.sh === 'square' || C.tile.sh === 'rectangle') {
+                var patternOffset = C.tile.pattern || 0;
+                if (patternOffset > 0 && ((row % 2 + 2) % 2) === 1) {
+                    x += colSp * patternOffset;
+                    tileXInches += colSpInches * patternOffset;
+                }
+            }
+            
+            var verts = getVerts(x, y, tw, th);
+            var allIn = true, anyIn = false;
+            
+            for (var i = 0; i < verts.length; i++) {
+                if (inPoly(verts[i], wall)) {
+                    anyIn = true;
+                } else {
+                    allIn = false;
+                }
+            }
+            
+            // Check voids
+            var touchesVoid = false;
+            var fullyInVoid = true;
+            
+            for (var vpi = 0; vpi < voidPolys.length; vpi++) {
+                var vp = voidPolys[vpi];
+                var allVertsInThisVoid = true;
+                
+                for (var i = 0; i < verts.length; i++) {
+                    if (inPoly(verts[i], vp)) {
+                        touchesVoid = true;
+                    } else {
+                        allVertsInThisVoid = false;
+                    }
+                }
+                
+                for (var i = 0; i < vp.length; i++) {
+                    if (isPointInPolygon(vp[i], verts)) {
+                        touchesVoid = true;
+                        allVertsInThisVoid = false;
+                    }
+                }
+                
+                if (!allVertsInThisVoid) {
+                    fullyInVoid = false;
+                }
+            }
+            
+            if (fullyInVoid && touchesVoid) continue;
+            if (!anyIn) continue;
+            
+            var isCut = !allIn || touchesVoid;
+            
+            if (isCut) {
+                cutCount++;
+                
+                // Check if the REMAINING piece (what stays on the wall) is a small sliver
+                // OR if there's a small notch cut into the tile
+                var cutPoints = getCutPoints(verts, wall, voidPolys);
+                var isSmallCut = false;
+                
+                if (cutPoints.length >= 3) {
+                    var cpMinX = Infinity, cpMaxX = -Infinity;
+                    var cpMinY = Infinity, cpMaxY = -Infinity;
+                    for (var i = 0; i < cutPoints.length; i++) {
+                        cpMinX = Math.min(cpMinX, cutPoints[i][0]);
+                        cpMaxX = Math.max(cpMaxX, cutPoints[i][0]);
+                        cpMinY = Math.min(cpMinY, cutPoints[i][1]);
+                        cpMaxY = Math.max(cpMaxY, cutPoints[i][1]);
+                    }
+                    var remainingW = (cpMaxX - cpMinX) / s; // Width of piece on wall (inches)
+                    var remainingH = (cpMaxY - cpMinY) / s; // Height of piece on wall (inches)
+                    
+                    // Check 1: Small sliver - the remaining piece is tiny
+                    if (remainingW < C.tile.w * smallCutThreshold || remainingH < C.tile.h * smallCutThreshold) {
+                        isSmallCut = true;
+                    }
+                    
+                    // Check 2: Small notch or tiny tip touching void
+                    // If tile touches void, check if the notch is small OR if only a tiny bit of tile touches
+                    if (!isSmallCut && touchesVoid) {
+                        for (var vpi = 0; vpi < voidPolys.length; vpi++) {
+                            var vp = voidPolys[vpi];
+                            
+                            // Get void bounds
+                            var vpMinX = Infinity, vpMaxX = -Infinity;
+                            var vpMinY = Infinity, vpMaxY = -Infinity;
+                            for (var vi = 0; vi < vp.length; vi++) {
+                                vpMinX = Math.min(vpMinX, vp[vi][0]);
+                                vpMaxX = Math.max(vpMaxX, vp[vi][0]);
+                                vpMinY = Math.min(vpMinY, vp[vi][1]);
+                                vpMaxY = Math.max(vpMaxY, vp[vi][1]);
+                            }
+                            
+                            // Get tile bounds
+                            var tMinX = Infinity, tMaxX = -Infinity;
+                            var tMinY = Infinity, tMaxY = -Infinity;
+                            for (var ti = 0; ti < verts.length; ti++) {
+                                tMinX = Math.min(tMinX, verts[ti][0]);
+                                tMaxX = Math.max(tMaxX, verts[ti][0]);
+                                tMinY = Math.min(tMinY, verts[ti][1]);
+                                tMaxY = Math.max(tMaxY, verts[ti][1]);
+                            }
+                            
+                            // Calculate bounding box overlap (notch dimensions)
+                            var overlapL = Math.max(vpMinX, tMinX);
+                            var overlapR = Math.min(vpMaxX, tMaxX);
+                            var overlapT = Math.max(vpMinY, tMinY);
+                            var overlapB = Math.min(vpMaxY, tMaxY);
+                            
+                            if (overlapR > overlapL && overlapB > overlapT) {
+                                var notchW = (overlapR - overlapL) / s;
+                                var notchH = (overlapB - overlapT) / s;
+                                
+                                // Small notch = either dimension < 25% of tile
+                                if (notchW < C.tile.w * smallCutThreshold || notchH < C.tile.h * smallCutThreshold) {
+                                    isSmallCut = true;
+                                    break;
+                                }
+                                
+                                // Also check: tiny corner/tip touching void
+                                // If the overlap area is very small relative to tile area, it's a fragile tip
+                                var overlapArea = notchW * notchH;
+                                var tileArea = C.tile.w * C.tile.h;
+                                // If overlap is less than 10% of tile area, it's a tiny tip
+                                if (overlapArea < tileArea * 0.10) {
+                                    isSmallCut = true;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    
+                    if (isSmallCut) {
+                        smallCutCount++;
+                    }
+                }
+            } else {
+                fullCount++;
+            }
+        }
+    }
+    
+    return { full: fullCount, cut: cutCount, smallCuts: smallCutCount };
+}
+
+// ==================== PROJECT MANAGEMENT ====================
+
+var currentProjectId = null;
+var unsavedChanges = false;
+
+// Generate unique ID
+function generateId() {
+    return 'proj_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+}
+
+// Get all projects from localStorage
+function getProjects() {
+    try {
+        return JSON.parse(localStorage.getItem('tileProjects') || '{}');
+    } catch(e) {
+        return {};
+    }
+}
+
+// Save projects to localStorage
+function saveProjects(projects) {
+    localStorage.setItem('tileProjects', JSON.stringify(projects));
+}
+
+// Mark as unsaved
+function markUnsaved() {
+    unsavedChanges = true;
+    updateSaveStatus();
+}
+
+// Update save status display
+function updateSaveStatus() {
+    var statusEl = document.getElementById('saveStatus');
+    if (!currentProjectId) {
+        statusEl.innerHTML = '<span style="color:#FF9800">● New project - not saved</span>';
+    } else if (unsavedChanges) {
+        statusEl.innerHTML = '<span style="color:#FF9800">● Unsaved changes</span>';
+    } else {
+        var projects = getProjects();
+        var proj = projects[currentProjectId];
+        if (proj) {
+            var date = new Date(proj.savedAt);
+            statusEl.innerHTML = '<span style="color:#4CAF50">✓ Saved ' + formatTimeAgo(date) + '</span>';
+        }
+    }
+}
+
+// Format time ago
+function formatTimeAgo(date) {
+    var seconds = Math.floor((new Date() - date) / 1000);
+    if (seconds < 60) return 'just now';
+    var minutes = Math.floor(seconds / 60);
+    if (minutes < 60) return minutes + ' min ago';
+    var hours = Math.floor(minutes / 60);
+    if (hours < 24) return hours + ' hr ago';
+    var days = Math.floor(hours / 24);
+    return days + ' day' + (days > 1 ? 's' : '') + ' ago';
+}
+
+// Save current project
+function saveCurrentProject() {
+    var name = document.getElementById('projName').value.trim();
+    if (!name) {
+        alert('Please enter a project name');
+        document.getElementById('projName').focus();
+        return;
+    }
+    
+    var projects = getProjects();
+    
+    // Create or update project
+    if (!currentProjectId) {
+        currentProjectId = generateId();
+    }
+    
+    projects[currentProjectId] = {
+        id: currentProjectId,
+        name: name,
+        config: JSON.parse(JSON.stringify(C)), // Deep copy
+        cutTileStates: JSON.parse(JSON.stringify(cutTileStates)),
+        savedPatternPosition: savedPatternPosition ? JSON.parse(JSON.stringify(savedPatternPosition)) : null,
+        patternLocked: patternLocked,
+        savedAt: Date.now()
+    };
+    
+    saveProjects(projects);
+    unsavedChanges = false;
+    updateSaveStatus();
+    updateProjectList();
+    
+    // Brief visual feedback
+    var btn = event.target;
+    var originalText = btn.innerHTML;
+    btn.innerHTML = '✓ Saved!';
+    btn.style.background = '#4CAF50';
+    setTimeout(function() {
+        btn.innerHTML = originalText;
+        btn.style.background = '';
+    }, 1500);
+}
+
+// Load a project
+function loadProject(id) {
+    if (unsavedChanges) {
+        if (!confirm('You have unsaved changes. Load anyway?')) return;
+    }
+    
+    var projects = getProjects();
+    var proj = projects[id];
+    if (!proj) return;
+    
+    currentProjectId = id;
+    C = JSON.parse(JSON.stringify(proj.config)); // Deep copy
+    cutTileStates = proj.cutTileStates || {};
+    
+    // Restore pattern protection state
+    savedPatternPosition = proj.savedPatternPosition || null;
+    patternLocked = proj.patternLocked || false;
+    
+    // Update lock button UI
+    var lockBtn = document.getElementById('lockBtn');
+    var lockIcon = document.getElementById('lockIcon');
+    var lockText = document.getElementById('lockText');
+    var hint = document.getElementById('controlsHint');
+    var restoreBtn = document.getElementById('restoreBtn');
+    
+    if (patternLocked) {
+        lockBtn.className = 'btn-success';
+        lockIcon.textContent = '🔒';
+        lockText.textContent = 'Locked';
+        hint.textContent = '🔒 Pattern locked - pan & zoom freely without moving tiles';
+        hint.style.color = '#4CAF50';
+        restoreBtn.style.display = 'none';
+    } else {
+        lockBtn.className = 'btn-secondary';
+        lockIcon.textContent = '🔓';
+        lockText.textContent = 'Unlocked';
+        hint.textContent = '📱 One finger: pattern • Two fingers: pan & zoom | 💻 Drag: pattern • Shift+drag: pan • Scroll: zoom';
+        hint.style.color = '#666';
+        // Show restore button if there's a saved position and cut progress
+        restoreBtn.style.display = (savedPatternPosition && countCutProgress() > 0) ? 'block' : 'none';
+    }
+    
+    // Update UI
+    document.getElementById('projName').value = proj.name;
+    document.getElementById('leftH').value = C.wall.lH;
+    document.getElementById('rightVar').value = C.wall.rV;
+    document.getElementById('topW').value = C.wall.tW;
+    document.getElementById('botVar').value = C.wall.bV;
+    document.getElementById('tileShape').value = C.tile.sh;
+    document.getElementById('tileOrient').value = C.tile.or;
+    document.getElementById('tilePattern').value = C.tile.pattern || 0.5;
+    document.getElementById('tileW').value = C.tile.w;
+    document.getElementById('tileH').value = C.tile.h;
+    
+    // Show/hide pattern option based on shape
+    onShape();
+    
+    updateVoidList();
+    unsavedChanges = false;
+    updateSaveStatus();
+    updateProjectList();
+    draw();
+    
+    // Switch to diagram tab
+    showTab('diagram');
+}
+
+// Delete a project
+function deleteProject(id) {
+    var projects = getProjects();
+    var proj = projects[id];
+    if (!proj) return;
+    
+    if (!confirm('Delete "' + proj.name + '"?\n\nThis cannot be undone.')) return;
+    
+    delete projects[id];
+    saveProjects(projects);
+    
+    // If we deleted the current project, reset
+    if (currentProjectId === id) {
+        currentProjectId = null;
+        document.getElementById('projName').value = '';
+        updateSaveStatus();
+    }
+    
+    updateProjectList();
+}
+
+// Confirm new project
+function confirmNewProject() {
+    if (unsavedChanges) {
+        if (!confirm('You have unsaved changes. Start new project anyway?')) return;
+    }
+    startNewProject();
+}
+
+// Start new project
+function startNewProject() {
+    currentProjectId = null;
+    unsavedChanges = false;
+    cutTileStates = {};
+    
+    C = {
+        wall: { lH: 0, rV: 0, tW: 0, bV: 0 },
+        tile: { sh: 'hexagon', or: 'pointy', w: 0, h: 0, gr: 0.125 },
+        voids: [],
+        view: { z: 5, ox: 0, oy: 0 }
+    };
+    
+    document.getElementById('projName').value = '';
+    document.getElementById('leftH').value = '';
+    document.getElementById('rightVar').value = '';
+    document.getElementById('topW').value = '';
+    document.getElementById('botVar').value = '';
+    document.getElementById('tileW').value = '';
+    document.getElementById('tileH').value = '';
+    document.getElementById('tileShape').value = 'hexagon';
+    document.getElementById('tileOrient').value = 'pointy';
+    document.getElementById('tilePattern').value = '0.5';
+    
+    // Show/hide pattern option based on shape
+    onShape();
+    
+    updateVoidList();
+    updateSaveStatus();
+    updateProjectList();
+    draw();
+    
+    showTab('wall'); // Go to wall tab to start entering dimensions
+}
+
+// Update project list display
+function updateProjectList() {
+    var projects = getProjects();
+    var projectIds = Object.keys(projects);
+    
+    var listEl = document.getElementById('projectList');
+    var noProjectsEl = document.getElementById('noProjects');
+    
+    if (projectIds.length === 0) {
+        listEl.innerHTML = '';
+        noProjectsEl.style.display = 'block';
+        return;
+    }
+    
+    noProjectsEl.style.display = 'none';
+    
+    // Sort by saved date (newest first)
+    projectIds.sort(function(a, b) {
+        return projects[b].savedAt - projects[a].savedAt;
+    });
+    
+    var html = '';
+    for (var i = 0; i < projectIds.length; i++) {
+        var proj = projects[projectIds[i]];
+        var isActive = proj.id === currentProjectId;
+        var date = new Date(proj.savedAt);
+        
+        html += '<div class="project-item' + (isActive ? ' active' : '') + '">';
+        html += '<div class="project-item-info" onclick="loadProject(\'' + proj.id + '\')">';
+        html += '<div class="project-item-name">' + (isActive ? '✓ ' : '') + proj.name + '</div>';
+        html += '<div class="project-item-date">' + formatTimeAgo(date) + '</div>';
+        html += '</div>';
+        html += '<div class="project-item-actions">';
+        html += '<button class="btn-primary" onclick="loadProject(\'' + proj.id + '\')">Open</button>';
+        html += '<button class="btn-secondary" onclick="deleteProject(\'' + proj.id + '\')" style="background:#c00;">🗑</button>';
+        html += '</div>';
+        html += '</div>';
+    }
+    
+    listEl.innerHTML = html;
+}
+
+// Export current project to file
+function exportProject() {
+    var name = document.getElementById('projName').value.trim() || 'project';
+    var data = JSON.stringify({
+        name: name,
+        config: C,
+        cutTileStates: cutTileStates,
+        exportedAt: Date.now()
+    }, null, 2);
+    
+    var blob = new Blob([data], { type: 'application/json' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = name.replace(/[^a-z0-9]/gi, '_') + '.json';
+    a.click();
+}
+
+// Import project from file
+function importProject(e) {
+    var file = e.target.files[0];
+    if (!file) return;
+    
+    var reader = new FileReader();
+    reader.onload = function(ev) {
+        try {
+            var data = JSON.parse(ev.target.result);
+            
+            // Support old format (config) and new format
+            C = data.config || data;
+            cutTileStates = data.cutTileStates || {};
+            currentProjectId = null; // Treat as new project
+            unsavedChanges = true;
+            
+            document.getElementById('projName').value = data.name || 'Imported Project';
+            document.getElementById('leftH').value = C.wall.lH;
+            document.getElementById('rightVar').value = C.wall.rV;
+            document.getElementById('topW').value = C.wall.tW;
+            document.getElementById('botVar').value = C.wall.bV;
+            document.getElementById('tileShape').value = C.tile.sh;
+            document.getElementById('tileOrient').value = C.tile.or;
+            document.getElementById('tilePattern').value = C.tile.pattern || 0.5;
+            document.getElementById('tileW').value = C.tile.w;
+            document.getElementById('tileH').value = C.tile.h;
+            
+            // Show/hide pattern option based on shape
+            onShape();
+            
+            updateVoidList();
+            updateSaveStatus();
+            draw();
+            
+            alert('Project imported! Remember to save it.');
+            showTab('diagram');
+        } catch (err) {
+            alert('Error importing project: ' + err.message);
+        }
+    };
+    reader.readAsText(file);
+    e.target.value = ''; // Reset file input
+}
+
+// Auto-save reminder on changes
+function trackChanges() {
+    markUnsaved();
+}
+
+// Update tile count
+function updateTileCount() {
+    var waste = parseFloat(document.getElementById('waste').value) || 10;
+    var total = full + part;
+    var tilesNeeded = Math.ceil(total * (1 + waste / 100));
+    document.getElementById('tilesNeeded').textContent = tilesNeeded + ' tiles';
+    document.getElementById('tilesNeeded').innerHTML = tilesNeeded + ' tiles<br><span style="font-size:12px;color:#888;">(' + full + ' full + ' + part + ' cut + ' + Math.ceil(total * waste / 100) + ' waste)</span>';
+}
+
+// Update cost estimate
+function updateCostEstimate() {
+    // First update tile count
+    updateTileCount();
+    
+    var waste = parseFloat(document.getElementById('waste').value) || 10;
+    var total = full + part;
+    var tilesNeeded = Math.ceil(total * (1 + waste / 100));
+    
+    var pricePerTile = parseFloat(document.getElementById('tilePrice').value) || 0;
+    var boxPrice = parseFloat(document.getElementById('boxPrice').value) || 0;
+    var tilesPerBox = parseFloat(document.getElementById('tilesPerBox').value) || 0;
+    
+    var cost = 0;
+    var breakdown = '';
+    
+    if (boxPrice && tilesPerBox) {
+        var boxesNeeded = Math.ceil(tilesNeeded / tilesPerBox);
+        cost = boxesNeeded * boxPrice;
+        breakdown = boxesNeeded + ' boxes × $' + boxPrice.toFixed(2) + ' = ';
+    } else if (pricePerTile) {
+        cost = tilesNeeded * pricePerTile;
+        breakdown = tilesNeeded + ' tiles × $' + pricePerTile.toFixed(2) + ' = ';
+    }
+    
+    document.getElementById('costEstimate').textContent = '$' + cost.toFixed(2);
+    document.getElementById('costBreakdown').textContent = breakdown ? breakdown : 'Enter price to calculate';
+}
+
+// Initialize project list on load
+setTimeout(function() {
+    updateProjectList();
+    updateSaveStatus();
+}, 100);
+
+// ==================== END PROJECT MANAGEMENT ====================
+
+// Projector Mode
+function startProj() {
+    try {
+        projMode = true;
+        calibrationMode = false;
+        
+        // Hide tabs
+        document.getElementById('tabBar').style.display = 'none';
+        document.body.style.background = '#ffffff';
+        
+        // Remove any existing overlay
+        var existing = document.getElementById('projOverlay');
+        if (existing) existing.remove();
+        
+        // Build section navigation if in section mode
+        var sectionNav = '';
+        if (projSection !== 'full') {
+            sectionNav = '<div style="position:fixed;top:10px;left:10px;z-index:1001;display:flex;gap:5px;">' +
+                '<button class="proj-btn" onclick="setSection(\'TL\');draw()" style="background:' + (projSection==='TL'?'#e94560':'#333') + ';font-size:12px;padding:10px;">TL</button>' +
+                '<button class="proj-btn" onclick="setSection(\'TR\');draw()" style="background:' + (projSection==='TR'?'#e94560':'#333') + ';font-size:12px;padding:10px;">TR</button>' +
+                '<button class="proj-btn" onclick="setSection(\'BL\');draw()" style="background:' + (projSection==='BL'?'#e94560':'#333') + ';font-size:12px;padding:10px;">BL</button>' +
+                '<button class="proj-btn" onclick="setSection(\'BR\');draw()" style="background:' + (projSection==='BR'?'#e94560':'#333') + ';font-size:12px;padding:10px;">BR</button>' +
+                '</div>';
+        }
+        
+        // Add controls overlay
+        var overlay = document.createElement('div');
+        overlay.id = 'projOverlay';
+        overlay.innerHTML = sectionNav +
+            '<div class="proj-ctrl">' +
+            '<button class="proj-btn" id="projLockBtn" onclick="toggleProjLock()" style="background:' + (patternLocked ? '#4CAF50' : '#333') + '">' + (patternLocked ? '🔒' : '🔓') + '</button>' +
+            '<button class="proj-btn" onclick="projZoom(1.25)">➕</button>' +
+            '<button class="proj-btn" onclick="projZoom(0.8)">➖</button>' +
+            '<button class="proj-btn" style="background:#cc0000" onclick="exitProj()">✕</button>' +
+            '</div>' +
+            '<div style="position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.7);color:#fff;padding:10px 20px;border-radius:8px;font-size:12px;z-index:1002;" id="projStatus">' +
+            (patternLocked ? '🔒 Pattern locked • ' : '') +
+            (projSection !== 'full' ? 'Section: ' + projSection + ' • ' : '') +
+            'Drag to pan • +/- to zoom • ✕ to exit</div>';
+        document.body.appendChild(overlay);
+        
+        // Make canvas fullscreen
+        var container = document.getElementById('canvasContainer');
+        container.style.cssText = 'position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:1000;border-radius:0;margin:0;background:#fff;';
+        
+        // Force show diagram panel
+        document.getElementById('diagram').classList.add('active');
+        document.getElementById('proj').classList.remove('active');
+        
+        // Adjust view offset for sections (use pan, not pattern offset)
+        if (projSection !== 'full') {
+            var wallW = Math.max(C.wall.tW, C.wall.tW + C.wall.bV);
+            var wallH = Math.max(C.wall.lH, C.wall.lH + C.wall.rV);
+            
+            // Initialize pan if needed
+            if (!C.view.panX) C.view.panX = 0;
+            if (!C.view.panY) C.view.panY = 0;
+            
+            // Offset pan to show the correct section
+            switch(projSection) {
+                case 'TL': C.view.panX = 0; C.view.panY = 0; break;
+                case 'TR': C.view.panX = -wallW * C.view.z / 2; C.view.panY = 0; break;
+                case 'BL': C.view.panX = 0; C.view.panY = -wallH * C.view.z / 2; break;
+                case 'BR': C.view.panX = -wallW * C.view.z / 2; C.view.panY = -wallH * C.view.z / 2; break;
+            }
+        }
+        
+        // Draw
+        setTimeout(function() {
+            draw();
+        }, 100);
+        
+        // Try fullscreen (optional, may fail on mobile)
+        try {
+            if (document.documentElement.requestFullscreen) {
+                document.documentElement.requestFullscreen().catch(function() {});
+            } else if (document.documentElement.webkitRequestFullscreen) {
+                document.documentElement.webkitRequestFullscreen();
+            }
+        } catch(e) {}
+        
+    } catch(err) {
+        alert('Error starting projector: ' + err.message);
+    }
+}
+
+function exitProj() {
+    projMode = false;
+    
+    // Restore UI
+    document.getElementById('tabBar').style.display = 'flex';
+    document.body.style.background = '#1a1a2e';
+    
+    // Remove overlay
+    var overlay = document.getElementById('projOverlay');
+    if (overlay) overlay.remove();
+    
+    // Restore canvas
+    var container = document.getElementById('canvasContainer');
+    container.style.cssText = 'background:#fff;border-radius:10px;overflow:hidden;touch-action:none;';
+    
+    // Exit fullscreen
+    if (document.fullscreenElement) {
+        document.exitFullscreen();
+    }
+    
+    // Reset calibration mode
+    calibrationMode = false;
+    
+    draw();
+}
+
+function projZoom(factor) {
+    C.view.z *= factor;
+    C.view.z = Math.max(4, Math.min(100, C.view.z)); // Clamp 1-100
+    document.getElementById('zoom').value = Math.min(100, C.view.z);
+    document.getElementById('zoomVal').textContent = C.view.z.toFixed(1) + 'x';
+    draw();
+}
+
+// Toggle lock from projector mode
+function toggleProjLock() {
+    if (patternLocked) {
+        doUnlock();
+    } else {
+        doLock();
+    }
+    
+    // Update projector lock button
+    var btn = document.getElementById('projLockBtn');
+    if (btn) {
+        btn.style.background = patternLocked ? '#4CAF50' : '#333';
+        btn.textContent = patternLocked ? '🔒' : '🔓';
+    }
+    
+    // Update projector status
+    var status = document.getElementById('projStatus');
+    if (status) {
+        status.textContent = (patternLocked ? '🔒 Pattern locked • ' : '') +
+            (projSection !== 'full' ? 'Section: ' + projSection + ' • ' : '') +
+            'Drag to pan • +/- to zoom • ✕ to exit';
+    }
+}
+
+// Generate app icon dynamically for iOS
+function generateAppIcon() {
+    var iconCanvas = document.createElement('canvas');
+    iconCanvas.width = 180;
+    iconCanvas.height = 180;
+    var ctx = iconCanvas.getContext('2d');
+    
+    // Background
+    ctx.fillStyle = '#1a1a2e';
+    ctx.fillRect(0, 0, 180, 180);
+    
+    // Draw hexagon function
+    function hex(cx, cy, fill, stroke) {
+        var w = 20, h = 30;
+        ctx.beginPath();
+        ctx.moveTo(cx, cy - h/2);
+        ctx.lineTo(cx + w, cy - h/4);
+        ctx.lineTo(cx + w, cy + h/4);
+        ctx.lineTo(cx, cy + h/2);
+        ctx.lineTo(cx - w, cy + h/4);
+        ctx.lineTo(cx - w, cy - h/4);
+        ctx.closePath();
+        ctx.fillStyle = fill;
+        ctx.fill();
+        ctx.strokeStyle = stroke;
+        ctx.lineWidth = 2;
+        ctx.stroke();
+    }
+    
+    // Colors
+    var g = '#4CAF50', gs = '#2E7D32', o = '#FF9800', os = '#E65100';
+    
+    // Draw hex grid
+    hex(70, 30, o, os); hex(110, 30, o, os);
+    hex(50, 58, o, os); hex(90, 58, g, gs); hex(130, 58, o, os);
+    hex(50, 93, g, gs); hex(90, 93, g, gs); hex(130, 93, g, gs);
+    hex(50, 128, o, os); hex(90, 128, g, gs); hex(130, 128, o, os);
+    hex(70, 156, o, os); hex(110, 156, o, os);
+    
+    // Create link element
+    var link = document.createElement('link');
+    link.rel = 'apple-touch-icon';
+    link.href = iconCanvas.toDataURL('image/png');
+    document.head.appendChild(link);
+}
+
+// Set up tab event listeners (works better on iOS than onclick)
+function initTabs() {
+    var tabs = document.querySelectorAll('.tab');
+    tabs.forEach(function(tab) {
+        // Use touchend for mobile, click for desktop
+        tab.addEventListener('touchend', function(e) {
+            e.preventDefault();
+            var tabId = this.getAttribute('data-tab');
+            if (tabId) showTab(tabId);
+        });
+        tab.addEventListener('click', function(e) {
+            var tabId = this.getAttribute('data-tab');
+            if (tabId) showTab(tabId);
+        });
+    });
+}
+
+// ==================== REMOTE SYNC (Legacy - kept for compatibility) ====================
+var syncRole = null;
+var syncRoom = null;
+var syncConnected = false;
+var syncPollInterval = null;
+
+function startSyncHost() {
+    showToast('Remote sync removed - use Laser Export instead');
+}
+
+function startSyncControl() {
+    showToast('Remote sync removed - use Laser Export instead');
+}
+
+function showSyncConnected(role) {
+    // Legacy stub
+}
+
+function disconnectSync() {
+    syncRole = null;
+    syncRoom = null;
+    syncConnected = false;
+    if (syncPollInterval) {
+        clearInterval(syncPollInterval);
+        syncPollInterval = null;
+    }
+}
+
+function getSyncState() {
+    return {
+        wall: JSON.parse(JSON.stringify(C.wall)),
+        tile: JSON.parse(JSON.stringify(C.tile)),
+        voids: JSON.parse(JSON.stringify(C.voids)),
+        view: {
+            oxInches: C.view.oxInches || 0,
+            oyInches: C.view.oyInches || 0,
+            z: C.view.z,
+            panX: C.view.panX || 0,
+            panY: C.view.panY || 0
+        },
+        cutTileStates: JSON.parse(JSON.stringify(cutTileStates)),
+        patternLocked: patternLocked
+    };
+}
+
+function applySyncState(state) {
+    if (state.wall) C.wall = state.wall;
+    if (state.tile) C.tile = state.tile;
+    if (state.voids) C.voids = state.voids;
+    if (state.view) {
+        C.view.oxInches = state.view.oxInches || 0;
+        C.view.oyInches = state.view.oyInches || 0;
+        C.view.z = state.view.z || 5;
+        C.view.panX = state.view.panX || 0;
+        C.view.panY = state.view.panY || 0;
+    }
+    if (state.cutTileStates) {
+        cutTileStates = state.cutTileStates;
+    }
+    if (typeof state.patternLocked !== 'undefined') {
+        patternLocked = state.patternLocked;
+        updateLockButton();
+    }
+    
+    // Update UI
+    if (!projMode) {
+        document.getElementById('leftH').value = C.wall.lH;
+        document.getElementById('rightVar').value = C.wall.rV;
+        document.getElementById('topW').value = C.wall.tW;
+        document.getElementById('botVar').value = C.wall.bV;
+        document.getElementById('tileShape').value = C.tile.sh;
+        document.getElementById('tileOrient').value = C.tile.or;
+        document.getElementById('tileW').value = C.tile.w;
+        document.getElementById('tileH').value = C.tile.h;
+        document.getElementById('zoom').value = Math.min(100, C.view.z);
+        document.getElementById('zoomVal').textContent = C.view.z.toFixed(1) + 'x';
+        onShape();
+        updateVoidList();
+    }
+    
+    draw();
+}
+
+function setupControllerSync() {
+    // Legacy stub
+}
+
+// ==================== LASER EXPORT FUNCTIONS ====================
+
+var laserConnected = false;
+var laserDevice = null;
+
+function exportLaser() {
+    var format = document.getElementById('laserFormat').value;
+    var area = 'wall'; // Always export wall area only
+    
+    // Get wall polygon
+    var wallPts = getWallPolyInches();
+    
+    // Get all tile vertices within the wall
+    var tiles = getTilesForExport(area);
+    
+    if (format === 'layit') {
+        exportLayItFormat(tiles, wallPts);
+    } else if (format === 'svg') {
+        exportSVGFormat(tiles, wallPts);
+    } else if (format === 'dxf') {
+        exportDXFFormat(tiles, wallPts);
+    }
+}
+
+function getTilesForExport(area) {
+    // Collect all tile data for export
+    var tiles = [];
+    var g = C.tile.gr;
+    var tw = C.tile.w * 1; // in inches
+    var th = C.tile.h * 1;
+    
+    // Calculate spacing in inches (same logic as draw())
+    var sm = Math.min(tw, th);
+    var lg = Math.max(tw, th);
+    var sqrt2 = Math.SQRT2;
+    
+    var colSpInches, rowSpInches;
+    
+    if (C.tile.sh === 'herringbone') {
+        colSpInches = lg * 0.5 * sqrt2;
+        rowSpInches = sm * sqrt2;
+    } else if (C.tile.sh === 'hexagon') {
+        if (C.tile.or === 'pointy') {
+            colSpInches = tw * 0.75 + g;
+            rowSpInches = th * 0.866 + g;
+        } else {
+            colSpInches = tw * 0.866 + g;
+            rowSpInches = th * 0.75 + g;
+        }
+    } else {
+        colSpInches = tw + g;
+        rowSpInches = th + g;
+    }
+    
+    // Generate tile grid
+    var oxInches = C.view.oxInches || 0;
+    var oyInches = C.view.oyInches || 0;
+    
+    for (var row = -50; row < 50; row++) {
+        for (var col = -50; col < 50; col++) {
+            var x = col * colSpInches + oxInches;
+            var y = row * rowSpInches + oyInches;
+            
+            // Apply offsets for different tile types
+            if (C.tile.sh === 'hexagon') {
+                if (C.tile.or === 'pointy' && ((row % 2 + 2) % 2) === 1) {
+                    x += colSpInches / 2;
+                }
+                if (C.tile.or === 'flat' && ((col % 2 + 2) % 2) === 1) {
+                    y += rowSpInches / 2;
+                }
+            }
+            
+            if (C.tile.sh === 'herringbone') {
+                if (((col % 2 + 2) % 2) === 1) {
+                    y += rowSpInches / 2;
+                }
+            }
+            
+            // Get tile vertices
+            var verts = getTileVertsInches(x, y, tw, th, row, col);
+            
+            // Check if tile intersects wall
+            var wallPoly = getWallPolyInches();
+            if (polyIntersects(verts, wallPoly)) {
+                tiles.push({
+                    x: x,
+                    y: y,
+                    verts: verts,
+                    row: row,
+                    col: col
+                });
+            }
+        }
+    }
+    
+    return tiles;
+}
+
+function getTileVertsInches(x, y, tw, th, row, col) {
+    var g = C.tile.gr;
+    var w = tw - g;
+    var h = th - g;
+    
+    if (C.tile.sh === 'herringbone') {
+        var sm = Math.min(w, h);
+        var lg = Math.max(w, h);
+        var angle = (col % 2 === 0) ? 45 : -45;
+        if (C.tile.or === 'flat') angle = -angle;
+        var rad = angle * Math.PI / 180;
+        var cos = Math.cos(rad);
+        var sin = Math.sin(rad);
+        
+        var corners = [[-sm/2, -lg/2], [sm/2, -lg/2], [sm/2, lg/2], [-sm/2, lg/2]];
+        return corners.map(function(c) {
+            return [x + c[0] * cos - c[1] * sin, y + c[0] * sin + c[1] * cos];
+        });
+    } else if (C.tile.sh === 'hexagon') {
+        if (C.tile.or === 'pointy') {
+            return [
+                [x, y - h/2], [x + w/4, y - h/4], [x + w/4, y + h/4],
+                [x, y + h/2], [x - w/4, y + h/4], [x - w/4, y - h/4]
+            ];
+        } else {
+            return [
+                [x - w/2, y], [x - w/4, y - h/4], [x + w/4, y - h/4],
+                [x + w/2, y], [x + w/4, y + h/4], [x - w/4, y + h/4]
+            ];
+        }
+    } else {
+        // Rectangle/Square
+        return [[x - w/2, y - h/2], [x + w/2, y - h/2], [x + w/2, y + h/2], [x - w/2, y + h/2]];
+    }
+}
+
+function getWallPolyInches() {
+    return [
+        [0, 0],
+        [C.wall.tW, C.wall.rV],
+        [C.wall.tW + C.wall.bV, C.wall.lH + C.wall.rV],
+        [C.wall.bV, C.wall.lH]
+    ];
+}
+
+function polyIntersects(poly1, poly2) {
+    // Simple bounding box check for now
+    var b1 = getBounds(poly1);
+    var b2 = getBounds(poly2);
+    return !(b1.maxX < b2.minX || b1.minX > b2.maxX || b1.maxY < b2.minY || b1.minY > b2.maxY);
+}
+
+function getBounds(poly) {
+    var xs = poly.map(function(p) { return p[0]; });
+    var ys = poly.map(function(p) { return p[1]; });
+    return {
+        minX: Math.min.apply(null, xs),
+        maxX: Math.max.apply(null, xs),
+        minY: Math.min.apply(null, ys),
+        maxY: Math.max.apply(null, ys)
+    };
+}
+
+function exportLayItFormat(tiles, wallPts) {
+    var data = {
+        version: '1.0',
+        type: 'layit-laser',
+        wall: {
+            width: C.wall.tW,
+            height: C.wall.lH,
+            polygon: getWallPolyInches()
+        },
+        tile: {
+            shape: C.tile.sh,
+            width: C.tile.w,
+            height: C.tile.h,
+            grout: C.tile.gr
+        },
+        voids: C.voids,
+        tiles: tiles.map(function(t) {
+            return { x: t.x, y: t.y, verts: t.verts };
+        })
+    };
+    
+    try {
+        var jsonStr = JSON.stringify(data, null, 2);
+        var dataStr = 'data:application/json;base64,' + btoa(unescape(encodeURIComponent(jsonStr)));
+        var a = document.createElement('a');
+        a.href = dataStr;
+        a.download = (document.getElementById('projName').value || 'pattern') + '.layit';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        showToast('✅ LayIt format exported!');
+    } catch(e) {
+        showToast('⚠️ Export failed: ' + e.message);
+    }
+}
+
+function exportSVGFormat(tiles, wallPts) {
+    var wallPoly = getWallPolyInches();
+    
+    // Use wall bounds, not tile bounds
+    var w = Math.max(C.wall.tW, C.wall.tW + C.wall.bV);
+    var h = Math.max(C.wall.lH, C.wall.lH + C.wall.rV);
+    var scale = 10; // 10 pixels per inch for reasonable file size
+    
+    var svg = '<?xml version="1.0" encoding="UTF-8"?>\n';
+    svg += '<svg xmlns="http://www.w3.org/2000/svg" width="' + (w * scale) + '" height="' + (h * scale) + '" viewBox="0 0 ' + w + ' ' + h + '">\n';
+    svg += '  <desc>LayIt Tile Pattern Export</desc>\n';
+    
+    // Wall outline
+    svg += '  <polygon points="' + wallPoly.map(function(p) { 
+        return p[0] + ',' + p[1]; 
+    }).join(' ') + '" fill="none" stroke="#333" stroke-width="0.1"/>\n';
+    
+    // Tiles - filter to only those within wall bounds
+    svg += '  <g id="tiles" fill="none" stroke="#000" stroke-width="0.05">\n';
+    tiles.forEach(function(t) {
+        // Check if tile center is within wall bounds (simple check)
+        if (t.x >= 0 && t.x <= w && t.y >= 0 && t.y <= h) {
+            svg += '    <polygon points="' + t.verts.map(function(p) { 
+                return p[0] + ',' + p[1]; 
+            }).join(' ') + '"/>\n';
+        }
+    });
+    svg += '  </g>\n';
+    
+    // Voids - Y is stored as "from bottom", SVG Y goes down from top
+    if (C.voids && C.voids.length > 0) {
+        svg += '  <g id="voids" fill="none" stroke="#f00" stroke-width="0.1">\n';
+        C.voids.forEach(function(v) {
+            // Flip Y: wall height - void Y - void height
+            var svgY = h - v.y - v.h;
+            svg += '    <rect x="' + v.x + '" y="' + svgY + '" width="' + v.w + '" height="' + v.h + '"/>\n';
+        });
+        svg += '  </g>\n';
+    }
+    
+    svg += '</svg>';
+    
+    try {
+        var dataStr = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svg)));
+        var a = document.createElement('a');
+        a.href = dataStr;
+        a.download = (document.getElementById('projName').value || 'pattern') + '.svg';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        showToast('✅ SVG exported!');
+    } catch(e) {
+        // Fallback: open in new window
+        var win = window.open('', '_blank');
+        win.document.write('<pre>' + svg.replace(/</g, '&lt;') + '</pre>');
+        showToast('SVG opened in new tab - right-click to save');
+    }
+}
+
+function exportDXFFormat(tiles, wallPts) {
+    var wallPoly = getWallPolyInches();
+    
+    // Simple DXF format
+    var dxf = '0\nSECTION\n2\nENTITIES\n';
+    
+    // Wall outline
+    dxf += '0\nPOLYLINE\n8\nWALL\n66\n1\n70\n1\n';
+    wallPoly.forEach(function(p) {
+        dxf += '0\nVERTEX\n8\nWALL\n10\n' + p[0] + '\n20\n' + p[1] + '\n30\n0\n';
+    });
+    dxf += '0\nSEQEND\n';
+    
+    // Tiles
+    tiles.forEach(function(t, i) {
+        dxf += '0\nPOLYLINE\n8\nTILES\n66\n1\n70\n1\n';
+        t.verts.forEach(function(p) {
+            dxf += '0\nVERTEX\n8\nTILES\n10\n' + p[0] + '\n20\n' + p[1] + '\n30\n0\n';
+        });
+        dxf += '0\nSEQEND\n';
+    });
+    
+    // Voids
+    if (C.voids && C.voids.length > 0) {
+        C.voids.forEach(function(v) {
+            dxf += '0\nPOLYLINE\n8\nVOIDS\n66\n1\n70\n1\n';
+            [[v.x, v.y], [v.x + v.w, v.y], [v.x + v.w, v.y + v.h], [v.x, v.y + v.h]].forEach(function(p) {
+                dxf += '0\nVERTEX\n8\nVOIDS\n10\n' + p[0] + '\n20\n' + p[1] + '\n30\n0\n';
+            });
+            dxf += '0\nSEQEND\n';
+        });
+    }
+    
+    dxf += '0\nENDSEC\n0\nEOF\n';
+    
+    try {
+        var dataStr = 'data:application/dxf;base64,' + btoa(unescape(encodeURIComponent(dxf)));
+        var a = document.createElement('a');
+        a.href = dataStr;
+        a.download = (document.getElementById('projName').value || 'pattern') + '.dxf';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        showToast('✅ DXF exported!');
+    } catch(e) {
+        showToast('⚠️ Export failed: ' + e.message);
+    }
+}
+
+function scanLasers() {
+    showToast('🔄 Scanning for LayIt Laser devices...');
+    // Placeholder - in real implementation, this would scan WiFi/Bluetooth
+    setTimeout(function() {
+        document.getElementById('laserDevice').innerHTML = '<option value="demo">LayIt Laser Demo (Simulated)</option>';
+        showToast('Found 1 device');
+    }, 1500);
+}
+
+function connectLaser() {
+    var device = document.getElementById('laserDevice').value;
+    if (!device) {
+        showToast('⚠️ Select a device first');
+        return;
+    }
+    
+    showToast('🔗 Connecting...');
+    // Placeholder - simulate connection
+    setTimeout(function() {
+        laserConnected = true;
+        laserDevice = device;
+        document.getElementById('laserNotConnected').style.display = 'none';
+        document.getElementById('laserConnected').style.display = 'block';
+        document.getElementById('laserDeviceName').textContent = 'LayIt Laser Demo';
+        
+        // Switch to detected distance mode
+        document.getElementById('distanceSliderSection').style.display = 'none';
+        document.getElementById('detectedDistanceSection').style.display = 'block';
+        
+        // Simulate detected distance (would come from laser camera)
+        var detectedDist = 6.2;
+        document.getElementById('detectedDistance').textContent = detectedDist + ' ft';
+        segmentState.distance = detectedDist;
+        segmentState.coverage = getCoverageFromDistance(detectedDist);
+        updateCoverageDisplay();
+        calculateSegments();
+        
+        showToast('✅ Connected!');
+    }, 1000);
+}
+
+function disconnectLaser() {
+    laserConnected = false;
+    laserDevice = null;
+    document.getElementById('laserNotConnected').style.display = 'block';
+    document.getElementById('laserConnected').style.display = 'none';
+    
+    // Switch back to slider mode
+    document.getElementById('distanceSliderSection').style.display = 'block';
+    document.getElementById('detectedDistanceSection').style.display = 'none';
+    
+    showToast('🔌 Disconnected');
+}
+
+function sendToLaser() {
+    if (!laserConnected) {
+        showToast('⚠️ Not connected to laser');
+        return;
+    }
+    
+    showToast('🔴 Sending pattern to laser...');
+    // Placeholder - would send data to actual device
+    setTimeout(function() {
+        document.getElementById('laserStatus').textContent = 'Projecting pattern...';
+        showToast('✅ Pattern sent! Laser is projecting.');
+    }, 500);
+}
+
+function laserPreview() {
+    showToast('👁️ Preview mode - laser showing outline only');
+}
+
+function laserStop() {
+    if (laserConnected) {
+        document.getElementById('laserStatus').textContent = 'Ready to project';
+        showToast('⏹️ Laser stopped');
+    }
+}
+
+function startLaserCalibration() {
+    showToast('📏 Calibration mode - laser projecting 12" square');
+    // Would send calibration pattern to laser
+}
+
+// ==================== END LASER FUNCTIONS ====================
+
+// Initialize
+initTabs();
+generateAppIcon();
+updateVoidList();
+initLaserTab(); // Initialize laser position/coverage
+draw();
+</script>
+</body>
+</html>
