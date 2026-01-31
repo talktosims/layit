@@ -2814,8 +2814,15 @@ function drawDetailView() {
                         var distFromE1 = Math.sqrt((p.x - e1.x) * (p.x - e1.x) + (p.y - e1.y) * (p.y - e1.y));
                         var distFromE2 = Math.sqrt((p.x - e2.x) * (p.x - e2.x) + (p.y - e2.y) * (p.y - e2.y));
                         var edgeLen = Math.sqrt((e2.x - e1.x) * (e2.x - e1.x) + (e2.y - e1.y) * (e2.y - e1.y));
-                        // Determine if this is a long edge or short edge
                         var isLongEdge = Math.abs(edgeLen - longSide) < 1.0;
+
+                        // Determine which corner is on the KEPT piece (in the cut polygon)
+                        var e1OnKept = false, e2OnKept = false;
+                        for (var k = 0; k < cutPointsInches.length; k++) {
+                            if (Math.abs(cutPointsInches[k].x - e1.x) < 0.5 && Math.abs(cutPointsInches[k].y - e1.y) < 0.5) e1OnKept = true;
+                            if (Math.abs(cutPointsInches[k].x - e2.x) < 0.5 && Math.abs(cutPointsInches[k].y - e2.y) < 0.5) e2OnKept = true;
+                        }
+
                         cutMarks.push({
                             point: p,
                             corner1: e1,
@@ -2824,7 +2831,9 @@ function drawDetailView() {
                             distFromCorner2: distFromE2,
                             edgeLen: edgeLen,
                             isLongEdge: isLongEdge,
-                            edgeIndex: j
+                            edgeIndex: j,
+                            keptCorner: e1OnKept ? e1 : (e2OnKept ? e2 : null),
+                            keptDist: e1OnKept ? distFromE1 : (e2OnKept ? distFromE2 : Math.min(distFromE1, distFromE2))
                         });
                         break;
                     }
@@ -2871,17 +2880,13 @@ function drawDetailView() {
         ctx.textAlign = 'center';
         ctx.fillText('Mark and cut:', size / 2, 35);
 
-        // Show measurements: distance from nearest end on each long edge
+        // Show measurements: distance from kept corner to cut point
         ctx.fillStyle = '#4CAF50';
         ctx.font = 'bold 26px sans-serif';
         if (cutMarks.length >= 2) {
-            // Use the shorter distance from corner for each mark (nearest end)
-            var m1 = Math.min(cutMarks[0].distFromCorner1, cutMarks[0].distFromCorner2);
-            var m2 = Math.min(cutMarks[1].distFromCorner1, cutMarks[1].distFromCorner2);
-            ctx.fillText('Mark at ' + toFraction(m1) + '" & ' + toFraction(m2) + '"', size / 2, 68);
+            ctx.fillText('Mark at ' + toFraction(cutMarks[0].keptDist) + '" & ' + toFraction(cutMarks[1].keptDist) + '"', size / 2, 68);
         } else if (cutMarks.length === 1) {
-            var m1 = Math.min(cutMarks[0].distFromCorner1, cutMarks[0].distFromCorner2);
-            ctx.fillText('Mark at ' + toFraction(m1) + '"', size / 2, 68);
+            ctx.fillText('Mark at ' + toFraction(cutMarks[0].keptDist) + '"', size / 2, 68);
         } else {
             ctx.fillText(toFraction(pieceW) + ' \u00d7 ' + toFraction(pieceH), size / 2, 68);
         }
@@ -2940,13 +2945,12 @@ function drawDetailView() {
             ctx.setLineDash([]);
         }
 
-        // Draw measurement marks: line from corner to cut point along tile edge
+        // Draw measurement marks: line from kept corner to cut point along tile edge
         for (var i = 0; i < cutMarks.length; i++) {
             var mark = cutMarks[i];
-            // Use the nearer corner
-            var useC1 = mark.distFromCorner1 <= mark.distFromCorner2;
-            var corner = useC1 ? mark.corner1 : mark.corner2;
-            var dist = useC1 ? mark.distFromCorner1 : mark.distFromCorner2;
+            // Use the corner that's on the kept piece
+            var corner = mark.keptCorner || (mark.distFromCorner1 <= mark.distFromCorner2 ? mark.corner1 : mark.corner2);
+            var dist = mark.keptDist;
 
             var cPx = cx + corner.x * drawScale;
             var cPy = cy + corner.y * drawScale;
