@@ -1009,93 +1009,86 @@ function drawDetailView() {
         
     } else if (pieceW < tileW - 0.1 || pieceH < tileH - 0.1) {
         // EDGE CUT - tile is cut by wall edge
-        
-        // Find actual wall intersection points to determine real cuts
-        var wallIntersections = [];
-        if (tile.wall && tile.verts) {
-            for (var i = 0; i < tile.verts.length; i++) {
-                var v1 = tile.verts[i];
-                var v2 = tile.verts[(i + 1) % tile.verts.length];
-                for (var j = 0; j < tile.wall.length; j++) {
-                    var w1 = tile.wall[j];
-                    var w2 = tile.wall[(j + 1) % tile.wall.length];
-                    var inter = lineIntersect(v1, v2, w1, w2);
-                    if (inter) {
-                        wallIntersections.push({
-                            x: (inter[0] - tileCenterX) / scale,
-                            y: (inter[1] - tileCenterY) / scale
-                        });
-                    }
-                }
+        // Uses actual remaining piece polygon for accurate geometry on all tile shapes
+
+        // Build the remaining piece polygon in inches (relative to tile center)
+        var pieceVertsInches = [];
+        if (cutPoints.length >= 3) {
+            for (var i = 0; i < cutPoints.length; i++) {
+                pieceVertsInches.push([
+                    (cutPoints[i][0] - tileCenterX) / scale,
+                    (cutPoints[i][1] - tileCenterY) / scale
+                ]);
             }
         }
-        
-        // Determine cut direction based on intersection points
-        var hasHorizontalCut = false;
-        var hasVerticalCut = false;
-        var cutLineX = 0;
-        var cutLineY = 0;
-        var cutAmountW = 0;
-        var cutAmountH = 0;
-        
-        if (wallIntersections.length >= 2) {
-            // Check if intersections form a roughly vertical or horizontal line
-            var p1 = wallIntersections[0];
-            var p2 = wallIntersections[1];
-            var dx = Math.abs(p2.x - p1.x);
-            var dy = Math.abs(p2.y - p1.y);
-            
-            if (dy > dx * 2) {
-                // Vertical cut (wall runs vertically through tile)
-                hasVerticalCut = true;
-                cutLineX = (p1.x + p2.x) / 2;
-                // Calculate how much is cut off
-                if (cutLineX > 0) {
-                    cutAmountW = tileMaxX - cutLineX;
-                } else {
-                    cutAmountW = cutLineX - tileMinX;
+
+        // Identify which edges of the piece polygon are cut edges (on wall boundary)
+        // vs original tile edges. A cut edge has its midpoint near a wall segment.
+        var cutEdges = [];
+        var tileEdges = [];
+        for (var i = 0; i < pieceVertsInches.length; i++) {
+            var pA = pieceVertsInches[i];
+            var pB = pieceVertsInches[(i + 1) % pieceVertsInches.length];
+            // Convert back to pixel coords to test against wall
+            var pAPx = [pA[0] * scale + tileCenterX, pA[1] * scale + tileCenterY];
+            var pBPx = [pB[0] * scale + tileCenterX, pB[1] * scale + tileCenterY];
+            var midPx = [(pAPx[0] + pBPx[0]) / 2, (pAPx[1] + pBPx[1]) / 2];
+
+            // Check if midpoint of this edge lies on (or very near) a wall segment
+            var isOnWall = false;
+            for (var j = 0; j < tile.wall.length; j++) {
+                var w1 = tile.wall[j];
+                var w2 = tile.wall[(j + 1) % tile.wall.length];
+                var d = pointToSegDist(midPx, w1, w2);
+                if (d < 2) { // within 2 pixels = on wall
+                    isOnWall = true;
+                    break;
                 }
-            } else if (dx > dy * 2) {
-                // Horizontal cut (wall runs horizontally through tile)
-                hasHorizontalCut = true;
-                cutLineY = (p1.y + p2.y) / 2;
-                // Calculate how much is cut off
-                if (cutLineY > 0) {
-                    cutAmountH = tileMaxY - cutLineY;
-                } else {
-                    cutAmountH = cutLineY - tileMinY;
-                }
+            }
+
+            var edgeLen = Math.sqrt((pB[0] - pA[0]) * (pB[0] - pA[0]) + (pB[1] - pA[1]) * (pB[1] - pA[1]));
+            var edgeInfo = { a: pA, b: pB, len: edgeLen };
+            if (isOnWall) {
+                cutEdges.push(edgeInfo);
             } else {
-                // Diagonal cut - treat as single angled cut
-                hasVerticalCut = true;
-                cutLineX = (p1.x + p2.x) / 2;
-                cutAmountW = Math.abs(tileMaxX - tileMinX - pieceW);
+                tileEdges.push(edgeInfo);
             }
         }
-        
+
         // Header text
-        var headerText = 'Cut tile:';
-        if (hasVerticalCut && cutAmountW > 0.1) {
-            headerText = 'Cut ' + toFraction(Math.abs(cutAmountW)) + ' from edge:';
-        } else if (hasHorizontalCut && cutAmountH > 0.1) {
-            headerText = 'Cut ' + toFraction(Math.abs(cutAmountH)) + ' from edge:';
-        }
-        ctx.fillText(headerText, size / 2, 35);
-        
-        // Big piece dimensions (what remains)
+        ctx.fillText('Cut tile:', size / 2, 35);
+
+        // Show remaining piece dimensions
         ctx.fillStyle = '#4CAF50';
-        ctx.font = 'bold 32px sans-serif';
-        ctx.fillText(toFraction(pieceW) + ' × ' + toFraction(pieceH), size / 2, 75);
-        
+        ctx.font = 'bold 28px sans-serif';
+        if (cutEdges.length === 1) {
+            ctx.fillText(toFraction(pieceW) + ' \u00d7 ' + toFraction(pieceH), size / 2, 72);
+            ctx.fillStyle = '#f44336';
+            ctx.font = 'bold 16px sans-serif';
+            ctx.fillText('Cut length: ' + toFraction(cutEdges[0].len), size / 2, 95);
+        } else if (cutEdges.length > 1) {
+            ctx.fillText(toFraction(pieceW) + ' \u00d7 ' + toFraction(pieceH), size / 2, 72);
+            ctx.fillStyle = '#f44336';
+            ctx.font = 'bold 14px sans-serif';
+            var cutDesc = cutEdges.length + ' cuts: ';
+            for (var i = 0; i < cutEdges.length; i++) {
+                if (i > 0) cutDesc += ', ';
+                cutDesc += toFraction(cutEdges[i].len);
+            }
+            ctx.fillText(cutDesc, size / 2, 95);
+        } else {
+            ctx.fillText(toFraction(pieceW) + ' \u00d7 ' + toFraction(pieceH), size / 2, 75);
+        }
+
         // Draw visualization
         var drawScale = Math.min(140 / tileW, 140 / tileH);
         var cx = size / 2;
-        var cy = size / 2 + 50;
-        
-        // Full tile (solid yellow)
-        ctx.fillStyle = '#FFEB3B';
-        ctx.strokeStyle = '#333';
-        ctx.lineWidth = 2;
+        var cy = size / 2 + 55;
+
+        // Ghost outline of full tile (faint)
+        ctx.strokeStyle = '#ccc';
+        ctx.lineWidth = 1;
+        ctx.setLineDash([4, 4]);
         ctx.beginPath();
         for (var i = 0; i < tileVertsInches.length; i++) {
             var px = cx + tileVertsInches[i][0] * drawScale;
@@ -1104,44 +1097,74 @@ function drawDetailView() {
             else ctx.lineTo(px, py);
         }
         ctx.closePath();
-        ctx.fill();
         ctx.stroke();
-        
-        // Draw the actual cut line through the intersections
-        if (wallIntersections.length >= 2) {
+        ctx.setLineDash([]);
+
+        // Remaining piece filled yellow
+        if (pieceVertsInches.length >= 3) {
+            ctx.fillStyle = '#FFEB3B';
+            ctx.strokeStyle = '#333';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            for (var i = 0; i < pieceVertsInches.length; i++) {
+                var px = cx + pieceVertsInches[i][0] * drawScale;
+                var py = cy + pieceVertsInches[i][1] * drawScale;
+                if (i === 0) ctx.moveTo(px, py);
+                else ctx.lineTo(px, py);
+            }
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+        }
+
+        // Draw cut edges as red dashed lines with measurements
+        for (var i = 0; i < cutEdges.length; i++) {
+            var edge = cutEdges[i];
+            var ax = cx + edge.a[0] * drawScale;
+            var ay = cy + edge.a[1] * drawScale;
+            var bx = cx + edge.b[0] * drawScale;
+            var by = cy + edge.b[1] * drawScale;
+
+            // Red dashed line over the cut edge
             ctx.strokeStyle = '#f44336';
             ctx.lineWidth = 3;
             ctx.setLineDash([8, 4]);
-            
             ctx.beginPath();
-            var p1 = wallIntersections[0];
-            var p2 = wallIntersections[1];
-            ctx.moveTo(cx + p1.x * drawScale, cy + p1.y * drawScale);
-            ctx.lineTo(cx + p2.x * drawScale, cy + p2.y * drawScale);
+            ctx.moveTo(ax, ay);
+            ctx.lineTo(bx, by);
             ctx.stroke();
             ctx.setLineDash([]);
-            
-            // Label the cut amount
+
+            // Label with edge length, offset outward from piece center
+            var midX = (ax + bx) / 2;
+            var midY = (ay + by) / 2;
+            var pieceCx = cx, pieceCy = cy;
+            if (pieceVertsInches.length >= 3) {
+                pieceCx = 0; pieceCy = 0;
+                for (var k = 0; k < pieceVertsInches.length; k++) {
+                    pieceCx += pieceVertsInches[k][0];
+                    pieceCy += pieceVertsInches[k][1];
+                }
+                pieceCx = cx + (pieceCx / pieceVertsInches.length) * drawScale;
+                pieceCy = cy + (pieceCy / pieceVertsInches.length) * drawScale;
+            }
+            var offX = midX - pieceCx;
+            var offY = midY - pieceCy;
+            var offLen = Math.sqrt(offX * offX + offY * offY) || 1;
+            var labelX = midX + (offX / offLen) * 20;
+            var labelY = midY + (offY / offLen) * 20;
+
+            var edgeAngle = Math.atan2(by - ay, bx - ax);
+            if (edgeAngle > Math.PI / 2) edgeAngle -= Math.PI;
+            if (edgeAngle < -Math.PI / 2) edgeAngle += Math.PI;
+
             ctx.fillStyle = '#f44336';
             ctx.font = 'bold 13px sans-serif';
-            var midX = cx + (p1.x + p2.x) / 2 * drawScale;
-            var midY = cy + (p1.y + p2.y) / 2 * drawScale;
-            
-            var cutAmount = hasVerticalCut ? Math.abs(cutAmountW) : Math.abs(cutAmountH);
-            if (cutAmount > 0.1) {
-                // Position label to the side of the cut line
-                if (hasVerticalCut) {
-                    var labelX = midX + (cutLineX > 0 ? 20 : -20);
-                    ctx.save();
-                    ctx.translate(labelX, midY);
-                    ctx.rotate(-Math.PI / 2);
-                    ctx.fillText(toFraction(cutAmount), 0, 0);
-                    ctx.restore();
-                } else {
-                    var labelY = midY + (cutLineY > 0 ? 20 : -20);
-                    ctx.fillText(toFraction(cutAmount), midX, labelY);
-                }
-            }
+            ctx.save();
+            ctx.translate(labelX, labelY);
+            ctx.rotate(edgeAngle);
+            ctx.fillText(toFraction(edge.len), 0, 0);
+            ctx.restore();
         }
         
     } else {
@@ -1192,6 +1215,16 @@ function drawArrow(ctx, x, y, dir) {
 }
 
 // Helper: draw rounded rectangle
+// Helper: distance from point to line segment
+function pointToSegDist(p, a, b) {
+    var dx = b[0] - a[0], dy = b[1] - a[1];
+    var lenSq = dx * dx + dy * dy;
+    if (lenSq === 0) return Math.sqrt((p[0] - a[0]) * (p[0] - a[0]) + (p[1] - a[1]) * (p[1] - a[1]));
+    var t = Math.max(0, Math.min(1, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / lenSq));
+    var projX = a[0] + t * dx, projY = a[1] + t * dy;
+    return Math.sqrt((p[0] - projX) * (p[0] - projX) + (p[1] - projY) * (p[1] - projY));
+}
+
 function roundRect(ctx, x, y, w, h, r) {
     ctx.beginPath();
     ctx.moveTo(x + r, y);
