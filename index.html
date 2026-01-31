@@ -2728,113 +2728,121 @@ function drawDetailView() {
         }
         
     } else if (pieceW < tileW - 0.1 || pieceH < tileH - 0.1 || isCutByVertexCount) {
-        // EDGE CUT - tile is cut by wall edge (diagonal/slant cut)
-        
-        // Get the actual cut shape points
+        // EDGE CUT - tile is cut by wall edge
+        // Show tile in un-rotated (flat) orientation for practical cutting
+
         var voidPolysArray = tile.voidPolys || [];
         var cutPoints = getCutPoints(tile.verts, tile.wall, voidPolysArray);
-        
-        // Convert cut points to tile-relative inches
-        var cutPointsInches = [];
+
+        // Determine tile rotation angle for un-rotating
+        var tileAngle = 0;
+        var actualW = tile.tw / scale; // actual tile width in inches
+        var actualH = tile.th / scale; // actual tile height in inches
+        var shortSide = Math.min(actualW, actualH);
+        var longSide = Math.max(actualW, actualH);
+
+        if (tile.shape === 'herringbone') {
+            tileAngle = (tile.col % 2 === 0) ? 45 : -45;
+            if (tile.orient === 'flat') tileAngle = -tileAngle;
+        }
+        var rad = -tileAngle * Math.PI / 180; // negative to un-rotate
+        var cosA = Math.cos(rad);
+        var sinA = Math.sin(rad);
+
+        // Un-rotate function: transform from world-relative to tile-local coords
+        function unrotate(px, py) {
+            // px,py are relative to tile center in inches
+            return {
+                x: px * cosA - py * sinA,
+                y: px * sinA + py * cosA
+            };
+        }
+
+        // Get cut points in un-rotated tile-local inches
+        var cutPointsLocal = [];
         for (var i = 0; i < cutPoints.length; i++) {
-            cutPointsInches.push({
-                x: (cutPoints[i][0] - tileCenterX) / scale,
-                y: (cutPoints[i][1] - tileCenterY) / scale
-            });
+            var rx = (cutPoints[i][0] - tileCenterX) / scale;
+            var ry = (cutPoints[i][1] - tileCenterY) / scale;
+            cutPointsLocal.push(unrotate(rx, ry));
         }
-        
-        // Sort points to form a proper polygon
+
+        // Sort cut points to form polygon (angular sort from centroid in local space)
         var centroidX = 0, centroidY = 0;
-        if (cutPointsInches.length >= 3) {
-            for (var i = 0; i < cutPointsInches.length; i++) {
-                centroidX += cutPointsInches[i].x;
-                centroidY += cutPointsInches[i].y;
+        if (cutPointsLocal.length >= 3) {
+            for (var i = 0; i < cutPointsLocal.length; i++) {
+                centroidX += cutPointsLocal[i].x;
+                centroidY += cutPointsLocal[i].y;
             }
-            centroidX /= cutPointsInches.length;
-            centroidY /= cutPointsInches.length;
-            
-            cutPointsInches.sort(function(a, b) {
-                var angleA = Math.atan2(a.y - centroidY, a.x - centroidX);
-                var angleB = Math.atan2(b.y - centroidY, b.x - centroidX);
-                return angleA - angleB;
+            centroidX /= cutPointsLocal.length;
+            centroidY /= cutPointsLocal.length;
+            cutPointsLocal.sort(function(a, b) {
+                return Math.atan2(a.y - centroidY, a.x - centroidX) - Math.atan2(b.y - centroidY, b.x - centroidX);
             });
         }
+
+        // Un-rotate tile vertices too
+        var tileVertsLocal = [];
+        for (var i = 0; i < tileVertsInches.length; i++) {
+            tileVertsLocal.push(unrotate(tileVertsInches[i][0], tileVertsInches[i][1]));
+        }
+
+        // Use cutPointsLocal as the working data for the rest of this section
+        var cutPointsInches = cutPointsLocal;
         
-        // Find where the cut line intersects the tile edges
-        // These are points in cutPointsInches that are NOT original tile corners
-        var cutMarks = []; // {point, edgeStart, edgeEnd, distFromStart}
-        
+        // Find cut marks: points in the cut polygon that lie on tile edges (not corners)
+        // Use un-rotated tile-local coordinates for practical measurement
+        var cutMarks = [];
         for (var i = 0; i < cutPointsInches.length; i++) {
             var p = cutPointsInches[i];
-            
-            // First check if this point is a tile corner
+
+            // Check if this point is a tile corner (in local space)
             var isCorner = false;
-            for (var j = 0; j < tileVertsInches.length; j++) {
-                var corner = tileVertsInches[j];
-                if (Math.abs(p.x - corner[0]) < 0.5 && Math.abs(p.y - corner[1]) < 0.5) {
+            for (var j = 0; j < tileVertsLocal.length; j++) {
+                var c = tileVertsLocal[j];
+                if (Math.abs(p.x - c.x) < 0.5 && Math.abs(p.y - c.y) < 0.5) {
                     isCorner = true;
                     break;
                 }
             }
-            
+
             if (!isCorner) {
-                // This is a cut point - find which edge it's on
-                for (var j = 0; j < tileVertsInches.length; j++) {
-                    var e1 = tileVertsInches[j];
-                    var e2 = tileVertsInches[(j + 1) % tileVertsInches.length];
-                    
-                    // Is point on this edge? (use looser tolerance)
-                    if (isPointOnSegment(p.x, p.y, e1[0], e1[1], e2[0], e2[1], 1.0)) {
-                        var distFromE1 = Math.sqrt(Math.pow(p.x - e1[0], 2) + Math.pow(p.y - e1[1], 2));
-                        var distFromE2 = Math.sqrt(Math.pow(p.x - e2[0], 2) + Math.pow(p.y - e2[1], 2));
+                // Find which tile edge this cut point is on (in local space)
+                for (var j = 0; j < tileVertsLocal.length; j++) {
+                    var e1 = tileVertsLocal[j];
+                    var e2 = tileVertsLocal[(j + 1) % tileVertsLocal.length];
+                    if (isPointOnSegment(p.x, p.y, e1.x, e1.y, e2.x, e2.y, 1.0)) {
+                        var distFromE1 = Math.sqrt((p.x - e1.x) * (p.x - e1.x) + (p.y - e1.y) * (p.y - e1.y));
+                        var distFromE2 = Math.sqrt((p.x - e2.x) * (p.x - e2.x) + (p.y - e2.y) * (p.y - e2.y));
+                        var edgeLen = Math.sqrt((e2.x - e1.x) * (e2.x - e1.x) + (e2.y - e1.y) * (e2.y - e1.y));
+                        // Determine if this is a long edge or short edge
+                        var isLongEdge = Math.abs(edgeLen - longSide) < 1.0;
                         cutMarks.push({
                             point: p,
-                            corner1: {x: e1[0], y: e1[1]},
-                            corner2: {x: e2[0], y: e2[1]},
+                            corner1: e1,
+                            corner2: e2,
                             distFromCorner1: distFromE1,
-                            distFromCorner2: distFromE2
+                            distFromCorner2: distFromE2,
+                            edgeLen: edgeLen,
+                            isLongEdge: isLongEdge,
+                            edgeIndex: j
                         });
                         break;
                     }
                 }
-                
-                // If still not found on any edge, just add it with nearest corners
-                if (cutMarks.length <= i - (tileVertsInches.length - cutPointsInches.length)) {
-                    // Find two nearest corners
-                    var sortedCorners = tileVertsInches.slice().sort(function(a, b) {
-                        var distA = Math.sqrt(Math.pow(p.x - a[0], 2) + Math.pow(p.y - a[1], 2));
-                        var distB = Math.sqrt(Math.pow(p.x - b[0], 2) + Math.pow(p.y - b[1], 2));
-                        return distA - distB;
-                    });
-                    var nearest1 = sortedCorners[0];
-                    var nearest2 = sortedCorners[1];
-                    cutMarks.push({
-                        point: p,
-                        corner1: {x: nearest1[0], y: nearest1[1]},
-                        corner2: {x: nearest2[0], y: nearest2[1]},
-                        distFromCorner1: Math.sqrt(Math.pow(p.x - nearest1[0], 2) + Math.pow(p.y - nearest1[1], 2)),
-                        distFromCorner2: Math.sqrt(Math.pow(p.x - nearest2[0], 2) + Math.pow(p.y - nearest2[1], 2))
-                    });
-                }
             }
         }
         
-        // Find the cut edge (edge in cut shape that's not on original tile)
-        // This is the actual cut line we need to draw
-        // MUST be computed before header so cut length is available
+        // Compute cut line in local space (edges not on original tile)
         var cutLinePoints = [];
         for (var i = 0; i < cutPointsInches.length; i++) {
             var p1 = cutPointsInches[i];
             var p2 = cutPointsInches[(i + 1) % cutPointsInches.length];
-
-            // Check if this edge is on any original tile edge
             var isOnOriginalEdge = false;
-            for (var j = 0; j < tileVertsInches.length; j++) {
-                var t1 = tileVertsInches[j];
-                var t2 = tileVertsInches[(j + 1) % tileVertsInches.length];
-                var p1OnEdge = isPointOnSegment(p1.x, p1.y, t1[0], t1[1], t2[0], t2[1], 0.5);
-                var p2OnEdge = isPointOnSegment(p2.x, p2.y, t1[0], t1[1], t2[0], t2[1], 0.5);
-                if (p1OnEdge && p2OnEdge) {
+            for (var j = 0; j < tileVertsLocal.length; j++) {
+                var t1 = tileVertsLocal[j];
+                var t2 = tileVertsLocal[(j + 1) % tileVertsLocal.length];
+                if (isPointOnSegment(p1.x, p1.y, t1.x, t1.y, t2.x, t2.y, 0.5) &&
+                    isPointOnSegment(p2.x, p2.y, t1.x, t1.y, t2.x, t2.y, 0.5)) {
                     isOnOriginalEdge = true;
                     break;
                 }
@@ -2844,8 +2852,16 @@ function drawDetailView() {
             }
         }
 
-        // Draw visualization
-        var drawScale = Math.min(140 / tileW, 140 / tileH);
+        // Calculate total cut length
+        var totalCutLen = 0;
+        for (var i = 0; i < cutLinePoints.length; i++) {
+            var cl = cutLinePoints[i];
+            totalCutLen += Math.sqrt((cl.p2.x - cl.p1.x) * (cl.p2.x - cl.p1.x) + (cl.p2.y - cl.p1.y) * (cl.p2.y - cl.p1.y));
+        }
+
+        // Draw visualization using un-rotated local coordinates
+        // The tile is shown as a flat rectangle - how you'd hold it on a saw
+        var drawScale = Math.min(140 / longSide, 140 / shortSide);
         var cx = size / 2;
         var cy = size / 2 + 55;
 
@@ -2855,37 +2871,36 @@ function drawDetailView() {
         ctx.textAlign = 'center';
         ctx.fillText('Mark and cut:', size / 2, 35);
 
-        // Show mark measurements from corners
+        // Show measurements: distance from nearest end on each long edge
         ctx.fillStyle = '#4CAF50';
-        ctx.font = 'bold 28px sans-serif';
+        ctx.font = 'bold 26px sans-serif';
         if (cutMarks.length >= 2) {
-            ctx.fillText(toFraction(cutMarks[0].distFromCorner1) + '  &  ' + toFraction(cutMarks[1].distFromCorner1), size / 2, 70);
+            // Use the shorter distance from corner for each mark (nearest end)
+            var m1 = Math.min(cutMarks[0].distFromCorner1, cutMarks[0].distFromCorner2);
+            var m2 = Math.min(cutMarks[1].distFromCorner1, cutMarks[1].distFromCorner2);
+            ctx.fillText('Mark at ' + toFraction(m1) + '" & ' + toFraction(m2) + '"', size / 2, 68);
         } else if (cutMarks.length === 1) {
-            ctx.fillText(toFraction(cutMarks[0].distFromCorner1), size / 2, 70);
+            var m1 = Math.min(cutMarks[0].distFromCorner1, cutMarks[0].distFromCorner2);
+            ctx.fillText('Mark at ' + toFraction(m1) + '"', size / 2, 68);
         } else {
-            ctx.fillText(toFraction(pieceW) + ' \u00d7 ' + toFraction(pieceH), size / 2, 70);
+            ctx.fillText(toFraction(pieceW) + ' \u00d7 ' + toFraction(pieceH), size / 2, 68);
         }
 
-        // Also show the cut line length
-        if (cutLinePoints.length > 0) {
-            var totalCutLen = 0;
-            for (var i = 0; i < cutLinePoints.length; i++) {
-                var cl = cutLinePoints[i];
-                totalCutLen += Math.sqrt(Math.pow(cl.p2.x - cl.p1.x, 2) + Math.pow(cl.p2.y - cl.p1.y, 2));
-            }
+        // Show cut length
+        if (totalCutLen > 0.1) {
             ctx.fillStyle = '#f44336';
             ctx.font = 'bold 14px sans-serif';
-            ctx.fillText('Cut length: ' + toFraction(totalCutLen), size / 2, 92);
+            ctx.fillText('Cut length: ' + toFraction(totalCutLen), size / 2, 90);
         }
 
-        // Ghost outline of full tile (faint reference)
+        // Draw the full tile as a flat rectangle (un-rotated, faint outline)
         ctx.strokeStyle = '#ddd';
         ctx.lineWidth = 1;
         ctx.setLineDash([4, 4]);
         ctx.beginPath();
-        for (var i = 0; i < tileVertsInches.length; i++) {
-            var px = cx + tileVertsInches[i][0] * drawScale;
-            var py = cy + tileVertsInches[i][1] * drawScale;
+        for (var i = 0; i < tileVertsLocal.length; i++) {
+            var px = cx + tileVertsLocal[i].x * drawScale;
+            var py = cy + tileVertsLocal[i].y * drawScale;
             if (i === 0) ctx.moveTo(px, py);
             else ctx.lineTo(px, py);
         }
@@ -2893,12 +2908,12 @@ function drawDetailView() {
         ctx.stroke();
         ctx.setLineDash([]);
 
-        // Draw the remaining tile shape (solid yellow)
-        ctx.fillStyle = '#FFEB3B';
-        ctx.strokeStyle = '#333';
-        ctx.lineWidth = 2;
-        ctx.beginPath();
+        // Draw the remaining piece (yellow, in local space)
         if (cutPointsInches.length >= 3) {
+            ctx.fillStyle = '#FFEB3B';
+            ctx.strokeStyle = '#333';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
             for (var i = 0; i < cutPointsInches.length; i++) {
                 var px = cx + cutPointsInches[i].x * drawScale;
                 var py = cy + cutPointsInches[i].y * drawScale;
@@ -2910,159 +2925,8 @@ function drawDetailView() {
             ctx.stroke();
         }
 
-        // Draw cut line and measurements
-        if (cutMarks.length >= 2) {
-            var mark1 = cutMarks[0];
-            var mark2 = cutMarks[1];
-            
-            // Draw the cut line (dashed red)
-            ctx.strokeStyle = '#f44336';
-            ctx.lineWidth = 3;
-            ctx.setLineDash([8, 4]);
-            ctx.beginPath();
-            ctx.moveTo(cx + mark1.point.x * drawScale, cy + mark1.point.y * drawScale);
-            ctx.lineTo(cx + mark2.point.x * drawScale, cy + mark2.point.y * drawScale);
-            ctx.stroke();
-            ctx.setLineDash([]);
-            
-            // Check which corners are on the remaining tile (in cutPointsInches)
-            function isCornerOnTile(corner) {
-                return cutPointsInches.some(function(p) {
-                    return Math.abs(p.x - corner.x) < 0.3 && Math.abs(p.y - corner.y) < 0.3;
-                });
-            }
-            
-            // Draw measurement indicators only from corners that exist on the remaining tile
-            ctx.strokeStyle = '#f44336';
-            ctx.lineWidth = 2;
-            ctx.setLineDash([4, 3]);
-            
-            var tileCentPx = cx + centroidX * drawScale;
-            var tileCentPy = cy + centroidY * drawScale;
-            
-            // First mark - check if corner1 is on tile, else use corner2
-            var useCorner1ForMark1 = isCornerOnTile(mark1.corner1);
-            var corner1ToUse = useCorner1ForMark1 ? mark1.corner1 : mark1.corner2;
-            var dist1ToUse = useCorner1ForMark1 ? mark1.distFromCorner1 : mark1.distFromCorner2;
-            
-            var c1Px = cx + corner1ToUse.x * drawScale;
-            var c1Py = cy + corner1ToUse.y * drawScale;
-            var m1Px = cx + mark1.point.x * drawScale;
-            var m1Py = cy + mark1.point.y * drawScale;
-            
-            ctx.beginPath();
-            ctx.moveTo(c1Px, c1Py);
-            ctx.lineTo(m1Px, m1Py);
-            ctx.stroke();
-            
-            // Draw corner marker (small filled circle)
-            ctx.setLineDash([]);
-            ctx.fillStyle = '#f44336';
-            ctx.beginPath();
-            ctx.arc(c1Px, c1Py, 5, 0, Math.PI * 2);
-            ctx.fill();
-            
-            // Second mark - check if corner1 is on tile, else use corner2
-            var useCorner1ForMark2 = isCornerOnTile(mark2.corner1);
-            var corner2ToUse = useCorner1ForMark2 ? mark2.corner1 : mark2.corner2;
-            var dist2ToUse = useCorner1ForMark2 ? mark2.distFromCorner1 : mark2.distFromCorner2;
-            
-            var c2Px = cx + corner2ToUse.x * drawScale;
-            var c2Py = cy + corner2ToUse.y * drawScale;
-            var m2Px = cx + mark2.point.x * drawScale;
-            var m2Py = cy + mark2.point.y * drawScale;
-            
-            ctx.setLineDash([4, 3]);
-            ctx.beginPath();
-            ctx.moveTo(c2Px, c2Py);
-            ctx.lineTo(m2Px, m2Py);
-            ctx.stroke();
-            ctx.setLineDash([]);
-            
-            // Draw corner marker (small filled circle)
-            ctx.beginPath();
-            ctx.arc(c2Px, c2Py, 5, 0, Math.PI * 2);
-            ctx.fill();
-            
-            // Labels for measurements
-            ctx.fillStyle = '#f44336';
-            ctx.font = 'bold 13px sans-serif';
-            ctx.textAlign = 'center';
-            
-            // Label 1 - positioned outside the tile
-            var mid1X = (c1Px + m1Px) / 2;
-            var mid1Y = (c1Py + m1Py) / 2;
-            var away1X = mid1X - tileCentPx;
-            var away1Y = mid1Y - tileCentPy;
-            var away1Len = Math.sqrt(away1X*away1X + away1Y*away1Y);
-            if (away1Len > 0.01) {
-                ctx.fillText(toFraction(dist1ToUse), 
-                    mid1X + (away1X/away1Len)*22, 
-                    mid1Y + (away1Y/away1Len)*22);
-            }
-            
-            // Label 2
-            var mid2X = (c2Px + m2Px) / 2;
-            var mid2Y = (c2Py + m2Py) / 2;
-            var away2X = mid2X - tileCentPx;
-            var away2Y = mid2Y - tileCentPy;
-            var away2Len = Math.sqrt(away2X*away2X + away2Y*away2Y);
-            if (away2Len > 0.01) {
-                ctx.fillText(toFraction(dist2ToUse), 
-                    mid2X + (away2X/away2Len)*22, 
-                    mid2Y + (away2Y/away2Len)*22);
-            }
-        } else if (cutMarks.length === 1) {
-            // Only one cut mark found - draw what we can
-            var mark1 = cutMarks[0];
-            var tileCentPx = cx + centroidX * drawScale;
-            var tileCentPy = cy + centroidY * drawScale;
-            
-            // Check which corner is on the tile
-            function isCornerOnTile(corner) {
-                return cutPointsInches.some(function(p) {
-                    return Math.abs(p.x - corner.x) < 0.5 && Math.abs(p.y - corner.y) < 0.5;
-                });
-            }
-            
-            var useCorner1 = isCornerOnTile(mark1.corner1);
-            var cornerToUse = useCorner1 ? mark1.corner1 : mark1.corner2;
-            var distToUse = useCorner1 ? mark1.distFromCorner1 : mark1.distFromCorner2;
-            
-            var cPx = cx + cornerToUse.x * drawScale;
-            var cPy = cy + cornerToUse.y * drawScale;
-            var mPx = cx + mark1.point.x * drawScale;
-            var mPy = cy + mark1.point.y * drawScale;
-            
-            // Draw dashed line from corner to cut point
-            ctx.strokeStyle = '#f44336';
-            ctx.lineWidth = 2;
-            ctx.setLineDash([4, 3]);
-            ctx.beginPath();
-            ctx.moveTo(cPx, cPy);
-            ctx.lineTo(mPx, mPy);
-            ctx.stroke();
-            ctx.setLineDash([]);
-            
-            // Draw corner marker
-            ctx.fillStyle = '#f44336';
-            ctx.beginPath();
-            ctx.arc(cPx, cPy, 5, 0, Math.PI * 2);
-            ctx.fill();
-            
-            // Label
-            ctx.font = 'bold 13px sans-serif';
-            ctx.textAlign = 'center';
-            var midX = (cPx + mPx) / 2;
-            var midY = (cPy + mPy) / 2;
-            var awayX = midX - tileCentPx;
-            var awayY = midY - tileCentPy;
-            var awayLen = Math.sqrt(awayX*awayX + awayY*awayY);
-            if (awayLen > 0.01) {
-                ctx.fillText(toFraction(distToUse), midX + (awayX/awayLen)*22, midY + (awayY/awayLen)*22);
-            }
-        } else if (cutLinePoints.length > 0) {
-            // Fallback: just draw the cut line(s)
+        // Draw cut line (red dashed)
+        if (cutLinePoints.length > 0) {
             ctx.strokeStyle = '#f44336';
             ctx.lineWidth = 3;
             ctx.setLineDash([8, 4]);
@@ -3075,81 +2939,88 @@ function drawDetailView() {
             }
             ctx.setLineDash([]);
         }
-        
+
+        // Draw measurement marks: line from corner to cut point along tile edge
+        for (var i = 0; i < cutMarks.length; i++) {
+            var mark = cutMarks[i];
+            // Use the nearer corner
+            var useC1 = mark.distFromCorner1 <= mark.distFromCorner2;
+            var corner = useC1 ? mark.corner1 : mark.corner2;
+            var dist = useC1 ? mark.distFromCorner1 : mark.distFromCorner2;
+
+            var cPx = cx + corner.x * drawScale;
+            var cPy = cy + corner.y * drawScale;
+            var mPx = cx + mark.point.x * drawScale;
+            var mPy = cy + mark.point.y * drawScale;
+
+            // Dashed line from corner to mark
+            ctx.strokeStyle = '#f44336';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([4, 3]);
+            ctx.beginPath();
+            ctx.moveTo(cPx, cPy);
+            ctx.lineTo(mPx, mPy);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // Corner dot
+            ctx.fillStyle = '#f44336';
+            ctx.beginPath();
+            ctx.arc(cPx, cPy, 4, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Cut point dot
+            ctx.beginPath();
+            ctx.arc(mPx, mPy, 4, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Label with distance, offset outward
+            var midX = (cPx + mPx) / 2;
+            var midY = (cPy + mPy) / 2;
+            var nx = -(mPy - cPy);
+            var ny = (mPx - cPx);
+            var nLen = Math.sqrt(nx * nx + ny * ny) || 1;
+            // Pick the side away from tile center
+            var testX = midX + (nx / nLen) * 5;
+            var testY = midY + (ny / nLen) * 5;
+            var testDist = Math.sqrt((testX - cx) * (testX - cx) + (testY - cy) * (testY - cy));
+            var testDistOther = Math.sqrt((midX - (nx / nLen) * 5 - cx) * (midX - (nx / nLen) * 5 - cx) + (midY - (ny / nLen) * 5 - cy) * (midY - (ny / nLen) * 5 - cy));
+            var sign = testDist > testDistOther ? 1 : -1;
+
+            ctx.fillStyle = '#f44336';
+            ctx.font = 'bold 13px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText(toFraction(dist), midX + sign * (nx / nLen) * 18, midY + sign * (ny / nLen) * 18);
+        }
+
     } else {
-        // Full tile OR cut tile where we couldn't calculate cut points properly
-        // Try to draw whatever shape we have
-        
+        // Full tile fallback
         var drawScale = Math.min(140 / tileW, 140 / tileH);
         var cx = size / 2;
         var cy = size / 2 + 50;
-        
-        // Check if we have any cut points at all
-        var voidPolysArray = tile.voidPolys || [];
-        var cutPoints = getCutPoints(tile.verts, tile.wall, voidPolysArray);
-        
-        if (cutPoints.length >= 3) {
-            // We have a cut shape - show it even if dimension calc failed
-            ctx.fillStyle = '#333';
-            ctx.font = 'bold 16px sans-serif';
-            ctx.fillText('Cut tile:', size / 2, 35);
-            
-            // Show the bounding box dimensions
-            var cpMinX = Infinity, cpMaxX = -Infinity;
-            var cpMinY = Infinity, cpMaxY = -Infinity;
-            for (var i = 0; i < cutPoints.length; i++) {
-                var px = (cutPoints[i][0] - tileCenterX) / scale;
-                var py = (cutPoints[i][1] - tileCenterY) / scale;
-                cpMinX = Math.min(cpMinX, px);
-                cpMaxX = Math.max(cpMaxX, px);
-                cpMinY = Math.min(cpMinY, py);
-                cpMaxY = Math.max(cpMaxY, py);
-            }
-            var cw = cpMaxX - cpMinX;
-            var ch = cpMaxY - cpMinY;
-            
-            ctx.fillStyle = '#4CAF50';
-            ctx.font = 'bold 32px sans-serif';
-            ctx.fillText(toFraction(cw) + ' × ' + toFraction(ch), size / 2, 75);
-            
-            // Draw the cut shape
-            ctx.fillStyle = '#FFEB3B';
-            ctx.strokeStyle = '#333';
-            ctx.lineWidth = 2;
-            ctx.beginPath();
-            for (var i = 0; i < cutPoints.length; i++) {
-                var px = cx + (cutPoints[i][0] - tileCenterX) / scale * drawScale;
-                var py = cy + (cutPoints[i][1] - tileCenterY) / scale * drawScale;
-                if (i === 0) ctx.moveTo(px, py);
-                else ctx.lineTo(px, py);
-            }
-            ctx.closePath();
-            ctx.fill();
-            ctx.stroke();
-        } else {
-            // Truly a full tile or couldn't determine shape
-            ctx.fillStyle = '#333';
-            ctx.font = 'bold 16px sans-serif';
-            ctx.fillText('Full tile:', size / 2, 35);
-            ctx.fillStyle = '#4CAF50';
-            ctx.font = 'bold 32px sans-serif';
-            ctx.fillText(toFraction(tileW) + ' × ' + toFraction(tileH), size / 2, 80);
-            
-            // Draw the full tile shape
-            ctx.fillStyle = '#FFEB3B';
-            ctx.strokeStyle = '#333';
-            ctx.lineWidth = 2;
-            ctx.beginPath();
-            for (var i = 0; i < tileVertsInches.length; i++) {
-                var px = cx + tileVertsInches[i][0] * drawScale;
-                var py = cy + tileVertsInches[i][1] * drawScale;
-                if (i === 0) ctx.moveTo(px, py);
-                else ctx.lineTo(px, py);
-            }
-            ctx.closePath();
-            ctx.fill();
-            ctx.stroke();
+
+        ctx.fillStyle = '#333';
+        ctx.font = 'bold 16px sans-serif';
+        ctx.fillText('Full tile', size / 2, 35);
+        ctx.fillStyle = '#4CAF50';
+        ctx.font = 'bold 32px sans-serif';
+        var atw = tile.tw / tile.scale;
+        var ath = tile.th / tile.scale;
+        ctx.fillText(toFraction(Math.min(atw, ath)) + ' × ' + toFraction(Math.max(atw, ath)), size / 2, 75);
+
+        ctx.fillStyle = '#FFEB3B';
+        ctx.strokeStyle = '#333';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        for (var i = 0; i < tileVertsInches.length; i++) {
+            var px = cx + tileVertsInches[i][0] * drawScale;
+            var py = cy + tileVertsInches[i][1] * drawScale;
+            if (i === 0) ctx.moveTo(px, py);
+            else ctx.lineTo(px, py);
         }
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
     }
     
     // Restore context (undo zoom/pan transform)
@@ -3163,7 +3034,10 @@ function drawDetailView() {
     ctx.textAlign = 'center';
     
     // Tile size reference
-    ctx.fillText('Tile size: ' + toFraction(tileW) + ' × ' + toFraction(tileH), size / 2, size - 25);
+    // Show actual tile dimensions (not bounding box which is wrong for rotated tiles)
+    var actualTileW = tile.tw / tile.scale;
+    var actualTileH = tile.th / tile.scale;
+    ctx.fillText('Tile size: ' + toFraction(Math.min(actualTileW, actualTileH)) + ' × ' + toFraction(Math.max(actualTileW, actualTileH)), size / 2, size - 25);
 }
 
 // Helper: draw arrow head
@@ -3963,12 +3837,16 @@ function draw() {
                     for (var wi = 0; wi < wall.length; wi++) {
                         wallCopy.push([wall[wi][0], wall[wi][1]]);
                     }
-                    cutTilesData.push({ 
-                        key: key, 
-                        x: x, 
-                        y: y, 
-                        tw: tw, 
-                        th: th, 
+                    cutTilesData.push({
+                        key: key,
+                        x: x,
+                        y: y,
+                        tw: tw,
+                        th: th,
+                        col: col,
+                        row: row,
+                        shape: C.tile.sh,
+                        orient: C.tile.or,
                         dims: cutDims,
                         verts: vertsCopy, // Deep copy of tile vertices
                         wall: wallCopy, // Deep copy of wall polygon
