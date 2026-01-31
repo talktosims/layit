@@ -215,10 +215,15 @@
                 <div style="font-size:12px;color:#888;">Segments measured</div>
                 <div style="font-size:20px;font-weight:bold;color:#fff;" id="measuredCount">0 / 0</div>
             </div>
-            
-            <button class="btn-primary" onclick="applyPerimeter()" id="applyPerimBtn" disabled style="margin-top:15px;padding:15px;font-size:16px;width:100%;">
-                ✓ Apply Dimensions
-            </button>
+
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:15px;">
+                <button class="btn-secondary" onclick="undoLastMeasurement()" id="undoMeasureBtn" disabled style="font-size:14px;padding:12px;">
+                    ↩ Undo Last
+                </button>
+                <button class="btn-primary" onclick="applyPerimeter()" id="applyPerimBtn" disabled style="font-size:14px;padding:12px;">
+                    ✓ Apply Dimensions
+                </button>
+            </div>
         </div>
         
         <!-- Quick Rectangle Mode (for simple shapes) -->
@@ -1436,6 +1441,7 @@ function clearPerimeter() {
     perimeterState.closed = false;
     perimeterState.segments = [];
     perimeterState.selectedSegment = null;
+    perimeterState.measurementHistory = [];
     
     document.getElementById('segmentMeasurements').style.display = 'none';
     document.getElementById('perimeterHint').style.display = 'block';
@@ -1603,6 +1609,7 @@ function updateSegmentsList() {
         
         if (measured) {
             html += '<div style="font-size:18px;font-weight:bold;color:#4CAF50;">' + seg.length + '"</div>';
+            html += '<button onclick="event.stopPropagation();undoMeasurement(' + i + ')" style="background:#333;color:#aaa;border:none;border-radius:4px;padding:4px 8px;font-size:11px;cursor:pointer;">✏️</button>';
         } else {
             html += '<input type="number" id="segInput' + i + '" placeholder="inches" style="width:70px;padding:8px;font-size:14px;" onclick="event.stopPropagation()" onchange="setSegmentLength(' + i + ', this.value)">';
         }
@@ -1616,6 +1623,8 @@ function updateSegmentsList() {
     var measured = perimeterState.segments.filter(function(s) { return s.measured; }).length;
     document.getElementById('measuredCount').textContent = measured + ' / ' + perimeterState.segments.length;
     document.getElementById('applyPerimBtn').disabled = measured < perimeterState.segments.length;
+    var undoMeasureBtn = document.getElementById('undoMeasureBtn');
+    if (undoMeasureBtn) undoMeasureBtn.disabled = measured === 0;
 }
 
 // Get direction label for a segment
@@ -1677,6 +1686,30 @@ function pointToSegmentDistance(px, py, p1, p2) {
     return Math.sqrt((px - projX) ** 2 + (py - projY) ** 2);
 }
 
+// Undo a specific segment measurement
+function undoMeasurement(index) {
+    perimeterState.segments[index].length = null;
+    perimeterState.segments[index].measured = false;
+    perimeterState.selectedSegment = index;
+    perimeterState.measurementHistory = (perimeterState.measurementHistory || []).filter(function(i) { return i !== index; });
+    updateSegmentsList();
+    updatePerimeterUI();
+    drawPerimeter();
+    // Focus the input
+    setTimeout(function() {
+        var input = document.getElementById('segInput' + index);
+        if (input) input.focus();
+    }, 100);
+}
+
+// Undo the last entered measurement
+function undoLastMeasurement() {
+    var history = perimeterState.measurementHistory || [];
+    if (history.length === 0) return;
+    var lastIndex = history.pop();
+    undoMeasurement(lastIndex);
+}
+
 // Set segment length
 function setSegmentLength(index, value) {
     var length = parseFloat(value);
@@ -1687,6 +1720,8 @@ function setSegmentLength(index, value) {
     
     perimeterState.segments[index].length = length;
     perimeterState.segments[index].measured = true;
+    if (!perimeterState.measurementHistory) perimeterState.measurementHistory = [];
+    perimeterState.measurementHistory.push(index);
     
     // Move to next unmeasured segment
     var nextUnmeasured = perimeterState.segments.findIndex(function(s, i) {
@@ -2786,32 +2821,52 @@ function drawDetailView() {
         // Draw visualization
         var drawScale = Math.min(140 / tileW, 140 / tileH);
         var cx = size / 2;
-        var cy = size / 2 + 50;
-        
-        // Header - simple "Cut tile"
+        var cy = size / 2 + 55;
+
+        // Header
         ctx.fillStyle = '#333';
         ctx.font = 'bold 16px sans-serif';
         ctx.textAlign = 'center';
-        
+        ctx.fillText('Mark and cut:', size / 2, 35);
+
+        // Show mark measurements from corners
+        ctx.fillStyle = '#4CAF50';
+        ctx.font = 'bold 28px sans-serif';
         if (cutMarks.length >= 2) {
-            ctx.fillText('Mark and cut:', size / 2, 35);
-            
-            // Show the two key measurements
-            ctx.fillStyle = '#4CAF50';
-            ctx.font = 'bold 32px sans-serif';
-            ctx.fillText(toFraction(cutMarks[0].distFromCorner1) + ' × ' + toFraction(cutMarks[1].distFromCorner1), size / 2, 75);
+            ctx.fillText(toFraction(cutMarks[0].distFromCorner1) + '  &  ' + toFraction(cutMarks[1].distFromCorner1), size / 2, 70);
         } else if (cutMarks.length === 1) {
-            ctx.fillText('Mark and cut:', size / 2, 35);
-            ctx.fillStyle = '#4CAF50';
-            ctx.font = 'bold 32px sans-serif';
-            ctx.fillText(toFraction(cutMarks[0].distFromCorner1), size / 2, 75);
+            ctx.fillText(toFraction(cutMarks[0].distFromCorner1), size / 2, 70);
         } else {
-            ctx.fillText('Cut tile:', size / 2, 35);
-            ctx.fillStyle = '#4CAF50';
-            ctx.font = 'bold 32px sans-serif';
-            ctx.fillText(toFraction(pieceW) + ' × ' + toFraction(pieceH), size / 2, 75);
+            ctx.fillText(toFraction(pieceW) + ' \u00d7 ' + toFraction(pieceH), size / 2, 70);
         }
-        
+
+        // Also show the cut line length
+        if (cutLinePoints.length > 0) {
+            var totalCutLen = 0;
+            for (var i = 0; i < cutLinePoints.length; i++) {
+                var cl = cutLinePoints[i];
+                totalCutLen += Math.sqrt(Math.pow(cl.p2.x - cl.p1.x, 2) + Math.pow(cl.p2.y - cl.p1.y, 2));
+            }
+            ctx.fillStyle = '#f44336';
+            ctx.font = 'bold 14px sans-serif';
+            ctx.fillText('Cut length: ' + toFraction(totalCutLen), size / 2, 92);
+        }
+
+        // Ghost outline of full tile (faint reference)
+        ctx.strokeStyle = '#ddd';
+        ctx.lineWidth = 1;
+        ctx.setLineDash([4, 4]);
+        ctx.beginPath();
+        for (var i = 0; i < tileVertsInches.length; i++) {
+            var px = cx + tileVertsInches[i][0] * drawScale;
+            var py = cy + tileVertsInches[i][1] * drawScale;
+            if (i === 0) ctx.moveTo(px, py);
+            else ctx.lineTo(px, py);
+        }
+        ctx.closePath();
+        ctx.stroke();
+        ctx.setLineDash([]);
+
         // Draw the remaining tile shape (solid yellow)
         ctx.fillStyle = '#FFEB3B';
         ctx.strokeStyle = '#333';
@@ -3155,96 +3210,125 @@ function roundRect(ctx, x, y, w, h, r) {
 
 // Get ordered cut polygon points
 function getCutPoints(verts, wall, voidPolys) {
+    // Edge-walking algorithm: walk tile edges in order, keeping inside points
+    // and inserting intersection points where edges cross wall/void boundaries.
+    // This preserves correct winding order and avoids bowtie artifacts.
+
     var points = [];
-    
-    // Add tile vertices that are inside wall and not in void
-    for (var i = 0; i < verts.length; i++) {
-        if (inPoly(verts[i], wall)) {
-            var inVoid = false;
-            for (var vi = 0; vi < voidPolys.length; vi++) {
-                if (inPoly(verts[i], voidPolys[vi])) {
-                    inVoid = true;
-                    break;
-                }
-            }
-            if (!inVoid) {
-                points.push(verts[i].slice());
-            }
+
+    function isInsideValid(pt) {
+        if (!inPoly(pt, wall)) return false;
+        for (var vi = 0; vi < voidPolys.length; vi++) {
+            if (inPoly(pt, voidPolys[vi])) return false;
         }
+        return true;
     }
-    
-    // Add wall intersection points
+
+    function isDuplicate(pt) {
+        for (var k = 0; k < points.length; k++) {
+            var dx = pt[0] - points[k][0], dy = pt[1] - points[k][1];
+            if (dx * dx + dy * dy < 1) return true;
+        }
+        return false;
+    }
+
+    function distSq(a, b) {
+        return (a[0]-b[0])*(a[0]-b[0]) + (a[1]-b[1])*(a[1]-b[1]);
+    }
+
+    // Walk each tile edge in order
     for (var i = 0; i < verts.length; i++) {
         var v1 = verts[i];
         var v2 = verts[(i + 1) % verts.length];
+        var v1Inside = isInsideValid(v1);
+
+        // If start vertex is inside, add it
+        if (v1Inside && !isDuplicate(v1)) {
+            points.push(v1.slice());
+        }
+
+        // Find all intersections along this edge (with wall and voids), sorted by distance from v1
+        var edgeIntersections = [];
+
+        // Wall intersections
         for (var j = 0; j < wall.length; j++) {
             var w1 = wall[j];
             var w2 = wall[(j + 1) % wall.length];
             var inter = lineIntersect(v1, v2, w1, w2);
             if (inter) {
-                var inVoid = false;
-                for (var vi = 0; vi < voidPolys.length; vi++) {
-                    if (inPoly(inter, voidPolys[vi])) {
-                        inVoid = true;
-                        break;
-                    }
-                }
-                if (!inVoid) {
-                    points.push(inter);
-                }
+                edgeIntersections.push(inter);
             }
         }
-    }
-    
-    // Add void intersection points
-    for (var vi = 0; vi < voidPolys.length; vi++) {
-        var voidPoly = voidPolys[vi];
-        for (var i = 0; i < verts.length; i++) {
-            var v1 = verts[i];
-            var v2 = verts[(i + 1) % verts.length];
+
+        // Void intersections
+        for (var vi = 0; vi < voidPolys.length; vi++) {
+            var voidPoly = voidPolys[vi];
             for (var j = 0; j < voidPoly.length; j++) {
                 var w1 = voidPoly[j];
                 var w2 = voidPoly[(j + 1) % voidPoly.length];
                 var inter = lineIntersect(v1, v2, w1, w2);
                 if (inter && inPoly(inter, wall)) {
-                    points.push(inter);
+                    edgeIntersections.push(inter);
                 }
             }
         }
-        // Add void corners that are inside the tile
-        for (var j = 0; j < voidPoly.length; j++) {
-            if (isPointInPolygon(voidPoly[j], verts) && inPoly(voidPoly[j], wall)) {
-                points.push(voidPoly[j].slice());
+
+        // Sort intersections by distance from v1
+        edgeIntersections.sort(function(a, b) {
+            return distSq(a, v1) - distSq(b, v1);
+        });
+
+        // Add intersections (these are boundary crossings)
+        for (var k = 0; k < edgeIntersections.length; k++) {
+            if (!isDuplicate(edgeIntersections[k])) {
+                points.push(edgeIntersections[k]);
             }
         }
     }
-    
-    if (points.length < 3) return points;
-    
-    // Order points by angle from centroid (convex hull approach)
-    var cx = 0, cy = 0;
-    for (var i = 0; i < points.length; i++) {
-        cx += points[i][0];
-        cy += points[i][1];
-    }
-    cx /= points.length;
-    cy /= points.length;
-    
-    points.sort(function(a, b) {
-        return Math.atan2(a[1] - cy, a[0] - cx) - Math.atan2(b[1] - cy, b[0] - cx);
-    });
-    
-    // Remove duplicates
-    var cleaned = [points[0]];
-    for (var i = 1; i < points.length; i++) {
-        var last = cleaned[cleaned.length - 1];
-        var dist = Math.sqrt(Math.pow(points[i][0] - last[0], 2) + Math.pow(points[i][1] - last[1], 2));
-        if (dist > 1) {
-            cleaned.push(points[i]);
+
+    // Add void corners that are inside the tile and wall
+    for (var vi = 0; vi < voidPolys.length; vi++) {
+        var voidPoly = voidPolys[vi];
+        for (var j = 0; j < voidPoly.length; j++) {
+            if (isPointInPolygon(voidPoly[j], verts) && inPoly(voidPoly[j], wall)) {
+                if (!isDuplicate(voidPoly[j])) {
+                    points.push(voidPoly[j].slice());
+                }
+            }
         }
     }
-    
-    return cleaned;
+
+    if (points.length < 3) return points;
+
+    // For shapes with void corners added at the end, re-sort only if needed
+    // Check if the polygon self-intersects and fall back to angular sort if so
+    var hasVoidCorners = false;
+    for (var vi = 0; vi < voidPolys.length; vi++) {
+        var voidPoly = voidPolys[vi];
+        for (var j = 0; j < voidPoly.length; j++) {
+            if (isPointInPolygon(voidPoly[j], verts) && inPoly(voidPoly[j], wall)) {
+                hasVoidCorners = true;
+                break;
+            }
+        }
+        if (hasVoidCorners) break;
+    }
+
+    if (hasVoidCorners) {
+        // With void corners, edge-walking order may not be perfect, use angular sort
+        var cx = 0, cy = 0;
+        for (var i = 0; i < points.length; i++) {
+            cx += points[i][0];
+            cy += points[i][1];
+        }
+        cx /= points.length;
+        cy /= points.length;
+        points.sort(function(a, b) {
+            return Math.atan2(a[1] - cy, a[0] - cx) - Math.atan2(b[1] - cy, b[0] - cx);
+        });
+    }
+
+    return points;
 }
 
 // Check if point is inside a polygon (for void corners in tile)
