@@ -2880,8 +2880,8 @@ function drawDetailView() {
         ctx.textAlign = 'center';
         ctx.fillText('Mark and cut:', size / 2, 35);
 
-        // Show measurements: distance from kept corner to cut point
-        ctx.fillStyle = '#4CAF50';
+        // Show measurements: distance from kept corner to cut point (blue)
+        ctx.fillStyle = '#2196F3';
         ctx.font = 'bold 26px sans-serif';
         if (cutMarks.length >= 2) {
             ctx.fillText('Mark at ' + toFraction(cutMarks[0].keptDist) + '" & ' + toFraction(cutMarks[1].keptDist) + '"', size / 2, 68);
@@ -2945,10 +2945,10 @@ function drawDetailView() {
             ctx.setLineDash([]);
         }
 
-        // Draw measurement marks: line from kept corner to cut point along tile edge
+        // Draw measurement marks: solid blue line with brackets from kept corner to cut point
+        var measureBlue = '#2196F3';
         for (var i = 0; i < cutMarks.length; i++) {
             var mark = cutMarks[i];
-            // Use the corner that's on the kept piece
             var corner = mark.keptCorner || (mark.distFromCorner1 <= mark.distFromCorner2 ? mark.corner1 : mark.corner2);
             var dist = mark.keptDist;
 
@@ -2957,44 +2957,52 @@ function drawDetailView() {
             var mPx = cx + mark.point.x * drawScale;
             var mPy = cy + mark.point.y * drawScale;
 
-            // Dashed line from corner to mark
-            ctx.strokeStyle = '#f44336';
-            ctx.lineWidth = 2;
-            ctx.setLineDash([4, 3]);
+            // Solid blue measurement line along tile edge
+            ctx.strokeStyle = measureBlue;
+            ctx.lineWidth = 2.5;
+            ctx.setLineDash([]);
             ctx.beginPath();
             ctx.moveTo(cPx, cPy);
             ctx.lineTo(mPx, mPy);
             ctx.stroke();
-            ctx.setLineDash([]);
 
-            // Corner dot
-            ctx.fillStyle = '#f44336';
+            // Bracket end caps perpendicular to edge
+            var edgeDx = mPx - cPx;
+            var edgeDy = mPy - cPy;
+            var edgeL = Math.sqrt(edgeDx * edgeDx + edgeDy * edgeDy) || 1;
+            var perpX = -edgeDy / edgeL;
+            var perpY = edgeDx / edgeL;
+            var bracketLen = 6;
+
+            ctx.lineWidth = 2;
             ctx.beginPath();
-            ctx.arc(cPx, cPy, 4, 0, Math.PI * 2);
+            ctx.moveTo(cPx + perpX * bracketLen, cPy + perpY * bracketLen);
+            ctx.lineTo(cPx - perpX * bracketLen, cPy - perpY * bracketLen);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(mPx + perpX * bracketLen, mPy + perpY * bracketLen);
+            ctx.lineTo(mPx - perpX * bracketLen, mPy - perpY * bracketLen);
+            ctx.stroke();
+
+            // Small blue dot at corner
+            ctx.fillStyle = measureBlue;
+            ctx.beginPath();
+            ctx.arc(cPx, cPy, 3, 0, Math.PI * 2);
             ctx.fill();
 
-            // Cut point dot
-            ctx.beginPath();
-            ctx.arc(mPx, mPy, 4, 0, Math.PI * 2);
-            ctx.fill();
-
-            // Label with distance, offset outward
+            // Label with distance (blue), offset outward from tile center
             var midX = (cPx + mPx) / 2;
             var midY = (cPy + mPy) / 2;
-            var nx = -(mPy - cPy);
-            var ny = (mPx - cPx);
-            var nLen = Math.sqrt(nx * nx + ny * ny) || 1;
-            // Pick the side away from tile center
-            var testX = midX + (nx / nLen) * 5;
-            var testY = midY + (ny / nLen) * 5;
-            var testDist = Math.sqrt((testX - cx) * (testX - cx) + (testY - cy) * (testY - cy));
-            var testDistOther = Math.sqrt((midX - (nx / nLen) * 5 - cx) * (midX - (nx / nLen) * 5 - cx) + (midY - (ny / nLen) * 5 - cy) * (midY - (ny / nLen) * 5 - cy));
+            var nx = -edgeDy / edgeL;
+            var ny = edgeDx / edgeL;
+            var testDist = Math.sqrt((midX + nx * 5 - cx) * (midX + nx * 5 - cx) + (midY + ny * 5 - cy) * (midY + ny * 5 - cy));
+            var testDistOther = Math.sqrt((midX - nx * 5 - cx) * (midX - nx * 5 - cx) + (midY - ny * 5 - cy) * (midY - ny * 5 - cy));
             var sign = testDist > testDistOther ? 1 : -1;
 
-            ctx.fillStyle = '#f44336';
+            ctx.fillStyle = measureBlue;
             ctx.font = 'bold 13px sans-serif';
             ctx.textAlign = 'center';
-            ctx.fillText(toFraction(dist), midX + sign * (nx / nLen) * 18, midY + sign * (ny / nLen) * 18);
+            ctx.fillText(toFraction(dist), midX + sign * nx * 18, midY + sign * ny * 18);
         }
 
     } else {
