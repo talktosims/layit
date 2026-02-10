@@ -3984,6 +3984,33 @@ function saveCustomPreset() {
 }
 
 function updateTile() {
+    // Warn if there's cut progress that will be lost
+    var cutCount = countCutProgress();
+    if (cutCount > 0) {
+        // Check if tile settings actually changed
+        var newSh = document.getElementById('tileShape').value;
+        var newW = parseFloat(document.getElementById('tileW').value) || 0;
+        var newH = parseFloat(document.getElementById('tileH').value) || 0;
+        var newGr = parseFloat(document.getElementById('grout').value);
+        var nom = document.getElementById('nominalMode').checked;
+        var actW = nom ? newW - newGr : newW;
+        var actH = nom ? newH - newGr : newH;
+        var changed = newSh !== C.tile.sh || Math.abs(actW - C.tile.w) > 0.001 || Math.abs(actH - C.tile.h) > 0.001;
+        if (changed) {
+            if (!confirm('You have ' + cutCount + ' tile(s) marked as cut/in-progress.\n\nChanging tile settings will reset all cut progress.\n\nSave your project first, or continue?')) {
+                // Restore the dropdowns/inputs to current values
+                document.getElementById('tileShape').value = C.tile.sh;
+                document.getElementById('tileW').value = C.tile.w;
+                document.getElementById('tileH').value = C.tile.h;
+                onShape();
+                return;
+            }
+            // User confirmed — clear cut progress
+            cutTileStates = {};
+            showToast('Cut progress reset');
+        }
+    }
+
     C.tile.sh = document.getElementById('tileShape').value;
     C.tile.or = document.getElementById('tileOrient').value;
     C.tile.pattern = parseFloat(document.getElementById('tilePattern').value) || 0;
