@@ -6,10 +6,12 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="LayIt">
-    <meta name="theme-color" content="#1a1a2e">
+    <meta name="theme-color" content="#1a3c40">
     <meta name="description" content="LayIt - Tile layout planner with laser projection export for DIY tile installation">
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="icon-192.png">
     <title>LayIt</title>
-    
+
     <!-- Favicon for browser tab -->
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%231a1a2e'/><polygon points='50,15 70,27 70,52 50,65 30,52 30,27' fill='%234CAF50'/><polygon points='30,52 30,77 50,90 50,65' fill='%23FF9800'/><polygon points='70,52 70,77 50,90 50,65' fill='%23FF9800'/></svg>">
     
@@ -128,8 +130,7 @@
 
     <div id="diagram" class="panel active">
         <div class="info-bar">
-            <span class="full">● Full: <b id="fullCount">0</b></span> &nbsp; 
-            <span class="partial">● Cut: <b id="partialCount">0</b></span> &nbsp;
+            <span class="full">● Full: <b id="fullCount">0</b></span> &nbsp;
             <span style="color:#ff4444">● Done: <b id="cutDoneCount">0</b></span>
         </div>
         <div style="font-size:10px;color:#888;text-align:center;margin-bottom:10px;">Tap cut tile to cycle: Orange → Yellow (selected) → Red (cut) → Orange</div>
@@ -242,6 +243,7 @@
 
     <div id="tile" class="panel">
         <div class="section"><h3>Tile Settings</h3>
+            <div class="field"><label>Preset</label><select id="tilePreset" onchange="applyPreset()"><option value="custom">Custom (enter below)</option></select></div>
             <div class="row">
                 <div class="field"><label>Shape</label><select id="tileShape" onchange="onShape()"><option value="hexagon">Hexagon</option><option value="square">Square</option><option value="rectangle">Rectangle</option><option value="herringbone" selected>Herringbone</option></select></div>
                 <div class="field" id="orientDiv"><label>Orientation</label><select id="tileOrient"><option value="pointy">45° Right</option><option value="flat">45° Left</option></select></div>
@@ -254,12 +256,22 @@
                     <option value="0.667">2/3 Brick (67%)</option>
                 </select></div>
             </div>
-            <div class="row">
-                <div class="field"><label>Width (in)</label><input type="number" id="tileW" value="2"></div>
-                <div class="field"><label>Height (in)</label><input type="number" id="tileH" value="4"></div>
+            <div class="field" style="margin-bottom:6px;">
+                <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:11px;">
+                    <input type="checkbox" id="nominalMode" onchange="onNominalToggle()" style="margin:0;">
+                    <span>Nominal size (box label) — auto-subtract grout</span>
+                </label>
             </div>
-            <div class="field"><label>Grout</label><select id="grout"><option value="0.0625">1/16"</option><option value="0.125" selected>1/8"</option><option value="0.25">1/4"</option></select></div>
+            <div class="row">
+                <div class="field"><label id="tileWLabel">Actual Width (in)</label><input type="number" id="tileW" value="2" step="any"></div>
+                <div class="field"><label id="tileHLabel">Actual Height (in)</label><input type="number" id="tileH" value="4" step="any"></div>
+            </div>
+            <div id="nominalHint" style="display:none;font-size:10px;color:#4CAF50;margin:-4px 0 6px 2px;">✓ Actual size will be calculated: nominal − grout joint</div>
+            <div id="actualReadout" style="display:none;font-size:11px;color:#2196F3;background:#f0f7ff;padding:6px 8px;border-radius:4px;margin-bottom:8px;"></div>
+            <div class="field"><label>Grout</label><select id="grout" onchange="onNominalToggle()"><option value="0.0625">1/16"</option><option value="0.125" selected>1/8"</option><option value="0.25">1/4"</option></select></div>
             <button class="btn-primary" onclick="updateTile()">🔄 Update</button>
+            <button class="btn-secondary" onclick="saveCustomPreset()" style="margin-top:4px;width:100%;font-size:11px;">💾 Save as Preset</button>
+            <p style="font-size:10px;color:#999;margin-top:6px;">💡 Measure the tile face, not the box label. Or check "Nominal" to enter the box size and let the app calculate actual.</p>
         </div>
     </div>
 
@@ -2602,27 +2614,177 @@ function drawDetailView() {
         }
     }
     
+    // Check if tile is fully inside wall (only void cuts, no wall cuts)
+    var allVertsInWall = true;
+    for (var i = 0; i < tile.verts.length; i++) {
+        if (!inPoly(tile.verts[i], tile.wall)) { allVertsInWall = false; break; }
+    }
+
+    // Collect ALL void overlaps with this tile
+    var voidOverlaps = [];
+    if (tile.voidPolys && tile.voidPolys.length > 0) {
+        for (var vi = 0; vi < tile.voidPolys.length; vi++) {
+            var voidPoly = tile.voidPolys[vi];
+            var vMinX = Infinity, vMaxX = -Infinity, vMinY = Infinity, vMaxY = -Infinity;
+            for (var i = 0; i < voidPoly.length; i++) {
+                var vx = (voidPoly[i][0] - tileCenterX) / scale;
+                var vy = (voidPoly[i][1] - tileCenterY) / scale;
+                vMinX = Math.min(vMinX, vx); vMaxX = Math.max(vMaxX, vx);
+                vMinY = Math.min(vMinY, vy); vMaxY = Math.max(vMaxY, vy);
+            }
+            // Intersection of void bounds with tile bounds
+            var oL = Math.max(vMinX, tileMinX), oR = Math.min(vMaxX, tileMaxX);
+            var oT = Math.max(vMinY, tileMinY), oB = Math.min(vMaxY, tileMaxY);
+            if (oR - oL > 0.1 && oB - oT > 0.1) {
+                // Determine corner position
+                var corner = '';
+                if (oL <= tileMinX + 0.1 && oT <= tileMinY + 0.1) corner = 'top-left';
+                else if (oR >= tileMaxX - 0.1 && oT <= tileMinY + 0.1) corner = 'top-right';
+                else if (oL <= tileMinX + 0.1 && oB >= tileMaxY - 0.1) corner = 'bottom-left';
+                else if (oR >= tileMaxX - 0.1 && oB >= tileMaxY - 0.1) corner = 'bottom-right';
+                else corner = 'interior';
+                voidOverlaps.push({ l: oL, r: oR, t: oT, b: oB, w: oR - oL, h: oB - oT, corner: corner });
+            }
+        }
+    }
+
     // Now draw the detail view
     ctx.fillStyle = '#333';
     ctx.font = 'bold 16px sans-serif';
     ctx.textAlign = 'center';
-    
+
     // Different display based on cut type
-    if (voidNotch) {
-        // VOID NOTCH CUT
+    var isVoidOnlyCut = allVertsInWall && voidOverlaps.length > 0;
+    var isSimpleVoidNotch = voidNotch && voidNotch.corner !== 'interior';
+    if (isVoidOnlyCut) {
+        // VOID-ONLY CUT — full tile with void overlaps shaded
+        // Header text
+        if (voidOverlaps.length === 1 && voidOverlaps[0].corner !== 'interior') {
+            ctx.fillText('Cut notch from ' + voidOverlaps[0].corner + ':', size / 2, 35);
+            ctx.fillStyle = '#4CAF50';
+            ctx.font = 'bold 32px sans-serif';
+            ctx.fillText(toFraction(voidOverlaps[0].w) + ' × ' + toFraction(voidOverlaps[0].h), size / 2, 80);
+        } else {
+            ctx.fillText('Mark and cut:', size / 2, 35);
+            ctx.fillStyle = '#4CAF50';
+            ctx.font = 'bold 20px sans-serif';
+            var notchStrs = [];
+            for (var i = 0; i < voidOverlaps.length; i++) {
+                notchStrs.push(toFraction(voidOverlaps[i].w) + ' × ' + toFraction(voidOverlaps[i].h) + ' (' + voidOverlaps[i].corner + ')');
+            }
+            var headerY2 = 70;
+            for (var i = 0; i < notchStrs.length; i++) {
+                ctx.fillText(notchStrs[i], size / 2, headerY2);
+                headerY2 += 24;
+            }
+        }
+
+        var drawScale = Math.min(150 / tileW, 150 / tileH);
+        var cx2 = size / 2;
+        var cy2 = size / 2 + 40;
+
+        // Full tile as solid yellow
+        ctx.fillStyle = '#FFEB3B';
+        ctx.strokeStyle = '#333';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        for (var i = 0; i < tileVertsInches.length; i++) {
+            var px = cx2 + tileVertsInches[i][0] * drawScale;
+            var py = cy2 + tileVertsInches[i][1] * drawScale;
+            if (i === 0) ctx.moveTo(px, py);
+            else ctx.lineTo(px, py);
+        }
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+
+        // Shade each void overlap and draw cut lines
+        for (var oi = 0; oi < voidOverlaps.length; oi++) {
+            var vo = voidOverlaps[oi];
+            var nl = cx2 + vo.l * drawScale;
+            var nr = cx2 + vo.r * drawScale;
+            var nt = cy2 + vo.t * drawScale;
+            var nb = cy2 + vo.b * drawScale;
+
+            // Gray offcut overlay
+            ctx.fillStyle = 'rgba(0,0,0,0.15)';
+            ctx.fillRect(nl, nt, nr - nl, nb - nt);
+
+            // Red dashed cut lines (interior L-shape edges only)
+            ctx.strokeStyle = '#f44336';
+            ctx.lineWidth = 3;
+            ctx.setLineDash([8, 4]);
+            ctx.beginPath();
+            if (vo.corner === 'top-left') {
+                ctx.moveTo(nl, nb); ctx.lineTo(nr, nb); ctx.lineTo(nr, nt);
+            } else if (vo.corner === 'top-right') {
+                ctx.moveTo(nr, nb); ctx.lineTo(nl, nb); ctx.lineTo(nl, nt);
+            } else if (vo.corner === 'bottom-left') {
+                ctx.moveTo(nl, nt); ctx.lineTo(nr, nt); ctx.lineTo(nr, nb);
+            } else if (vo.corner === 'bottom-right') {
+                ctx.moveTo(nr, nt); ctx.lineTo(nl, nt); ctx.lineTo(nl, nb);
+            } else {
+                // Interior void - draw full rectangle
+                ctx.rect(nl, nt, nr - nl, nb - nt);
+            }
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // Dimension labels on cut lines
+            ctx.fillStyle = '#f44336';
+            ctx.font = 'bold 13px sans-serif';
+            ctx.textAlign = 'center';
+            var labelOffset = 18;
+            // Width label
+            ctx.fillText(toFraction(vo.w), (nl + nr) / 2, vo.corner.indexOf('bottom') >= 0 ? nt - labelOffset + 5 : nb + labelOffset);
+            // Height label
+            ctx.save();
+            var hLabelX = vo.corner.indexOf('left') >= 0 ? nr + labelOffset : nl - labelOffset;
+            ctx.translate(hLabelX, (nt + nb) / 2);
+            ctx.rotate(-Math.PI / 2);
+            ctx.fillText(toFraction(vo.h), 0, 0);
+            ctx.restore();
+
+            // Position labels (distance from tile edges to void)
+            ctx.fillStyle = '#2E7D32';
+            ctx.font = 'bold 11px sans-serif';
+            ctx.textAlign = 'center';
+            var distFromLeft = vo.l - tileMinX;
+            var distFromRight = tileMaxX - vo.r;
+            var distFromTop = vo.t - tileMinY;
+            var distFromBottom = tileMaxY - vo.b;
+            if (distFromLeft > 0.1 && vo.corner.indexOf('left') < 0) {
+                ctx.fillText(toFraction(distFromLeft) + '" from left', size / 2, cy2 + tileMaxY * drawScale + 30);
+            }
+            if (distFromRight > 0.1 && vo.corner.indexOf('right') < 0) {
+                ctx.fillText(toFraction(distFromRight) + '" from right', size / 2, cy2 + tileMaxY * drawScale + 44);
+            }
+            if (distFromBottom > 0.1 && vo.corner.indexOf('bottom') < 0) {
+                ctx.fillText(toFraction(distFromBottom) + '" from bottom', size / 2, cy2 + tileMaxY * drawScale + 58);
+            }
+        }
+
+        // Tile size label
+        ctx.fillStyle = '#999';
+        ctx.font = '12px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('Tile size: ' + toFraction(tileW) + ' × ' + toFraction(tileH), size / 2, cy2 + tileMaxY * drawScale + 75);
+
+    } else if (isSimpleVoidNotch) {
+        // SIMPLE VOID NOTCH CUT — clean L-shape display
         ctx.fillText('Cut notch from ' + voidNotch.corner + ':', size / 2, 35);
-        
+
         // Big notch dimensions
         ctx.fillStyle = '#4CAF50';
         ctx.font = 'bold 32px sans-serif';
         ctx.fillText(toFraction(voidNotch.w) + ' × ' + toFraction(voidNotch.h), size / 2, 80);
-        
+
         // Draw tile with notch visualization
         var drawScale = Math.min(150 / tileW, 150 / tileH);
         var cx = size / 2;
         var cy = size / 2 + 40;
-        
-        // Full tile outline (SOLID)
+
+        // Full tile outline (SOLID yellow)
         ctx.strokeStyle = '#333';
         ctx.fillStyle = '#FFEB3B';
         ctx.lineWidth = 2;
@@ -2636,100 +2798,68 @@ function drawDetailView() {
         ctx.closePath();
         ctx.fill();
         ctx.stroke();
-        
-        // Notch rectangle position
+
+        // Notch rectangle — draw as gray offcut area
         var nl, nr, nt, nb;
         if (voidNotch.corner === 'top-left') {
-            nl = cx + tileMinX * drawScale;
-            nt = cy + tileMinY * drawScale;
+            nl = cx + tileMinX * drawScale; nt = cy + tileMinY * drawScale;
         } else if (voidNotch.corner === 'top-right') {
-            nl = cx + (tileMaxX - voidNotch.w) * drawScale;
-            nt = cy + tileMinY * drawScale;
+            nl = cx + (tileMaxX - voidNotch.w) * drawScale; nt = cy + tileMinY * drawScale;
         } else if (voidNotch.corner === 'bottom-left') {
-            nl = cx + tileMinX * drawScale;
-            nt = cy + (tileMaxY - voidNotch.h) * drawScale;
+            nl = cx + tileMinX * drawScale; nt = cy + (tileMaxY - voidNotch.h) * drawScale;
         } else {
-            nl = cx + (tileMaxX - voidNotch.w) * drawScale;
-            nt = cy + (tileMaxY - voidNotch.h) * drawScale;
+            nl = cx + (tileMaxX - voidNotch.w) * drawScale; nt = cy + (tileMaxY - voidNotch.h) * drawScale;
         }
         nr = nl + voidNotch.w * drawScale;
         nb = nt + voidNotch.h * drawScale;
-        
-        // Draw RED DASHED cut lines (just the two interior lines of the notch)
+
+        // Gray offcut overlay on notch area
+        ctx.fillStyle = 'rgba(0,0,0,0.15)';
+        ctx.fillRect(nl, nt, nr - nl, nb - nt);
+
+        // Red dashed cut lines (interior L-shape edges only)
         ctx.strokeStyle = '#f44336';
         ctx.lineWidth = 3;
         ctx.setLineDash([8, 4]);
-        
-        // Draw only the two cut lines (not the edges that are on tile border)
         ctx.beginPath();
         if (voidNotch.corner === 'top-left') {
-            // Cut lines go right then down from corner
-            ctx.moveTo(nl, nb); // Left edge, bottom of notch
-            ctx.lineTo(nr, nb); // Horizontal cut
-            ctx.lineTo(nr, nt); // Vertical cut
+            ctx.moveTo(nl, nb); ctx.lineTo(nr, nb); ctx.lineTo(nr, nt);
         } else if (voidNotch.corner === 'top-right') {
-            // Cut lines go left then down
-            ctx.moveTo(nr, nb);
-            ctx.lineTo(nl, nb); // Horizontal cut
-            ctx.lineTo(nl, nt); // Vertical cut
+            ctx.moveTo(nr, nb); ctx.lineTo(nl, nb); ctx.lineTo(nl, nt);
         } else if (voidNotch.corner === 'bottom-left') {
-            // Cut lines go right then up
-            ctx.moveTo(nl, nt);
-            ctx.lineTo(nr, nt); // Horizontal cut
-            ctx.lineTo(nr, nb); // Vertical cut
+            ctx.moveTo(nl, nt); ctx.lineTo(nr, nt); ctx.lineTo(nr, nb);
         } else {
-            // bottom-right: Cut lines go left then up
-            ctx.moveTo(nr, nt);
-            ctx.lineTo(nl, nt); // Horizontal cut
-            ctx.lineTo(nl, nb); // Vertical cut
+            ctx.moveTo(nr, nt); ctx.lineTo(nl, nt); ctx.lineTo(nl, nb);
         }
         ctx.stroke();
         ctx.setLineDash([]);
-        
-        // Dimension labels parallel to cut lines but OFFSET to the side
+
+        // Dimension labels on cut lines
         ctx.fillStyle = '#f44336';
         ctx.font = 'bold 13px sans-serif';
-        
-        var labelOffset = 18; // Distance from line
-        
-        // Position labels based on corner - beside the cut lines
+        var labelOffset = 18;
         if (voidNotch.corner === 'top-left') {
-            // Horizontal cut is at bottom of notch, vertical cut is at right of notch
-            ctx.fillText(toFraction(voidNotch.w), (nl + nr) / 2, nb + labelOffset); // Below horizontal line
-            ctx.save();
-            ctx.translate(nr + labelOffset, (nt + nb) / 2);
-            ctx.rotate(-Math.PI / 2);
-            ctx.fillText(toFraction(voidNotch.h), 0, 0); // Right of vertical line
-            ctx.restore();
+            ctx.fillText(toFraction(voidNotch.w), (nl + nr) / 2, nb + labelOffset);
+            ctx.save(); ctx.translate(nr + labelOffset, (nt + nb) / 2); ctx.rotate(-Math.PI / 2);
+            ctx.fillText(toFraction(voidNotch.h), 0, 0); ctx.restore();
         } else if (voidNotch.corner === 'top-right') {
-            // Horizontal cut is at bottom of notch, vertical cut is at left of notch
-            ctx.fillText(toFraction(voidNotch.w), (nl + nr) / 2, nb + labelOffset); // Below horizontal line
-            ctx.save();
-            ctx.translate(nl - labelOffset, (nt + nb) / 2);
-            ctx.rotate(-Math.PI / 2);
-            ctx.fillText(toFraction(voidNotch.h), 0, 0); // Left of vertical line
-            ctx.restore();
+            ctx.fillText(toFraction(voidNotch.w), (nl + nr) / 2, nb + labelOffset);
+            ctx.save(); ctx.translate(nl - labelOffset, (nt + nb) / 2); ctx.rotate(-Math.PI / 2);
+            ctx.fillText(toFraction(voidNotch.h), 0, 0); ctx.restore();
         } else if (voidNotch.corner === 'bottom-left') {
-            // Horizontal cut is at top of notch, vertical cut is at right of notch
-            ctx.fillText(toFraction(voidNotch.w), (nl + nr) / 2, nt - labelOffset + 5); // Above horizontal line
-            ctx.save();
-            ctx.translate(nr + labelOffset, (nt + nb) / 2);
-            ctx.rotate(-Math.PI / 2);
-            ctx.fillText(toFraction(voidNotch.h), 0, 0); // Right of vertical line
-            ctx.restore();
+            ctx.fillText(toFraction(voidNotch.w), (nl + nr) / 2, nt - labelOffset + 5);
+            ctx.save(); ctx.translate(nr + labelOffset, (nt + nb) / 2); ctx.rotate(-Math.PI / 2);
+            ctx.fillText(toFraction(voidNotch.h), 0, 0); ctx.restore();
         } else {
-            // bottom-right: Horizontal cut is at top, vertical cut is at left
-            ctx.fillText(toFraction(voidNotch.w), (nl + nr) / 2, nt - labelOffset + 5); // Above horizontal line
-            ctx.save();
-            ctx.translate(nl - labelOffset, (nt + nb) / 2);
-            ctx.rotate(-Math.PI / 2);
-            ctx.fillText(toFraction(voidNotch.h), 0, 0); // Left of vertical line
-            ctx.restore();
+            ctx.fillText(toFraction(voidNotch.w), (nl + nr) / 2, nt - labelOffset + 5);
+            ctx.save(); ctx.translate(nl - labelOffset, (nt + nb) / 2); ctx.rotate(-Math.PI / 2);
+            ctx.fillText(toFraction(voidNotch.h), 0, 0); ctx.restore();
         }
-        
-    } else if (pieceW < tileW - 0.1 || pieceH < tileH - 0.1 || isCutByVertexCount) {
+
+    } else if (pieceW < tileW - 0.1 || pieceH < tileH - 0.1 || isCutByVertexCount || voidNotch) {
         // EDGE CUT - tile is cut by wall edge
         // Show tile in un-rotated (flat) orientation for practical cutting
+        try {
 
         var voidPolysArray = tile.voidPolys || [];
         var cutPoints = getCutPoints(tile.verts, tile.wall, voidPolysArray);
@@ -2766,19 +2896,7 @@ function drawDetailView() {
             cutPointsLocal.push(unrotate(rx, ry));
         }
 
-        // Sort cut points to form polygon (angular sort from centroid in local space)
-        var centroidX = 0, centroidY = 0;
-        if (cutPointsLocal.length >= 3) {
-            for (var i = 0; i < cutPointsLocal.length; i++) {
-                centroidX += cutPointsLocal[i].x;
-                centroidY += cutPointsLocal[i].y;
-            }
-            centroidX /= cutPointsLocal.length;
-            centroidY /= cutPointsLocal.length;
-            cutPointsLocal.sort(function(a, b) {
-                return Math.atan2(a.y - centroidY, a.x - centroidX) - Math.atan2(b.y - centroidY, b.x - centroidX);
-            });
-        }
+        // Don't re-sort — getCutPoints already returns properly ordered polygon via edge-walking
 
         // Un-rotate tile vertices too
         var tileVertsLocal = [];
@@ -2789,58 +2907,154 @@ function drawDetailView() {
         // Use cutPointsLocal as the working data for the rest of this section
         var cutPointsInches = cutPointsLocal;
         
-        // Find cut marks: points in the cut polygon that lie on tile edges (not corners)
-        // Use un-rotated tile-local coordinates for practical measurement
+        // Find cut marks: for each tile edge, find all cut polygon points on it
+        // that are NOT tile corners. Each such point needs a measurement from the
+        // nearest tile corner that's part of the kept piece.
         var cutMarks = [];
-        for (var i = 0; i < cutPointsInches.length; i++) {
-            var p = cutPointsInches[i];
+        for (var j = 0; j < tileVertsLocal.length; j++) {
+            var e1 = tileVertsLocal[j];
+            var e2 = tileVertsLocal[(j + 1) % tileVertsLocal.length];
+            var edgeLen = Math.sqrt((e2.x - e1.x) * (e2.x - e1.x) + (e2.y - e1.y) * (e2.y - e1.y));
 
-            // Check if this point is a tile corner (in local space)
-            var isCorner = false;
-            for (var j = 0; j < tileVertsLocal.length; j++) {
-                var c = tileVertsLocal[j];
-                if (Math.abs(p.x - c.x) < 0.5 && Math.abs(p.y - c.y) < 0.5) {
-                    isCorner = true;
-                    break;
-                }
-            }
+            // Find all cut polygon points on this tile edge that aren't tile corners
+            for (var i = 0; i < cutPointsInches.length; i++) {
+                var p = cutPointsInches[i];
 
-            if (!isCorner) {
-                // Find which tile edge this cut point is on (in local space)
-                for (var j = 0; j < tileVertsLocal.length; j++) {
-                    var e1 = tileVertsLocal[j];
-                    var e2 = tileVertsLocal[(j + 1) % tileVertsLocal.length];
-                    if (isPointOnSegment(p.x, p.y, e1.x, e1.y, e2.x, e2.y, 1.0)) {
-                        var distFromE1 = Math.sqrt((p.x - e1.x) * (p.x - e1.x) + (p.y - e1.y) * (p.y - e1.y));
-                        var distFromE2 = Math.sqrt((p.x - e2.x) * (p.x - e2.x) + (p.y - e2.y) * (p.y - e2.y));
-                        var edgeLen = Math.sqrt((e2.x - e1.x) * (e2.x - e1.x) + (e2.y - e1.y) * (e2.y - e1.y));
-                        var isLongEdge = Math.abs(edgeLen - longSide) < 1.0;
+                // No corner skipping — always show marks so user knows where every cut point lands
 
-                        // Determine which corner is on the KEPT piece (in the cut polygon)
-                        var e1OnKept = false, e2OnKept = false;
-                        for (var k = 0; k < cutPointsInches.length; k++) {
-                            if (Math.abs(cutPointsInches[k].x - e1.x) < 0.5 && Math.abs(cutPointsInches[k].y - e1.y) < 0.5) e1OnKept = true;
-                            if (Math.abs(cutPointsInches[k].x - e2.x) < 0.5 && Math.abs(cutPointsInches[k].y - e2.y) < 0.5) e2OnKept = true;
-                        }
+                if (isPointOnSegment(p.x, p.y, e1.x, e1.y, e2.x, e2.y, 0.3)) {
+                    var distFromE1 = Math.sqrt((p.x - e1.x) * (p.x - e1.x) + (p.y - e1.y) * (p.y - e1.y));
+                    var distFromE2 = Math.sqrt((p.x - e2.x) * (p.x - e2.x) + (p.y - e2.y) * (p.y - e2.y));
 
-                        cutMarks.push({
-                            point: p,
-                            corner1: e1,
-                            corner2: e2,
-                            distFromCorner1: distFromE1,
-                            distFromCorner2: distFromE2,
-                            edgeLen: edgeLen,
-                            isLongEdge: isLongEdge,
-                            edgeIndex: j,
-                            keptCorner: e1OnKept ? e1 : (e2OnKept ? e2 : null),
-                            keptDist: e1OnKept ? distFromE1 : (e2OnKept ? distFromE2 : Math.min(distFromE1, distFromE2))
-                        });
-                        break;
+                    // Determine which corner is on the KEPT piece (in the cut polygon)
+                    var e1OnKept = false, e2OnKept = false;
+                    for (var k = 0; k < cutPointsInches.length; k++) {
+                        if (Math.abs(cutPointsInches[k].x - e1.x) < 0.15 && Math.abs(cutPointsInches[k].y - e1.y) < 0.15) e1OnKept = true;
+                        if (Math.abs(cutPointsInches[k].x - e2.x) < 0.15 && Math.abs(cutPointsInches[k].y - e2.y) < 0.15) e2OnKept = true;
                     }
+
+                    // Skip if there's already a mark very close on the same edge (avoid duplicates like 1/8" and 3-7/8" on same edge)
+                    var isDupe = false;
+                    for (var d = 0; d < cutMarks.length; d++) {
+                        if (cutMarks[d].edgeIndex === j) {
+                            var dd = Math.sqrt((cutMarks[d].point.x - p.x)*(cutMarks[d].point.x - p.x) + (cutMarks[d].point.y - p.y)*(cutMarks[d].point.y - p.y));
+                            if (dd < 0.5) { isDupe = true; break; }
+                        }
+                    }
+                    if (isDupe) continue;
+
+                    cutMarks.push({
+                        point: p,
+                        corner1: e1,
+                        corner2: e2,
+                        distFromCorner1: distFromE1,
+                        distFromCorner2: distFromE2,
+                        edgeLen: edgeLen,
+                        edgeIndex: j,
+                        keptCorner: e1OnKept ? e1 : (e2OnKept ? e2 : null),
+                        keptDist: e1OnKept ? distFromE1 : (e2OnKept ? distFromE2 : Math.min(distFromE1, distFromE2)),
+                        isWallCorner: false
+                    });
                 }
             }
         }
+
+        // Debug: log cut polygon points and what was detected
+        console.log('CUT DETAIL: cutPointsInches=' + cutPointsInches.length + ' tileVerts=' + tileVertsLocal.length + ' cutMarks=' + cutMarks.length);
+        for (var i = 0; i < cutPointsInches.length; i++) {
+            var p = cutPointsInches[i];
+            var onEdge = false, isCorner = false;
+            for (var j = 0; j < tileVertsLocal.length; j++) {
+                var c = tileVertsLocal[j];
+                if (Math.abs(p.x - c.x) < 0.15 && Math.abs(p.y - c.y) < 0.15) isCorner = true;
+                var e2 = tileVertsLocal[(j + 1) % tileVertsLocal.length];
+                if (isPointOnSegment(p.x, p.y, c.x, c.y, e2.x, e2.y, 0.3)) onEdge = true;
+            }
+            console.log('  pt[' + i + '] x=' + p.x.toFixed(2) + ' y=' + p.y.toFixed(2) + ' corner=' + isCorner + ' onEdge=' + onEdge);
+        }
         
+        // Post-process cut marks:
+        // 1. Remove marks under 1/4" (negligible)
+        // 2. Deduplicate: if two marks are on the same edge, keep only the one measured from kept corner
+        var filteredMarks = [];
+        for (var i = 0; i < cutMarks.length; i++) {
+            // No minimum distance filter — show all marks so user knows where every cut point lands
+            // Check for duplicate on same edge
+            var dominated = false;
+            for (var d = 0; d < cutMarks.length; d++) {
+                if (d === i) continue;
+                if (cutMarks[d].edgeIndex === cutMarks[i].edgeIndex && !cutMarks[i].isWallCorner && !cutMarks[d].isWallCorner) {
+                    // Same edge, same point (measured from opposite corners) - keep the one with a kept corner
+                    var ptDist = Math.sqrt((cutMarks[i].point.x - cutMarks[d].point.x)*(cutMarks[i].point.x - cutMarks[d].point.x) + (cutMarks[i].point.y - cutMarks[d].point.y)*(cutMarks[i].point.y - cutMarks[d].point.y));
+                    if (ptDist < 0.5) {
+                        // Same point on same edge - keep the one with keptCorner, or shorter dist
+                        if (cutMarks[d].keptCorner && !cutMarks[i].keptCorner) { dominated = true; break; }
+                        if (cutMarks[d].keptCorner && cutMarks[i].keptCorner && cutMarks[i].keptDist > cutMarks[d].keptDist) { dominated = true; break; }
+                    }
+                }
+            }
+            if (!dominated) filteredMarks.push(cutMarks[i]);
+        }
+        cutMarks = filteredMarks;
+
+        // Find interior points: cut polygon vertices that are NOT on any tile edge
+        // These are where cut lines intersect inside the tile (e.g., wall corners).
+        // The user needs X,Y measurements from tile edges to locate these points.
+        var interiorMarks = [];
+        var tMinXi = Infinity, tMaxXi = -Infinity, tMinYi = Infinity, tMaxYi = -Infinity;
+        for (var i = 0; i < tileVertsLocal.length; i++) {
+            tMinXi = Math.min(tMinXi, tileVertsLocal[i].x);
+            tMaxXi = Math.max(tMaxXi, tileVertsLocal[i].x);
+            tMinYi = Math.min(tMinYi, tileVertsLocal[i].y);
+            tMaxYi = Math.max(tMaxYi, tileVertsLocal[i].y);
+        }
+        for (var i = 0; i < cutPointsInches.length; i++) {
+            var p = cutPointsInches[i];
+            // Check if on any tile edge
+            var onTileEdge = false;
+            for (var j = 0; j < tileVertsLocal.length; j++) {
+                var t1 = tileVertsLocal[j];
+                var t2 = tileVertsLocal[(j + 1) % tileVertsLocal.length];
+                if (isPointOnSegment(p.x, p.y, t1.x, t1.y, t2.x, t2.y, 0.3)) {
+                    onTileEdge = true;
+                    break;
+                }
+            }
+            if (!onTileEdge) {
+                // Interior point — compute distances from each tile edge
+                var fromLeft = p.x - tMinXi;
+                var fromRight = tMaxXi - p.x;
+                var fromTop = p.y - tMinYi;
+                var fromBottom = tMaxYi - p.y;
+                interiorMarks.push({
+                    point: p,
+                    fromLeft: fromLeft,
+                    fromRight: fromRight,
+                    fromTop: fromTop,
+                    fromBottom: fromBottom,
+                    // Use shorter measurements for practical marking
+                    xDist: Math.min(fromLeft, fromRight),
+                    xFromLeft: fromLeft <= fromRight,
+                    yDist: Math.min(fromTop, fromBottom),
+                    yFromTop: fromTop <= fromBottom
+                });
+            }
+        }
+
+        // Filter out interior marks that overlap with edge marks (same point detected as both)
+        var filteredInterior = [];
+        for (var i = 0; i < interiorMarks.length; i++) {
+            var ip = interiorMarks[i].point;
+            var hasEdgeMark = false;
+            for (var j = 0; j < cutMarks.length; j++) {
+                var ep = cutMarks[j].point;
+                var dd = Math.sqrt((ip.x - ep.x) * (ip.x - ep.x) + (ip.y - ep.y) * (ip.y - ep.y));
+                if (dd < 0.5) { hasEdgeMark = true; break; }
+            }
+            if (!hasEdgeMark) filteredInterior.push(interiorMarks[i]);
+        }
+        interiorMarks = filteredInterior;
+
         // Compute cut line in local space (edges not on original tile)
         var cutLinePoints = [];
         for (var i = 0; i < cutPointsInches.length; i++) {
@@ -2870,38 +3084,106 @@ function drawDetailView() {
 
         // Draw visualization using un-rotated local coordinates
         // The tile is shown as a flat rectangle - how you'd hold it on a saw
-        var drawScale = Math.min(140 / longSide, 140 / shortSide);
+        // Scale to fit the full tile nicely in the view (use 120px margin)
+        var drawArea = size - 180; // leave room for header and labels
+        var drawScale = Math.min(drawArea / (2 * longSide / 2), drawArea / (2 * shortSide / 2));
+        // But also ensure kept piece isn't tiny - zoom in if cut piece is small
+        if (cutPointsInches.length >= 3) {
+            var cpMinX = Infinity, cpMaxX = -Infinity, cpMinY = Infinity, cpMaxY = -Infinity;
+            for (var i = 0; i < cutPointsInches.length; i++) {
+                cpMinX = Math.min(cpMinX, cutPointsInches[i].x);
+                cpMaxX = Math.max(cpMaxX, cutPointsInches[i].x);
+                cpMinY = Math.min(cpMinY, cutPointsInches[i].y);
+                cpMaxY = Math.max(cpMaxY, cutPointsInches[i].y);
+            }
+            // Also include full tile bounds for context
+            var tMinX = Infinity, tMaxX = -Infinity, tMinY = Infinity, tMaxY = -Infinity;
+            for (var i = 0; i < tileVertsLocal.length; i++) {
+                tMinX = Math.min(tMinX, tileVertsLocal[i].x);
+                tMaxX = Math.max(tMaxX, tileVertsLocal[i].x);
+                tMinY = Math.min(tMinY, tileVertsLocal[i].y);
+                tMaxY = Math.max(tMaxY, tileVertsLocal[i].y);
+            }
+            var spanW = tMaxX - tMinX;
+            var spanH = tMaxY - tMinY;
+            drawScale = Math.min(drawArea / spanW, drawArea / spanH) * 0.85;
+        }
         var cx = size / 2;
         var cy = size / 2 + 55;
 
-        // Header
+        // Classify cut complexity for adaptive detail
+        // Simple: straight cut or rectangular notch (≤2 edge marks, 0 interior, ≤2 cut segments)
+        // Moderate: L-shape or angled (>2 edge marks OR has interior marks)
+        // Complex: multiple interior points
+        var cutComplexity = 'simple';
+        if (interiorMarks.length >= 2) {
+            cutComplexity = 'complex';
+        } else if (interiorMarks.length >= 1 || cutMarks.length > 2 || cutLinePoints.length > 2) {
+            cutComplexity = 'moderate';
+        }
+
+        // Header — adapts based on complexity
         ctx.fillStyle = '#333';
         ctx.font = 'bold 16px sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText('Mark and cut:', size / 2, 35);
+        var headerY = 58;
 
-        // Show measurements: distance from kept corner to cut point (blue)
-        ctx.fillStyle = '#2196F3';
-        ctx.font = 'bold 26px sans-serif';
-        if (cutMarks.length >= 2) {
-            ctx.fillText('Mark at ' + toFraction(cutMarks[0].keptDist) + '" & ' + toFraction(cutMarks[1].keptDist) + '"', size / 2, 68);
-        } else if (cutMarks.length === 1) {
-            ctx.fillText('Mark at ' + toFraction(cutMarks[0].keptDist) + '"', size / 2, 68);
+        if (cutComplexity === 'simple') {
+            // Simple: just show piece dimensions and "Mark and cut" or "Cut to"
+            if (cutMarks.length > 0) {
+                ctx.fillText('Mark and cut:', size / 2, 35);
+                ctx.fillStyle = '#2196F3';
+                ctx.font = 'bold 26px sans-serif';
+                var markStrs = [];
+                for (var i = 0; i < cutMarks.length; i++) markStrs.push(toFraction(cutMarks[i].keptDist) + '"');
+                ctx.fillText('Mark at ' + markStrs.join(' & '), size / 2, headerY);
+                headerY += 26;
+            } else {
+                ctx.fillText('Cut to:', size / 2, 35);
+                ctx.fillStyle = '#4CAF50';
+                ctx.font = 'bold 28px sans-serif';
+                ctx.fillText(toFraction(pieceW) + ' \u00d7 ' + toFraction(pieceH), size / 2, headerY);
+                headerY += 26;
+            }
         } else {
-            ctx.fillText(toFraction(pieceW) + ' \u00d7 ' + toFraction(pieceH), size / 2, 68);
+            // Moderate/Complex: show all measurements
+            ctx.fillText('Mark and cut:', size / 2, 35);
+            if (cutMarks.length > 0) {
+                ctx.fillStyle = '#2196F3';
+                var markStrs = [];
+                for (var i = 0; i < cutMarks.length; i++) markStrs.push(toFraction(cutMarks[i].keptDist) + '"');
+                if (cutMarks.length >= 3) {
+                    ctx.font = 'bold 18px sans-serif';
+                } else {
+                    ctx.font = 'bold 22px sans-serif';
+                }
+                ctx.fillText('Edge marks: ' + markStrs.join(' & '), size / 2, headerY);
+                headerY += 22;
+            }
+            if (interiorMarks.length > 0) {
+                ctx.fillStyle = '#2E7D32';
+                ctx.font = 'bold 14px sans-serif';
+                for (var i = 0; i < interiorMarks.length; i++) {
+                    var im = interiorMarks[i];
+                    var xLabel = toFraction(im.xDist) + '" from ' + (im.xFromLeft ? 'left' : 'right');
+                    var yLabel = toFraction(im.yDist) + '" from ' + (im.yFromTop ? 'top' : 'bottom');
+                    ctx.fillText('Interior: ' + xLabel + ', ' + yLabel, size / 2, headerY);
+                    headerY += 16;
+                }
+            }
         }
 
         // Show cut length
         if (totalCutLen > 0.1) {
             ctx.fillStyle = '#f44336';
             ctx.font = 'bold 14px sans-serif';
-            ctx.fillText('Cut length: ' + toFraction(totalCutLen), size / 2, 90);
+            ctx.fillText('Cut length: ' + toFraction(totalCutLen), size / 2, headerY + 4);
         }
 
-        // Draw the full tile as a flat rectangle (un-rotated, faint outline)
-        ctx.strokeStyle = '#ddd';
-        ctx.lineWidth = 1;
-        ctx.setLineDash([4, 4]);
+        // Draw the full tile as solid yellow (like void-notch style)
+        ctx.fillStyle = '#FFEB3B';
+        ctx.strokeStyle = '#333';
+        ctx.lineWidth = 2;
         ctx.beginPath();
         for (var i = 0; i < tileVertsLocal.length; i++) {
             var px = cx + tileVertsLocal[i].x * drawScale;
@@ -2910,24 +3192,32 @@ function drawDetailView() {
             else ctx.lineTo(px, py);
         }
         ctx.closePath();
+        ctx.fill();
         ctx.stroke();
-        ctx.setLineDash([]);
 
-        // Draw the remaining piece (yellow, in local space)
+        // Shade the offcut area (full tile minus kept piece)
         if (cutPointsInches.length >= 3) {
-            ctx.fillStyle = '#FFEB3B';
-            ctx.strokeStyle = '#333';
-            ctx.lineWidth = 2;
+            // Draw offcut as semi-transparent overlay using even-odd fill:
+            // outer path = full tile, inner path = kept piece (hole)
+            ctx.fillStyle = 'rgba(0,0,0,0.15)';
             ctx.beginPath();
-            for (var i = 0; i < cutPointsInches.length; i++) {
-                var px = cx + cutPointsInches[i].x * drawScale;
-                var py = cy + cutPointsInches[i].y * drawScale;
+            // Outer path: full tile
+            for (var i = 0; i < tileVertsLocal.length; i++) {
+                var px = cx + tileVertsLocal[i].x * drawScale;
+                var py = cy + tileVertsLocal[i].y * drawScale;
                 if (i === 0) ctx.moveTo(px, py);
                 else ctx.lineTo(px, py);
             }
             ctx.closePath();
-            ctx.fill();
-            ctx.stroke();
+            // Inner path: kept piece (wound opposite direction for even-odd)
+            for (var i = cutPointsInches.length - 1; i >= 0; i--) {
+                var px = cx + cutPointsInches[i].x * drawScale;
+                var py = cy + cutPointsInches[i].y * drawScale;
+                if (i === cutPointsInches.length - 1) ctx.moveTo(px, py);
+                else ctx.lineTo(px, py);
+            }
+            ctx.closePath();
+            ctx.fill('evenodd');
         }
 
         // Draw cut line (red dashed)
@@ -2945,12 +3235,28 @@ function drawDetailView() {
             ctx.setLineDash([]);
         }
 
+        // Label collision avoidance: track placed label bounding boxes
+        var placedLabels = [];
+        function labelOverlaps(lx, ly, lw, lh) {
+            for (var q = 0; q < placedLabels.length; q++) {
+                var o = placedLabels[q];
+                if (lx < o.x + o.w && lx + lw > o.x && ly < o.y + o.h && ly + lh > o.y) return true;
+            }
+            return false;
+        }
+        function registerLabel(lx, ly, lw, lh) {
+            placedLabels.push({x: lx, y: ly, w: lw, h: lh});
+        }
+
         // Draw measurement marks: solid blue line with brackets from kept corner to cut point
         var measureBlue = '#2196F3';
+        var measureGreen = '#4CAF50';
         for (var i = 0; i < cutMarks.length; i++) {
             var mark = cutMarks[i];
             var corner = mark.keptCorner || (mark.distFromCorner1 <= mark.distFromCorner2 ? mark.corner1 : mark.corner2);
             var dist = mark.keptDist;
+
+            if (mark.isWallCorner) continue; // skip wall corners, they're implicit
 
             var cPx = cx + corner.x * drawScale;
             var cPy = cy + corner.y * drawScale;
@@ -2995,16 +3301,127 @@ function drawDetailView() {
             var midY = (cPy + mPy) / 2;
             var nx = -edgeDy / edgeL;
             var ny = edgeDx / edgeL;
-            var testDist = Math.sqrt((midX + nx * 5 - cx) * (midX + nx * 5 - cx) + (midY + ny * 5 - cy) * (midY + ny * 5 - cy));
-            var testDistOther = Math.sqrt((midX - nx * 5 - cx) * (midX - nx * 5 - cx) + (midY - ny * 5 - cy) * (midY - ny * 5 - cy));
+            // Push label away from kept piece centroid
+            var keptCentX = cx, keptCentY = cy;
+            if (cutPointsInches.length >= 3) {
+                keptCentX = 0; keptCentY = 0;
+                for (var q = 0; q < cutPointsInches.length; q++) {
+                    keptCentX += cx + cutPointsInches[q].x * drawScale;
+                    keptCentY += cy + cutPointsInches[q].y * drawScale;
+                }
+                keptCentX /= cutPointsInches.length;
+                keptCentY /= cutPointsInches.length;
+            }
+            var testDist = Math.sqrt((midX + nx * 5 - keptCentX) * (midX + nx * 5 - keptCentX) + (midY + ny * 5 - keptCentY) * (midY + ny * 5 - keptCentY));
+            var testDistOther = Math.sqrt((midX - nx * 5 - keptCentX) * (midX - nx * 5 - keptCentX) + (midY - ny * 5 - keptCentY) * (midY - ny * 5 - keptCentY));
             var sign = testDist > testDistOther ? 1 : -1;
 
-            ctx.fillStyle = measureBlue;
+            ctx.fillStyle = '#0D47A1'; // darker navy blue for label text vs lighter bracket lines
             ctx.font = 'bold 13px sans-serif';
             ctx.textAlign = 'center';
-            ctx.fillText(toFraction(dist), midX + sign * nx * 18, midY + sign * ny * 18);
+            var labelStr = toFraction(dist) + '"';
+            var lblW = ctx.measureText(labelStr).width + 4;
+            var lblH = 16;
+            var offset = 22;
+            var lx1 = midX + sign * nx * offset - lblW / 2;
+            var ly1 = midY + sign * ny * offset - lblH / 2;
+            // If overlapping, try the other side
+            if (labelOverlaps(lx1, ly1, lblW, lblH)) {
+                sign = -sign;
+                lx1 = midX + sign * nx * offset - lblW / 2;
+                ly1 = midY + sign * ny * offset - lblH / 2;
+            }
+            // If still overlapping, push further out
+            if (labelOverlaps(lx1, ly1, lblW, lblH)) {
+                offset = 38;
+                lx1 = midX + sign * nx * offset - lblW / 2;
+                ly1 = midY + sign * ny * offset - lblH / 2;
+            }
+            registerLabel(lx1, ly1, lblW, lblH);
+            ctx.fillText(labelStr, midX + sign * nx * offset, midY + sign * ny * offset);
         }
 
+        // Draw interior point measurements only for moderate/complex cuts
+        if (cutComplexity !== 'simple') {
+        var interiorGreen = '#2E7D32';
+        var tileScrLeft = cx + tMinXi * drawScale;
+        var tileScrRight = cx + tMaxXi * drawScale;
+        var tileScrTop = cy + tMinYi * drawScale;
+        var tileScrBot = cy + tMaxYi * drawScale;
+
+        for (var i = 0; i < interiorMarks.length; i++) {
+            var im = interiorMarks[i];
+            var ptX = cx + im.point.x * drawScale;
+            var ptY = cy + im.point.y * drawScale;
+
+            // Starting edge positions
+            var edgeX = im.xFromLeft ? tileScrLeft : tileScrRight;
+            var edgeY = im.yFromTop ? tileScrTop : tileScrBot;
+
+            // Dashed crosshair lines from tile edge to interior point
+            ctx.strokeStyle = interiorGreen;
+            ctx.lineWidth = 1.5;
+            ctx.setLineDash([5, 3]);
+
+            // Horizontal line (tile edge to point)
+            ctx.beginPath();
+            ctx.moveTo(edgeX, ptY);
+            ctx.lineTo(ptX, ptY);
+            ctx.stroke();
+
+            // Vertical line (tile edge to point)
+            ctx.beginPath();
+            ctx.moveTo(ptX, edgeY);
+            ctx.lineTo(ptX, ptY);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // Orange dot at interior point
+            ctx.fillStyle = interiorGreen;
+            ctx.beginPath();
+            ctx.arc(ptX, ptY, 4, 0, Math.PI * 2);
+            ctx.fill();
+
+            // X label: place at midpoint of the horizontal dashed line
+            ctx.font = 'bold 11px sans-serif';
+            var xLabelStr = toFraction(im.xDist) + '"';
+            var xLblW = ctx.measureText(xLabelStr).width + 6;
+            var xLblH = 14;
+            var xMidX = (edgeX + ptX) / 2;
+            var lx = xMidX - xLblW / 2, ly = ptY - xLblH - 3;
+            if (labelOverlaps(lx, ly, xLblW, xLblH)) ly = ptY + 3;
+            if (labelOverlaps(lx, ly, xLblW, xLblH)) ly = ptY - xLblH - 18;
+            registerLabel(lx, ly, xLblW, xLblH);
+            ctx.textAlign = 'center';
+            ctx.fillStyle = 'rgba(255,255,255,0.85)';
+            ctx.fillRect(lx, ly, xLblW, xLblH);
+            ctx.fillStyle = interiorGreen;
+            ctx.fillText(xLabelStr, lx + xLblW / 2, ly + 11);
+
+            // Y label: rotated vertical along the vertical dashed line
+            var yLabelStr = toFraction(im.yDist) + '"';
+            var yLblTextW = ctx.measureText(yLabelStr).width + 6;
+            var yLblH = 14;
+            var yMidY = (edgeY + ptY) / 2;
+            // Rotated label: swap w/h for collision box
+            var rotW = yLblH, rotH = yLblTextW;
+            var lx2 = ptX + 4, ly2 = yMidY - rotH / 2;
+            if (labelOverlaps(lx2, ly2, rotW, rotH)) lx2 = ptX - rotW - 4;
+            if (labelOverlaps(lx2, ly2, rotW, rotH)) lx2 = ptX + 18;
+            registerLabel(lx2, ly2, rotW, rotH);
+            ctx.save();
+            ctx.translate(lx2 + rotW / 2, ly2 + rotH / 2);
+            ctx.rotate(-Math.PI / 2);
+            ctx.fillStyle = 'rgba(255,255,255,0.85)';
+            ctx.fillRect(-yLblTextW / 2, -yLblH / 2, yLblTextW, yLblH);
+            ctx.fillStyle = interiorGreen;
+            ctx.textAlign = 'center';
+            ctx.fillText(yLabelStr, 0, yLblH / 2 - 3);
+            ctx.restore();
+        }
+        } // end cutComplexity !== 'simple'
+
+        } catch(e) { console.error('EDGE CUT DETAIL ERROR:', e.message, e.stack); try { ctx.restore(); } catch(ee) {} ctx.setTransform(window.devicePixelRatio || 2, 0, 0, window.devicePixelRatio || 2, 0, 0); ctx.fillStyle='red'; ctx.font='14px sans-serif'; ctx.textAlign='center'; ctx.fillText('Error: '+e.message, size/2, size/2); }
     } else {
         // Full tile fallback
         var drawScale = Math.min(140 / tileW, 140 / tileH);
@@ -3170,6 +3587,39 @@ function getCutPoints(verts, wall, voidPolys) {
         }
     }
 
+    // Wall corners inside tile: needed for L-cuts.
+    // Instead of appending and re-sorting, walk the existing points and find
+    // where two consecutive points cross different wall edges meeting at this corner.
+    // Insert the wall corner between them.
+    for (var j = 0; j < wall.length; j++) {
+        var wc = wall[j];
+        if (!isPointInPolygon(wc, verts)) continue;
+        if (isDuplicate(wc)) continue;
+
+        // Wall edges meeting at wc: edge (j-1)->j and edge j->(j+1)
+        var wPrev = wall[(j - 1 + wall.length) % wall.length];
+        var wNext = wall[(j + 1) % wall.length];
+
+        // Find two consecutive points in our polygon where:
+        // one is on the incoming wall edge and the next is on the outgoing wall edge (or vice versa)
+        var insertIdx = -1;
+        for (var k = 0; k < points.length; k++) {
+            var p1 = points[k];
+            var p2 = points[(k + 1) % points.length];
+            var p1OnIn = isPointOnSegment(p1[0], p1[1], wPrev[0], wPrev[1], wc[0], wc[1], 1.0);
+            var p1OnOut = isPointOnSegment(p1[0], p1[1], wc[0], wc[1], wNext[0], wNext[1], 1.0);
+            var p2OnIn = isPointOnSegment(p2[0], p2[1], wPrev[0], wPrev[1], wc[0], wc[1], 1.0);
+            var p2OnOut = isPointOnSegment(p2[0], p2[1], wc[0], wc[1], wNext[0], wNext[1], 1.0);
+            if ((p1OnIn && p2OnOut) || (p1OnOut && p2OnIn)) {
+                insertIdx = k + 1;
+                break;
+            }
+        }
+        if (insertIdx >= 0) {
+            points.splice(insertIdx, 0, wc.slice());
+        }
+    }
+
     // Add void corners that are inside the tile and wall
     for (var vi = 0; vi < voidPolys.length; vi++) {
         var voidPoly = voidPolys[vi];
@@ -3247,22 +3697,27 @@ function closeDetailView(markAsCut) {
 
 // Check if point is inside a tile (simplified bounding box check)
 function isPointInTile(px, py, tx, ty, tw, th, verts) {
-    // If we have vertices, use them for more accurate hit detection
-    if (verts && verts.length > 0) {
-        var minX = verts[0][0], maxX = verts[0][0];
-        var minY = verts[0][1], maxY = verts[0][1];
-        for (var i = 1; i < verts.length; i++) {
-            minX = Math.min(minX, verts[i][0]);
-            maxX = Math.max(maxX, verts[i][0]);
-            minY = Math.min(minY, verts[i][1]);
-            maxY = Math.max(maxY, verts[i][1]);
+    // If we have vertices, use actual polygon hit test (not bounding box)
+    if (verts && verts.length > 2) {
+        // First check with exact polygon
+        if (isPointInPolygon([px, py], verts)) return true;
+        // Also check with small padding for easier tapping on edges
+        // Test if point is within 6px of any polygon edge
+        for (var i = 0, j = verts.length - 1; i < verts.length; j = i++) {
+            var x1 = verts[j][0], y1 = verts[j][1];
+            var x2 = verts[i][0], y2 = verts[i][1];
+            var dx = x2 - x1, dy = y2 - y1;
+            var len2 = dx * dx + dy * dy;
+            if (len2 === 0) continue;
+            var t = Math.max(0, Math.min(1, ((px - x1) * dx + (py - y1) * dy) / len2));
+            var cx = x1 + t * dx, cy = y1 + t * dy;
+            var dist = Math.sqrt((px - cx) * (px - cx) + (py - cy) * (py - cy));
+            if (dist < 6) return true;
         }
-        // Add a little padding for easier tapping
-        var pad = 5;
-        return px >= minX - pad && px <= maxX + pad && py >= minY - pad && py <= maxY + pad;
+        return false;
     }
-    
-    // Fallback to bounding box - use max of tw/th for both to be safe
+
+    // Fallback to bounding box
     var half = Math.max(tw, th) / 2;
     return px >= tx - half && px <= tx + half && py >= ty - half && py <= ty + half;
 }
@@ -3328,6 +3783,206 @@ function updateWall() {
     showTab('diagram');
 }
 
+/* ── Tile Presets ── */
+var TILE_PRESETS = [
+    // Hexagon tiles
+    {name:'7×8 Hex (Daltile)', shape:'hexagon', nomW:7, nomH:8, actW:6.875, actH:7.875, grout:0.125},
+    {name:'7×8 Hex (MSI)', shape:'hexagon', nomW:7, nomH:8, actW:6.8125, actH:7.8125, grout:0.125},
+    {name:'6×7 Hex', shape:'hexagon', nomW:6, nomH:7, actW:5.875, actH:6.875, grout:0.125},
+    {name:'8×9 Hex', shape:'hexagon', nomW:8, nomH:9, actW:7.875, actH:8.875, grout:0.125},
+    {name:'10×11 Hex', shape:'hexagon', nomW:10, nomH:11, actW:9.875, actH:10.875, grout:0.125},
+    {name:'2" Hex Mosaic', shape:'hexagon', nomW:2, nomH:2.25, actW:1.875, actH:2.125, grout:0.125},
+    // Subway / Rectangle
+    {name:'3×6 Subway', shape:'rectangle', nomW:3, nomH:6, actW:2.875, actH:5.875, grout:0.125},
+    {name:'3×12 Subway', shape:'rectangle', nomW:3, nomH:12, actW:2.875, actH:11.875, grout:0.125},
+    {name:'4×8 Rectangle', shape:'rectangle', nomW:4, nomH:8, actW:3.875, actH:7.875, grout:0.125},
+    {name:'4×12 Rectangle', shape:'rectangle', nomW:4, nomH:12, actW:3.875, actH:11.875, grout:0.125},
+    {name:'4×16 Rectangle', shape:'rectangle', nomW:4, nomH:16, actW:3.875, actH:15.875, grout:0.125},
+    {name:'2×4 Subway', shape:'rectangle', nomW:2, nomH:4, actW:1.875, actH:3.875, grout:0.125},
+    // Square tiles
+    {name:'12×12 Square', shape:'square', nomW:12, nomH:12, actW:11.875, actH:11.875, grout:0.125},
+    {name:'6×6 Square', shape:'square', nomW:6, nomH:6, actW:5.875, actH:5.875, grout:0.125},
+    {name:'4×4 Square', shape:'square', nomW:4, nomH:4, actW:3.875, actH:3.875, grout:0.125},
+    {name:'24×24 Square', shape:'square', nomW:24, nomH:24, actW:23.875, actH:23.875, grout:0.125},
+    // Herringbone
+    {name:'2×8 Herringbone', shape:'herringbone', nomW:2, nomH:8, actW:1.875, actH:7.875, grout:0.125},
+    {name:'3×6 Herringbone', shape:'herringbone', nomW:3, nomH:6, actW:2.875, actH:5.875, grout:0.125},
+    {name:'3×12 Herringbone', shape:'herringbone', nomW:3, nomH:12, actW:2.875, actH:11.875, grout:0.125}
+];
+
+var CUSTOM_PRESETS_KEY = 'layit-custom-presets';
+
+function getCustomPresets() {
+    try {
+        var raw = localStorage.getItem(CUSTOM_PRESETS_KEY);
+        return raw ? JSON.parse(raw) : [];
+    } catch(e) { return []; }
+}
+
+function saveCustomPresets(list) {
+    localStorage.setItem(CUSTOM_PRESETS_KEY, JSON.stringify(list));
+}
+
+function buildPresetDropdown() {
+    var sel = document.getElementById('tilePreset');
+    sel.innerHTML = '<option value="custom">Custom (enter below)</option>';
+
+    // Group built-in by shape
+    var groups = {};
+    for (var i = 0; i < TILE_PRESETS.length; i++) {
+        var p = TILE_PRESETS[i];
+        if (!groups[p.shape]) groups[p.shape] = [];
+        groups[p.shape].push({idx: 'b_' + i, name: p.name});
+    }
+    var shapeOrder = ['hexagon','rectangle','square','herringbone'];
+    var shapeLabels = {hexagon:'Hexagon',rectangle:'Subway / Rectangle',square:'Square',herringbone:'Herringbone'};
+    for (var si = 0; si < shapeOrder.length; si++) {
+        var shape = shapeOrder[si];
+        if (!groups[shape]) continue;
+        var og = document.createElement('optgroup');
+        og.label = shapeLabels[shape] || shape;
+        for (var gi = 0; gi < groups[shape].length; gi++) {
+            var opt = document.createElement('option');
+            opt.value = groups[shape][gi].idx;
+            opt.textContent = groups[shape][gi].name;
+            og.appendChild(opt);
+        }
+        sel.appendChild(og);
+    }
+
+    // Custom presets
+    var customs = getCustomPresets();
+    if (customs.length > 0) {
+        var cg = document.createElement('optgroup');
+        cg.label = '★ My Presets';
+        for (var ci = 0; ci < customs.length; ci++) {
+            var opt = document.createElement('option');
+            opt.value = 'c_' + ci;
+            opt.textContent = customs[ci].name;
+            cg.appendChild(opt);
+        }
+        sel.appendChild(cg);
+    }
+}
+
+function applyPreset() {
+    var val = document.getElementById('tilePreset').value;
+    if (val === 'custom') return;
+
+    var preset = null;
+    if (val.indexOf('b_') === 0) {
+        preset = TILE_PRESETS[parseInt(val.slice(2))];
+    } else if (val.indexOf('c_') === 0) {
+        preset = getCustomPresets()[parseInt(val.slice(2))];
+    }
+    if (!preset) return;
+
+    document.getElementById('tileShape').value = preset.shape;
+    onShape();
+    document.getElementById('grout').value = preset.grout || 0.125;
+
+    var nom = document.getElementById('nominalMode').checked;
+    if (nom) {
+        // In nominal mode, show the nominal (box) sizes
+        document.getElementById('tileW').value = preset.nomW;
+        document.getElementById('tileH').value = preset.nomH;
+    } else {
+        // In actual mode, show the actual measured sizes
+        document.getElementById('tileW').value = preset.actW;
+        document.getElementById('tileH').value = preset.actH;
+    }
+    onNominalToggle();
+    updateTile();
+}
+
+function onNominalToggle() {
+    var nom = document.getElementById('nominalMode').checked;
+    var hint = document.getElementById('nominalHint');
+    var readout = document.getElementById('actualReadout');
+    var wLabel = document.getElementById('tileWLabel');
+    var hLabel = document.getElementById('tileHLabel');
+
+    if (nom) {
+        wLabel.textContent = 'Nominal Width (in)';
+        hLabel.textContent = 'Nominal Height (in)';
+        hint.style.display = 'block';
+        // Show the calculated actual size
+        var nw = parseFloat(document.getElementById('tileW').value) || 0;
+        var nh = parseFloat(document.getElementById('tileH').value) || 0;
+        var gr = parseFloat(document.getElementById('grout').value) || 0.125;
+        if (nw > 0 && nh > 0) {
+            var aw = nw - gr;
+            var ah = nh - gr;
+            readout.textContent = 'Actual tile: ' + toFractionSafe(aw) + '" × ' + toFractionSafe(ah) + '"  (nominal ' + nw + '×' + nh + ' minus ' + gr + '" grout)';
+            readout.style.display = 'block';
+        } else {
+            readout.style.display = 'none';
+        }
+    } else {
+        wLabel.textContent = 'Actual Width (in)';
+        hLabel.textContent = 'Actual Height (in)';
+        hint.style.display = 'none';
+        readout.style.display = 'none';
+    }
+}
+
+function toFractionSafe(v) {
+    // Simple fraction display for common tile sizes
+    if (typeof toFraction === 'function') return toFraction(v);
+    var whole = Math.floor(v);
+    var frac = v - whole;
+    if (frac < 0.01) return String(whole);
+    if (Math.abs(frac - 0.0625) < 0.01) return whole + ' 1/16';
+    if (Math.abs(frac - 0.125) < 0.01) return whole + ' 1/8';
+    if (Math.abs(frac - 0.1875) < 0.01) return whole + ' 3/16';
+    if (Math.abs(frac - 0.25) < 0.01) return whole + ' 1/4';
+    if (Math.abs(frac - 0.375) < 0.01) return whole + ' 3/8';
+    if (Math.abs(frac - 0.5) < 0.01) return whole + ' 1/2';
+    if (Math.abs(frac - 0.625) < 0.01) return whole + ' 5/8';
+    if (Math.abs(frac - 0.75) < 0.01) return whole + ' 3/4';
+    if (Math.abs(frac - 0.875) < 0.01) return whole + ' 7/8';
+    return v.toFixed(3);
+}
+
+function saveCustomPreset() {
+    var w = parseFloat(document.getElementById('tileW').value) || 0;
+    var h = parseFloat(document.getElementById('tileH').value) || 0;
+    var shape = document.getElementById('tileShape').value;
+    var grout = parseFloat(document.getElementById('grout').value) || 0.125;
+    var nom = document.getElementById('nominalMode').checked;
+
+    if (w <= 0 || h <= 0) {
+        showToast('⚠️ Enter tile dimensions first');
+        return;
+    }
+
+    var actW, actH, nomW, nomH;
+    if (nom) {
+        nomW = w; nomH = h;
+        actW = w - grout; actH = h - grout;
+    } else {
+        actW = w; actH = h;
+        nomW = w + grout; nomH = h + grout;
+    }
+
+    var defaultName = Math.round(nomW) + '×' + Math.round(nomH) + ' ' +
+        shape.charAt(0).toUpperCase() + shape.slice(1);
+    var name = prompt('Preset name:', defaultName);
+    if (!name) return;
+
+    var customs = getCustomPresets();
+    customs.push({
+        name: name,
+        shape: shape,
+        nomW: nomW, nomH: nomH,
+        actW: actW, actH: actH,
+        grout: grout
+    });
+    saveCustomPresets(customs);
+    buildPresetDropdown();
+    showToast('✅ Preset "' + name + '" saved!');
+}
+
 function updateTile() {
     C.tile.sh = document.getElementById('tileShape').value;
     C.tile.or = document.getElementById('tileOrient').value;
@@ -3335,11 +3990,24 @@ function updateTile() {
     var w = parseFloat(document.getElementById('tileW').value) || 0;
     var h = parseFloat(document.getElementById('tileH').value) || 0;
     C.tile.gr = parseFloat(document.getElementById('grout').value);
+
+    // If nominal mode, subtract grout to get actual tile size
+    var nom = document.getElementById('nominalMode').checked;
+    if (nom && w > 0 && h > 0) {
+        w = w - C.tile.gr;
+        h = h - C.tile.gr;
+    }
+
     if (C.tile.sh === 'square') {
         var s = w || h;
         w = h = s;
-        document.getElementById('tileW').value = s;
-        document.getElementById('tileH').value = s;
+        if (nom) {
+            document.getElementById('tileW').value = s + C.tile.gr;
+            document.getElementById('tileH').value = s + C.tile.gr;
+        } else {
+            document.getElementById('tileW').value = s;
+            document.getElementById('tileH').value = s;
+        }
     }
     // Herringbone ratio check
     if (C.tile.sh === 'herringbone' && w > 0 && h > 0) {
@@ -3350,6 +4018,7 @@ function updateTile() {
     }
     C.tile.w = w;
     C.tile.h = h;
+    onNominalToggle(); // Update the readout
     markUnsaved();
     draw();
     showTab('diagram');
@@ -3368,13 +4037,9 @@ function onShape() {
     // For herringbone, orientation means the direction of the pattern
     if (s === 'herringbone') {
         document.getElementById('tileOrient').innerHTML = '<option value="pointy">45° Right</option><option value="flat">45° Left</option>';
-        // Set default herringbone sizes (2" x 8" is classic)
-        if (!document.getElementById('tileW').value || !document.getElementById('tileH').value) {
-            document.getElementById('tileW').value = '2';
-            document.getElementById('tileH').value = '8';
-        }
-        // Show herringbone size hint
-        showToast('Herringbone tip: Use 2:1 to 4:1 ratio (e.g., 2"×8", 3"×12")');
+        // Set default herringbone sizes (3" x 6")
+        document.getElementById('tileW').value = '3';
+        document.getElementById('tileH').value = '6';
     } else if (s === 'hexagon') {
         document.getElementById('tileOrient').innerHTML = '<option value="pointy">Vertical</option><option value="flat">Horizontal</option>';
     } else {
@@ -4082,7 +4747,8 @@ function draw() {
     
     // Update display
     document.getElementById('fullCount').textContent = full;
-    document.getElementById('partialCount').textContent = part;
+    var partialEl = document.getElementById('partialCount');
+    if (partialEl) partialEl.textContent = part;
     document.getElementById('cutDoneCount').textContent = cutDoneCount;
     
     var waste = parseFloat(document.getElementById('waste').value) || 10;
@@ -5170,10 +5836,14 @@ function loadProject(id) {
     document.getElementById('tilePattern').value = C.tile.pattern || 0.5;
     document.getElementById('tileW').value = C.tile.w;
     document.getElementById('tileH').value = C.tile.h;
-    
+    document.getElementById('grout').value = C.tile.gr || 0.125;
+    document.getElementById('tilePreset').value = 'custom';
+    document.getElementById('nominalMode').checked = false;
+    onNominalToggle();
+
     // Show/hide pattern option based on shape
     onShape();
-    
+
     updateVoidList();
     unsavedChanges = false;
     updateSaveStatus();
@@ -5333,7 +6003,11 @@ function importProject(e) {
             document.getElementById('tilePattern').value = C.tile.pattern || 0.5;
             document.getElementById('tileW').value = C.tile.w;
             document.getElementById('tileH').value = C.tile.h;
-            
+            document.getElementById('grout').value = C.tile.gr || 0.125;
+            document.getElementById('tilePreset').value = 'custom';
+            document.getElementById('nominalMode').checked = false;
+            onNominalToggle();
+
             // Show/hide pattern option based on shape
             onShape();
             
@@ -5697,6 +6371,10 @@ function applySyncState(state) {
         document.getElementById('tileOrient').value = C.tile.or;
         document.getElementById('tileW').value = C.tile.w;
         document.getElementById('tileH').value = C.tile.h;
+        document.getElementById('grout').value = C.tile.gr || 0.125;
+        document.getElementById('tilePreset').value = 'custom';
+        document.getElementById('nominalMode').checked = false;
+        onNominalToggle();
         document.getElementById('zoom').value = Math.min(100, C.view.z);
         document.getElementById('zoomVal').textContent = C.view.z.toFixed(1) + 'x';
         onShape();
@@ -6167,6 +6845,9 @@ function autoRestoreState() {
                 document.getElementById('tileW').value = C.tile.w || '';
                 document.getElementById('tileH').value = C.tile.h || '';
                 document.getElementById('grout').value = C.tile.gr || 0.125;
+                document.getElementById('tilePreset').value = 'custom';
+                document.getElementById('nominalMode').checked = false;
+                onNominalToggle();
                 if (document.getElementById('tilePattern')) {
                     document.getElementById('tilePattern').value = C.tile.pattern || 0.5;
                 }
@@ -6192,6 +6873,7 @@ draw = function() {
 
 // Initialize
 initTabs();
+buildPresetDropdown();
 generateAppIcon();
 
 // Try to restore last session first
@@ -6204,6 +6886,9 @@ draw();
 if (restored) {
     showToast('✓ Restored last session', 2000);
 }
+</script>
+<script>
+if("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js");
 </script>
 </body>
 </html>
