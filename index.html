@@ -596,12 +596,9 @@
         <div class="flex-row mb-3">
             <span>🔍</span><input type="range" id="zoom" min="4" max="100" value="5" step="1" oninput="updateZoom()" style="flex:1"><span id="zoomVal">5x</span>
         </div>
-        <div class="flex-row mb-3">
-            <button id="lockBtn" class="btn-secondary" onclick="toggleLock()" style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;">
+        <div class="mb-3">
+            <button id="lockBtn" class="btn-secondary" onclick="toggleLock()" style="display:flex;align-items:center;justify-content:center;gap:6px;">
                 <span id="lockIcon">🔓</span> <span id="lockText">Unlocked</span>
-            </button>
-            <button id="cutsBtn" class="btn-success" onclick="toggleCuts()" style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;">
-                <span id="cutsIcon">📐</span> <span id="cutsText">Cuts On</span>
             </button>
         </div>
         <div class="hint mb-3" id="controlsHint">📱 One finger: pattern • Two fingers: pan & zoom | 💻 Drag: pattern • Shift+drag: pan • Scroll: zoom</div>
@@ -4541,7 +4538,7 @@ var savedPatternPosition = null; // Saved position when locked with cut tiles
 var hasCutProgress = false; // Track if any tiles have been marked
 
 // Show cut dimensions state
-var showCuts = true;
+var showCuts = false;
 
 function countCutProgress() {
     var count = 0;
