@@ -1,4 +1,4 @@
-var CACHE = "layit-v1";
+var CACHE = "layit-v2";
 var SHELL = ["/layit/", "/layit/index.html", "/layit/manifest.json", "/layit/icon-192.png", "/layit/icon-512.png"];
 
 self.addEventListener("install", function(e) {

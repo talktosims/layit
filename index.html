@@ -6,7 +6,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="LayIt">
-    <meta name="theme-color" content="#1a3c40">
+    <meta name="theme-color" content="#0d1117">
     <meta name="description" content="LayIt - Tile layout planner with laser projection export for DIY tile installation">
     <link rel="manifest" href="manifest.json">
     <link rel="apple-touch-icon" href="icon-192.png">
@@ -16,68 +16,637 @@
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%231a1a2e'/><polygon points='50,15 70,27 70,52 50,65 30,52 30,27' fill='%234CAF50'/><polygon points='30,52 30,77 50,90 50,65' fill='%23FF9800'/><polygon points='70,52 70,77 50,90 50,65' fill='%23FF9800'/></svg>">
     
     <style>
+        /* ================================================================
+           LAYIT LASER — Design System
+           ================================================================ */
+
+        :root {
+            /* ---- Background Layers (darkest → lightest) ---- */
+            --bg-base:       #0d1117;
+            --bg-surface:    #161b22;
+            --bg-elevated:   #1c2333;
+            --bg-recessed:   #0a0e14;
+            --bg-overlay:    rgba(0, 0, 0, 0.75);
+
+            /* ---- Accent Colors ---- */
+            --accent:        #e5484d;
+            --accent-hover:  #f26166;
+            --accent-glow:   rgba(229, 72, 77, 0.35);
+            --accent-subtle: rgba(229, 72, 77, 0.12);
+
+            --success:       #46a758;
+            --success-hover: #5cb86c;
+            --success-glow:  rgba(70, 167, 88, 0.30);
+            --success-subtle:rgba(70, 167, 88, 0.12);
+
+            --warning:       #f0a000;
+            --warning-subtle:rgba(240, 160, 0, 0.12);
+
+            --info:          #3b82f6;
+
+            /* ---- Text ---- */
+            --text-primary:  #e6edf3;
+            --text-secondary:#8b949e;
+            --text-tertiary: #484f58;
+            --text-on-accent:#ffffff;
+
+            /* ---- Borders ---- */
+            --border-default:  rgba(240, 246, 252, 0.08);
+            --border-muted:    rgba(240, 246, 252, 0.04);
+            --border-accent:   rgba(229, 72, 77, 0.40);
+            --border-success:  rgba(70, 167, 88, 0.40);
+            --border-input:    rgba(240, 246, 252, 0.12);
+
+            /* ---- Spacing Scale (4px base) ---- */
+            --space-1:  4px;
+            --space-2:  8px;
+            --space-3:  12px;
+            --space-4:  16px;
+            --space-5:  20px;
+            --space-6:  24px;
+            --space-8:  32px;
+
+            /* ---- Typography ---- */
+            --font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', system-ui, sans-serif;
+            --text-xs:   10px;
+            --text-sm:   11px;
+            --text-base: 13px;
+            --text-md:   14px;
+            --text-lg:   16px;
+            --text-xl:   18px;
+            --text-2xl:  24px;
+            --text-3xl:  28px;
+            --leading-tight:  1.2;
+            --leading-normal: 1.5;
+            --leading-relaxed:1.7;
+            --tracking-wide:  0.02em;
+
+            /* ---- Border Radius ---- */
+            --radius-sm:  6px;
+            --radius-md:  10px;
+            --radius-lg:  14px;
+            --radius-xl:  20px;
+            --radius-pill: 9999px;
+
+            /* ---- Shadows ---- */
+            --shadow-sm:   0 1px 2px rgba(0,0,0,0.3), 0 0 1px rgba(0,0,0,0.2);
+            --shadow-md:   0 4px 12px rgba(0,0,0,0.4), 0 0 1px rgba(0,0,0,0.2);
+            --shadow-lg:   0 8px 24px rgba(0,0,0,0.5), 0 0 1px rgba(0,0,0,0.2);
+            --shadow-glow-accent:  0 0 20px var(--accent-glow), 0 0 4px var(--accent-glow);
+            --shadow-glow-success: 0 0 20px var(--success-glow), 0 0 4px var(--success-glow);
+            --shadow-inset: inset 0 1px 3px rgba(0,0,0,0.4);
+
+            /* ---- Transitions ---- */
+            --ease-out:    cubic-bezier(0.22, 1, 0.36, 1);
+            --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+            --duration-fast:   120ms;
+            --duration-normal: 200ms;
+            --duration-slow:   350ms;
+        }
+
+        /* ================================================================
+           RESET & BASE
+           ================================================================ */
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: -apple-system, sans-serif; background: #1a1a2e; color: #fff; -webkit-tap-highlight-color: transparent; }
-        .tabs { display: flex; position: sticky; top: 0; z-index: 100; background: #16213e; }
-        .tab { flex: 1; padding: 12px; text-align: center; font-size: 14px; border: none; background: #16213e; color: #888; cursor: pointer; -webkit-appearance: none; }
-        .tab.active { background: #0f3460; color: #fff; border-bottom: 3px solid #e94560; }
-        .panel { display: none; padding: 15px; }
+        body {
+            font-family: var(--font-family);
+            background: var(--bg-base);
+            color: var(--text-primary);
+            line-height: var(--leading-normal);
+            -webkit-tap-highlight-color: transparent;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        /* ================================================================
+           TAB BAR
+           ================================================================ */
+        .tabs {
+            display: flex;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: rgba(22, 27, 34, 0.88);
+            -webkit-backdrop-filter: blur(16px) saturate(180%);
+            backdrop-filter: blur(16px) saturate(180%);
+            border-bottom: 1px solid var(--border-default);
+            padding: 0 var(--space-1);
+        }
+        .tab {
+            flex: 1;
+            padding: var(--space-3) var(--space-2);
+            text-align: center;
+            font-size: var(--text-lg);
+            border: none;
+            background: transparent;
+            color: var(--text-tertiary);
+            cursor: pointer;
+            -webkit-appearance: none;
+            position: relative;
+            transition: color var(--duration-normal) var(--ease-out),
+                        background var(--duration-normal) var(--ease-out);
+        }
+        .tab::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 25%;
+            right: 25%;
+            height: 3px;
+            border-radius: 3px 3px 0 0;
+            background: transparent;
+            transition: background var(--duration-normal) var(--ease-out),
+                        left var(--duration-normal) var(--ease-out),
+                        right var(--duration-normal) var(--ease-out);
+        }
+        .tab.active {
+            background: var(--bg-elevated);
+            color: var(--text-primary);
+        }
+        .tab.active::after {
+            background: var(--accent);
+            left: 20%;
+            right: 20%;
+            box-shadow: 0 0 8px var(--accent-glow);
+        }
+        @media (hover: hover) {
+            .tab:hover:not(.active) {
+                color: var(--text-secondary);
+                background: rgba(255,255,255,0.03);
+            }
+        }
+
+        /* ================================================================
+           PANELS & SECTIONS
+           ================================================================ */
+        .panel { display: none; padding: var(--space-4); max-width: 600px; margin: 0 auto; }
         .panel.active { display: block; }
-        .section { background: #16213e; border-radius: 10px; padding: 15px; margin-bottom: 15px; }
-        .section h3 { font-size: 14px; color: #e94560; margin-bottom: 12px; }
-        .row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
-        .field { margin-bottom: 10px; }
-        label { display: block; font-size: 11px; color: #aaa; margin-bottom: 4px; }
-        input, select { width: 100%; padding: 10px; font-size: 16px; border: 1px solid #333; border-radius: 6px; background: #0f0f1a; color: #fff; -webkit-appearance: none; appearance: none; }
-        select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%23888'%3E%3Cpath d='M6 8L1 3h10z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; }
-        button { padding: 12px; font-size: 14px; border: none; border-radius: 6px; width: 100%; margin-top: 10px; cursor: pointer; -webkit-appearance: none; }
-        .btn-primary { background: #e94560; color: #fff; }
-        .btn-secondary { background: #0f3460; color: #fff; }
-        .btn-success { background: #4CAF50; color: #fff; }
-        #canvasContainer { background: #fff; border-radius: 10px; overflow: hidden; }
-        canvas { display: block; width: 100%; touch-action: pan-x pan-y; }
-        .info-bar { background: #16213e; padding: 10px; border-radius: 10px; font-size: 12px; text-align: center; margin-bottom: 10px; }
-        .full { color: #4CAF50; } .partial { color: #FF9800; }
-        .void-item { display: flex; justify-content: space-between; background: #0f0f1a; padding: 10px; border-radius: 6px; margin-top: 8px; font-size: 12px; }
-        .void-item button { width: auto; padding: 6px 12px; margin: 0; }
-        .calc-result { font-size: 24px; font-weight: bold; color: #4CAF50; text-align: center; margin: 10px 0; }
+
+        .section {
+            background: var(--bg-surface);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-md);
+            padding: var(--space-4);
+            margin-bottom: var(--space-4);
+            box-shadow: var(--shadow-sm);
+        }
+        .section h3 {
+            font-size: var(--text-sm);
+            font-weight: 600;
+            color: var(--accent);
+            margin-bottom: var(--space-3);
+            text-transform: uppercase;
+            letter-spacing: var(--tracking-wide);
+        }
+
+        /* ================================================================
+           FORM ELEMENTS
+           ================================================================ */
+        .row { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3); margin-bottom: var(--space-3); }
+        .field { margin-bottom: var(--space-3); }
+        label {
+            display: block;
+            font-size: var(--text-sm);
+            font-weight: 500;
+            color: var(--text-secondary);
+            margin-bottom: var(--space-1);
+            letter-spacing: var(--tracking-wide);
+        }
+        input, select {
+            width: 100%;
+            padding: var(--space-3);
+            font-size: var(--text-lg);
+            border: 1px solid var(--border-input);
+            border-radius: var(--radius-sm);
+            background: var(--bg-recessed);
+            color: var(--text-primary);
+            box-shadow: var(--shadow-inset);
+            -webkit-appearance: none;
+            appearance: none;
+            transition: border-color var(--duration-fast) var(--ease-out),
+                        box-shadow var(--duration-fast) var(--ease-out);
+        }
+        input:focus, select:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: var(--shadow-inset), 0 0 0 3px var(--accent-glow);
+        }
+        input::placeholder { color: var(--text-tertiary); }
+        select {
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%238b949e'%3E%3Cpath d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 12px center;
+            padding-right: 32px;
+        }
         input[type=number] { -moz-appearance: textfield; }
         input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; }
-        .proj-ctrl { position: fixed; top: 10px; right: 10px; z-index: 1001; display: flex; gap: 8px; }
-        .proj-btn { padding: 15px 20px; font-size: 20px; background: #333; color: #fff; border: none; border-radius: 8px; cursor: pointer; }
-        .project-item { display: flex; justify-content: space-between; align-items: center; background: #0f0f1a; padding: 12px; border-radius: 8px; margin-bottom: 8px; }
-        .project-item.active { border: 2px solid #4CAF50; }
+
+        /* Range slider */
+        input[type=range] {
+            -webkit-appearance: none;
+            appearance: none;
+            height: 6px;
+            background: var(--bg-recessed);
+            border: none;
+            border-radius: 3px;
+            box-shadow: none;
+            outline: none;
+            padding: 0;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            background: var(--accent);
+            box-shadow: 0 0 8px var(--accent-glow);
+            cursor: pointer;
+        }
+
+        /* Checkbox */
+        input[type=checkbox] {
+            width: 18px;
+            height: 18px;
+            border-radius: 4px;
+            border: 1.5px solid var(--border-input);
+            background: var(--bg-recessed);
+            box-shadow: none;
+            cursor: pointer;
+            accent-color: var(--accent);
+        }
+
+        /* ================================================================
+           BUTTONS
+           ================================================================ */
+        button {
+            padding: var(--space-3) var(--space-4);
+            font-size: var(--text-md);
+            font-weight: 600;
+            border: none;
+            border-radius: var(--radius-sm);
+            width: 100%;
+            margin-top: var(--space-3);
+            cursor: pointer;
+            -webkit-appearance: none;
+            transition: background var(--duration-fast) var(--ease-out),
+                        box-shadow var(--duration-fast) var(--ease-out),
+                        transform var(--duration-fast) var(--ease-out),
+                        opacity var(--duration-fast) var(--ease-out);
+        }
+        button:active { transform: scale(0.97); }
+        button:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--accent), #c73e54);
+            color: var(--text-on-accent);
+            box-shadow: var(--shadow-sm);
+        }
+        .btn-secondary {
+            background: var(--bg-elevated);
+            color: var(--text-primary);
+            border: 1px solid var(--border-default);
+        }
+        .btn-success {
+            background: linear-gradient(135deg, var(--success), #3a8f4a);
+            color: var(--text-on-accent);
+            box-shadow: var(--shadow-sm);
+        }
+        @media (hover: hover) {
+            .btn-primary:hover:not(:disabled) {
+                box-shadow: var(--shadow-glow-accent);
+                background: linear-gradient(135deg, var(--accent-hover), var(--accent));
+            }
+            .btn-secondary:hover:not(:disabled) {
+                background: rgba(255,255,255,0.06);
+                border-color: rgba(255,255,255,0.12);
+            }
+            .btn-success:hover:not(:disabled) {
+                box-shadow: var(--shadow-glow-success);
+                background: linear-gradient(135deg, var(--success-hover), var(--success));
+            }
+        }
+
+        /* ================================================================
+           CANVAS
+           ================================================================ */
+        #canvasContainer {
+            background: #fff;
+            border-radius: var(--radius-md);
+            overflow: hidden;
+            box-shadow: var(--shadow-md);
+            border: 1px solid var(--border-default);
+        }
+        canvas { display: block; width: 100%; touch-action: pan-x pan-y; }
+
+        /* ================================================================
+           INFO BAR & STATUS
+           ================================================================ */
+        .info-bar {
+            background: var(--bg-surface);
+            border: 1px solid var(--border-default);
+            padding: var(--space-3);
+            border-radius: var(--radius-md);
+            font-size: var(--text-base);
+            text-align: center;
+            margin-bottom: var(--space-3);
+        }
+        .full { color: var(--success); }
+        .partial { color: var(--warning); }
+
+        /* ================================================================
+           VOID ITEMS
+           ================================================================ */
+        .void-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--bg-recessed);
+            padding: var(--space-3);
+            border-radius: var(--radius-sm);
+            margin-top: var(--space-2);
+            font-size: var(--text-base);
+            border: 1px solid var(--border-default);
+        }
+        .void-item button { width: auto; padding: var(--space-2) var(--space-3); margin: 0; }
+
+        /* ================================================================
+           CALCULATOR
+           ================================================================ */
+        .calc-result {
+            font-size: var(--text-3xl);
+            font-weight: 700;
+            color: var(--success);
+            text-align: center;
+            margin: var(--space-3) 0;
+            letter-spacing: -0.01em;
+        }
+
+        /* ================================================================
+           PROJECTOR CONTROLS
+           ================================================================ */
+        .proj-ctrl {
+            position: fixed;
+            top: var(--space-3);
+            right: var(--space-3);
+            z-index: 1001;
+            display: flex;
+            gap: var(--space-2);
+        }
+        .proj-btn {
+            padding: var(--space-4) var(--space-5);
+            font-size: var(--text-xl);
+            background: rgba(30,30,30,0.85);
+            -webkit-backdrop-filter: blur(8px);
+            backdrop-filter: blur(8px);
+            color: #fff;
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: var(--radius-md);
+            cursor: pointer;
+        }
+
+        /* ================================================================
+           PROJECT ITEMS
+           ================================================================ */
+        .project-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--bg-recessed);
+            padding: var(--space-3);
+            border-radius: var(--radius-md);
+            margin-bottom: var(--space-2);
+            border: 1px solid var(--border-default);
+            transition: border-color var(--duration-fast) var(--ease-out);
+        }
+        .project-item.active {
+            border: 2px solid var(--success);
+            background: var(--success-subtle);
+        }
         .project-item-info { flex: 1; }
-        .project-item-name { font-size: 14px; font-weight: 600; color: #fff; }
-        .project-item-date { font-size: 10px; color: #888; margin-top: 2px; }
-        .project-item-actions { display: flex; gap: 6px; }
-        .project-item-actions button { width: auto; padding: 8px 12px; margin: 0; font-size: 12px; }
-        .modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); z-index: 2000; align-items: center; justify-content: center; }
+        .project-item-name { font-size: var(--text-md); font-weight: 600; color: var(--text-primary); }
+        .project-item-date { font-size: var(--text-xs); color: var(--text-tertiary); margin-top: 2px; }
+        .project-item-actions { display: flex; gap: var(--space-2); }
+        .project-item-actions button { width: auto; padding: var(--space-2) var(--space-3); margin: 0; font-size: var(--text-base); }
+
+        /* ================================================================
+           MODALS
+           ================================================================ */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: var(--bg-overlay);
+            -webkit-backdrop-filter: blur(8px);
+            backdrop-filter: blur(8px);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+        }
         .modal-overlay.active { display: flex; }
-        .modal-box { background: #1a1a2e; border-radius: 12px; padding: 20px; max-width: 300px; text-align: center; }
-        .modal-box h3 { color: #e94560; margin-bottom: 10px; font-size: 18px; }
-        .modal-box p { color: #ccc; margin-bottom: 20px; font-size: 14px; }
-        .modal-buttons { display: flex; gap: 10px; }
-        .modal-buttons button { flex: 1; padding: 12px; font-size: 16px; border: none; border-radius: 8px; cursor: pointer; }
-        .modal-cancel { background: #333; color: #fff; }
-        .modal-confirm { background: #e94560; color: #fff; }
-        
-        /* Optimize Menu */
-        .optimize-option { padding: 12px 15px; color: #eee; cursor: pointer; border-bottom: 1px solid #333; font-size: 14px; }
+        .modal-box {
+            background: var(--bg-surface);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-lg);
+            padding: var(--space-6);
+            max-width: 320px;
+            width: calc(100% - 40px);
+            text-align: center;
+            box-shadow: var(--shadow-lg);
+            animation: modalIn var(--duration-slow) var(--ease-spring);
+        }
+        @keyframes modalIn {
+            from { opacity: 0; transform: scale(0.92) translateY(8px); }
+            to   { opacity: 1; transform: scale(1) translateY(0); }
+        }
+        .modal-box h3 { color: var(--accent); margin-bottom: var(--space-3); font-size: var(--text-xl); }
+        .modal-box p { color: var(--text-secondary); margin-bottom: var(--space-5); font-size: var(--text-md); line-height: var(--leading-relaxed); }
+        .modal-buttons { display: flex; gap: var(--space-3); }
+        .modal-buttons button { flex: 1; padding: var(--space-3); font-size: var(--text-lg); border: none; border-radius: var(--radius-md); cursor: pointer; }
+        .modal-cancel { background: var(--bg-elevated); color: var(--text-primary); border: 1px solid var(--border-default); }
+        .modal-confirm { background: linear-gradient(135deg, var(--accent), #c73e54); color: var(--text-on-accent); }
+
+        /* ================================================================
+           OPTIMIZE MENU
+           ================================================================ */
+        .optimize-option {
+            padding: var(--space-3) var(--space-4);
+            color: var(--text-primary);
+            cursor: pointer;
+            border-bottom: 1px solid var(--border-default);
+            font-size: var(--text-md);
+            transition: background var(--duration-fast) var(--ease-out);
+        }
         .optimize-option:last-child { border-bottom: none; }
-        .optimize-option:hover { background: #4CAF50; color: #fff; }
-        
-        /* Tile Detail View */
-        .detail-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.9); z-index: 2500; flex-direction: column; }
+        .optimize-option:hover { background: var(--success); color: #fff; }
+
+        /* ================================================================
+           TILE DETAIL VIEW
+           ================================================================ */
+        .detail-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.92);
+            -webkit-backdrop-filter: blur(4px);
+            backdrop-filter: blur(4px);
+            z-index: 2500;
+            flex-direction: column;
+        }
         .detail-overlay.active { display: flex; }
-        .detail-header { padding: 10px; text-align: center; color: #FFEB3B; font-size: 18px; font-weight: bold; }
-        .detail-canvas-container { flex: 1; display: flex; align-items: center; justify-content: center; padding: 10px; overflow: hidden; touch-action: none; }
-        .detail-canvas-container canvas { background: #fff; border-radius: 8px; touch-action: none; cursor: grab; }
+        .detail-header {
+            padding: var(--space-3) var(--space-4);
+            text-align: center;
+            color: #FFEB3B;
+            font-size: var(--text-xl);
+            font-weight: 700;
+            background: rgba(0,0,0,0.5);
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+        }
+        .detail-canvas-container {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: var(--space-3);
+            overflow: hidden;
+            touch-action: none;
+        }
+        .detail-canvas-container canvas {
+            background: #fff;
+            border-radius: var(--radius-md);
+            touch-action: none;
+            cursor: grab;
+            box-shadow: var(--shadow-lg);
+        }
         .detail-canvas-container canvas:active { cursor: grabbing; }
-        .detail-footer { padding: 15px; display: flex; gap: 10px; }
-        .detail-footer button { flex: 1; padding: 15px; font-size: 16px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; }
-        .detail-close { background: #333; color: #fff; }
-        .detail-done { background: #4CAF50; color: #fff; }
+        .detail-footer {
+            padding: var(--space-4);
+            display: flex;
+            gap: var(--space-3);
+            background: rgba(0,0,0,0.5);
+            border-top: 1px solid rgba(255,255,255,0.06);
+        }
+        .detail-footer button {
+            flex: 1;
+            padding: var(--space-4);
+            font-size: var(--text-lg);
+            font-weight: 700;
+            border: none;
+            border-radius: var(--radius-md);
+            cursor: pointer;
+        }
+        .detail-close { background: var(--bg-elevated); color: var(--text-primary); border: 1px solid var(--border-default); }
+        .detail-done { background: linear-gradient(135deg, var(--success), #3a8f4a); color: #fff; box-shadow: var(--shadow-glow-success); }
+
+        /* ================================================================
+           TOAST NOTIFICATION
+           ================================================================ */
+        .toast-notification {
+            position: fixed;
+            bottom: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--bg-elevated);
+            color: var(--text-primary);
+            padding: var(--space-3) var(--space-5);
+            border-radius: var(--radius-pill);
+            font-size: var(--text-base);
+            z-index: 9999;
+            max-width: 90%;
+            text-align: center;
+            box-shadow: var(--shadow-lg);
+            border: 1px solid var(--border-default);
+            -webkit-backdrop-filter: blur(12px);
+            backdrop-filter: blur(12px);
+            animation: toastIn var(--duration-normal) var(--ease-spring);
+        }
+        @keyframes toastIn {
+            from { opacity: 0; transform: translateX(-50%) translateY(10px) scale(0.95); }
+            to   { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
+        }
+
+        /* ================================================================
+           UTILITY CLASSES
+           ================================================================ */
+        .flex-row       { display: flex; align-items: center; gap: var(--space-3); }
+        .flex-between   { display: flex; justify-content: space-between; align-items: center; }
+        .flex-center    { display: flex; align-items: center; justify-content: center; }
+        .grid-2         { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-2); }
+        .grid-3         { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: var(--space-2); }
+
+        .mb-1 { margin-bottom: var(--space-1); }
+        .mb-2 { margin-bottom: var(--space-2); }
+        .mb-3 { margin-bottom: var(--space-3); }
+        .mb-4 { margin-bottom: var(--space-4); }
+        .mt-3 { margin-top: var(--space-3); }
+        .mt-4 { margin-top: var(--space-4); }
+
+        .text-xs      { font-size: var(--text-xs); }
+        .text-sm      { font-size: var(--text-sm); }
+        .text-base    { font-size: var(--text-base); }
+        .text-center  { text-align: center; }
+        .text-muted   { color: var(--text-secondary); }
+        .text-dim     { color: var(--text-tertiary); }
+        .text-success { color: var(--success); }
+        .text-accent  { color: var(--accent); }
+        .text-bold    { font-weight: 600; }
+
+        .hint {
+            font-size: var(--text-xs);
+            color: var(--text-tertiary);
+            text-align: center;
+            line-height: var(--leading-relaxed);
+        }
+
+        /* ---- Stat Box ---- */
+        .stat-box {
+            background: var(--bg-elevated);
+            border-radius: var(--radius-md);
+            padding: var(--space-3);
+            text-align: center;
+            border: 1px solid var(--border-default);
+        }
+        .stat-box .stat-label  { font-size: var(--text-xs); color: var(--text-secondary); }
+        .stat-box .stat-value  { font-size: var(--text-xl); font-weight: 700; color: var(--text-primary); margin: 2px 0; }
+        .stat-box .stat-detail { font-size: var(--text-xs); color: var(--text-tertiary); }
+
+        /* ---- Progress Bar ---- */
+        .progress-bar {
+            background: rgba(255,255,255,0.06);
+            border-radius: 4px;
+            height: 8px;
+            overflow: hidden;
+        }
+        .progress-bar-fill {
+            background: linear-gradient(90deg, var(--success), #6bd17b);
+            height: 100%;
+            transition: width var(--duration-slow) var(--ease-out);
+            border-radius: 4px;
+        }
+
+        /* ---- Projection Bars ---- */
+        .proj-top-bar {
+            position: fixed;
+            top: 0; left: 0; right: 0;
+            background: rgba(0,0,0,0.85);
+            -webkit-backdrop-filter: blur(12px);
+            backdrop-filter: blur(12px);
+            padding: var(--space-3) var(--space-5);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 1003;
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+        }
+        .proj-bottom-bar {
+            position: fixed;
+            bottom: var(--space-5);
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: var(--space-3);
+            z-index: 1003;
+        }
     </style>
 </head>
 <body>
@@ -87,7 +656,7 @@
         <div class="detail-canvas-container" id="detailCanvasContainer">
             <canvas id="detailCanvas" width="600" height="600"></canvas>
         </div>
-        <div style="text-align:center;color:#888;font-size:11px;padding:5px;">Pinch to zoom • Drag to pan</div>
+        <div class="hint" style="padding:5px;">Pinch to zoom • Drag to pan</div>
         <div class="detail-footer">
             <button class="detail-close" onclick="closeDetailView(false)">✕ Close</button>
             <button class="detail-done" onclick="closeDetailView(true)">✓ Mark as Cut</button>
@@ -131,13 +700,13 @@
     <div id="diagram" class="panel active">
         <div class="info-bar">
             <span class="full">● Full: <b id="fullCount">0</b></span> &nbsp;
-            <span style="color:#ff4444">● Done: <b id="cutDoneCount">0</b></span>
+            <span style="color:var(--accent)">● Done: <b id="cutDoneCount">0</b></span>
         </div>
-        <div style="font-size:10px;color:#888;text-align:center;margin-bottom:10px;">Tap cut tile to cycle: Orange → Yellow (selected) → Red (cut) → Orange</div>
-        <div style="display:flex;gap:10px;align-items:center;margin-bottom:10px;">
+        <div class="hint mb-3">Tap cut tile to cycle: Orange → Yellow (selected) → Red (cut) → Orange</div>
+        <div class="flex-row mb-3">
             <span>🔍</span><input type="range" id="zoom" min="4" max="100" value="5" step="1" oninput="updateZoom()" style="flex:1"><span id="zoomVal">5x</span>
         </div>
-        <div style="display:flex;gap:10px;margin-bottom:10px;">
+        <div class="flex-row mb-3">
             <button id="lockBtn" class="btn-secondary" onclick="toggleLock()" style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;">
                 <span id="lockIcon">🔓</span> <span id="lockText">Unlocked</span>
             </button>
@@ -145,12 +714,12 @@
                 <span id="cutsIcon">📐</span> <span id="cutsText">Cuts On</span>
             </button>
         </div>
-        <div style="font-size:9px;color:#666;text-align:center;margin-bottom:10px;" id="controlsHint">📱 One finger: pattern • Two fingers: pan & zoom | 💻 Drag: pattern • Shift+drag: pan • Scroll: zoom</div>
+        <div class="hint mb-3" id="controlsHint">📱 One finger: pattern • Two fingers: pan & zoom | 💻 Drag: pattern • Shift+drag: pan • Scroll: zoom</div>
         <div class="row">
             <button class="btn-secondary" onclick="resetView()">📍 Reset View</button>
             <div style="position:relative;flex:1;">
                 <button class="btn-success" onclick="toggleOptimizeMenu()" style="width:100%;" id="optimizeBtn">🎯 Optimize</button>
-                <div id="optimizeMenu" style="display:none;position:absolute;bottom:100%;left:0;right:0;background:#1a1a2e;border:1px solid #4CAF50;border-radius:8px;margin-bottom:5px;overflow:hidden;z-index:100;">
+                <div id="optimizeMenu" style="display:none;position:absolute;bottom:100%;left:0;right:0;background:var(--bg-surface);border:1px solid var(--border-success);border-radius:var(--radius-md);margin-bottom:5px;overflow:hidden;z-index:100;box-shadow:var(--shadow-md);">
                     <div class="optimize-option" onclick="runOptimize('fullTiles')">📦 Maximize Full Tiles</div>
                     <div class="optimize-option" onclick="runOptimize('minSmallCuts')">🔪 Avoid Small Slivers</div>
                     <div class="optimize-option" onclick="runOptimize('balanced')">⚖️ Balanced (Both)</div>
@@ -164,10 +733,10 @@
     <div id="wall" class="panel">
         <div class="section">
             <h3>📐 Surface Perimeter</h3>
-            <p style="font-size:11px;color:#888;margin-bottom:12px;">Draw the outline of your wall or floor. Tap corners to create shape, then enter exact measurements.</p>
+            <p class="hint mb-3" style="text-align:left;">Draw the outline of your wall or floor. Tap corners to create shape, then enter exact measurements.</p>
             
             <!-- Mode Toggle -->
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:15px;">
+            <div class="grid-2 mb-4">
                 <button id="perimWallBtn" class="btn-primary" onclick="setPerimeterMode('wall')" style="padding:10px;font-size:13px;">
                     🧱 Wall
                 </button>
@@ -177,15 +746,15 @@
             </div>
             
             <!-- Drawing Canvas -->
-            <div id="perimeterCanvasContainer" style="background:#0a0a15;border-radius:8px;overflow:hidden;margin-bottom:15px;position:relative;">
+            <div id="perimeterCanvasContainer" style="background:var(--bg-recessed);border-radius:var(--radius-md);overflow:hidden;margin-bottom:15px;position:relative;border:1px solid var(--border-default);">
                 <canvas id="perimeterCanvas" width="400" height="300" style="width:100%;touch-action:none;"></canvas>
-                <div id="perimeterHint" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;color:#555;font-size:12px;pointer-events:none;">
+                <div id="perimeterHint" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;color:var(--text-tertiary);font-size:12px;pointer-events:none;">
                     Tap to add corners<br>Tap first point to close shape
                 </div>
             </div>
             
             <!-- Drawing Controls -->
-            <div id="drawingControls" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:15px;">
+            <div id="drawingControls" class="grid-3 mb-4">
                 <button class="btn-secondary" onclick="undoPerimeterPoint()" id="undoBtn" disabled style="font-size:12px;padding:10px;">
                     ↩ Undo
                 </button>
@@ -198,7 +767,7 @@
             </div>
             
             <!-- Status -->
-            <div id="perimeterStatus" style="text-align:center;font-size:12px;color:#888;margin-bottom:15px;">
+            <div id="perimeterStatus" class="hint mb-4">
                 Points: 0 | Tap to start drawing
             </div>
         </div>
@@ -206,22 +775,22 @@
         <!-- Wall Segments List (appears after shape is closed) -->
         <div class="section" id="segmentMeasurements" style="display:none;">
             <h3>📏 Enter Measurements</h3>
-            <p style="font-size:11px;color:#888;margin-bottom:12px;">Tap a wall segment below or on the drawing to enter its length.</p>
+            <p class="hint mb-3" style="text-align:left;">Tap a wall segment below or on the drawing to enter its length.</p>
             
             <div id="wallSegmentsList">
                 <!-- Filled by JS -->
             </div>
             
-            <div id="measurementStatus" style="margin-top:15px;padding:12px;background:#0f3460;border-radius:8px;text-align:center;">
-                <div style="font-size:12px;color:#888;">Segments measured</div>
-                <div style="font-size:20px;font-weight:bold;color:#fff;" id="measuredCount">0 / 0</div>
+            <div id="measurementStatus" class="stat-box mt-4">
+                <div class="stat-label">Segments measured</div>
+                <div class="stat-value" id="measuredCount">0 / 0</div>
             </div>
 
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:15px;">
-                <button class="btn-secondary" onclick="undoLastMeasurement()" id="undoMeasureBtn" disabled style="font-size:14px;padding:12px;">
+            <div class="grid-2 mt-4">
+                <button class="btn-secondary" onclick="undoLastMeasurement()" id="undoMeasureBtn" disabled>
                     ↩ Undo Last
                 </button>
-                <button class="btn-primary" onclick="applyPerimeter()" id="applyPerimBtn" disabled style="font-size:14px;padding:12px;">
+                <button class="btn-primary" onclick="applyPerimeter()" id="applyPerimBtn" disabled>
                     ✓ Apply Dimensions
                 </button>
             </div>
@@ -230,7 +799,7 @@
         <!-- Quick Rectangle Mode (for simple shapes) -->
         <div class="section">
             <h3>⚡ Quick Rectangle</h3>
-            <p style="font-size:11px;color:#888;margin-bottom:10px;">For simple rectangular areas</p>
+            <p class="hint mb-3" style="text-align:left;">For simple rectangular areas</p>
             <div class="row">
                 <div class="field"><label>Width (in)</label><input type="number" id="quickWidth" placeholder="58"></div>
                 <div class="field"><label>Height (in)</label><input type="number" id="quickHeight" placeholder="70"></div>
@@ -266,12 +835,12 @@
                 <div class="field"><label id="tileWLabel">Actual Width (in)</label><input type="number" id="tileW" value="2" step="any"></div>
                 <div class="field"><label id="tileHLabel">Actual Height (in)</label><input type="number" id="tileH" value="4" step="any"></div>
             </div>
-            <div id="nominalHint" style="display:none;font-size:10px;color:#4CAF50;margin:-4px 0 6px 2px;">✓ Actual size will be calculated: nominal − grout joint</div>
-            <div id="actualReadout" style="display:none;font-size:11px;color:#2196F3;background:#f0f7ff;padding:6px 8px;border-radius:4px;margin-bottom:8px;"></div>
+            <div id="nominalHint" style="display:none;font-size:var(--text-xs);color:var(--success);margin:-4px 0 6px 2px;">✓ Actual size will be calculated: nominal − grout joint</div>
+            <div id="actualReadout" style="display:none;font-size:var(--text-sm);color:var(--info);background:rgba(59,130,246,0.1);padding:6px 8px;border-radius:4px;margin-bottom:8px;"></div>
             <div class="field"><label>Grout</label><select id="grout" onchange="onNominalToggle()"><option value="0.0625">1/16"</option><option value="0.125" selected>1/8"</option><option value="0.25">1/4"</option></select></div>
             <button class="btn-primary" onclick="updateTile()">🔄 Update</button>
             <button class="btn-secondary" onclick="saveCustomPreset()" style="margin-top:4px;width:100%;font-size:11px;">💾 Save as Preset</button>
-            <p style="font-size:10px;color:#999;margin-top:6px;">💡 Measure the tile face, not the box label. Or check "Nominal" to enter the box size and let the app calculate actual.</p>
+            <p class="hint" style="margin-top:6px;text-align:left;">💡 Measure the tile face, not the box label. Or check "Nominal" to enter the box size and let the app calculate actual.</p>
         </div>
     </div>
 
@@ -290,21 +859,21 @@
             <div class="field"><label>Waste % (recommended 10-15%)</label><input type="number" id="waste" value="10"></div>
             <button class="btn-primary" onclick="updateTileCount()" style="margin-bottom:10px;">🔢 Calculate Tiles</button>
             <div class="calc-result" id="tilesNeeded">0 tiles</div>
-            <div style="font-size:11px;color:#888;text-align:center;margin-top:10px;">
+            <div class="hint mt-3">
                 Full tiles + Cut tiles + Waste buffer
             </div>
         </div>
         <div class="section"><h3>💰 Cost Estimate</h3>
             <div class="field"><label>Price per Tile ($)</label><input type="number" id="tilePrice" value="5" step="0.01"></div>
             <div class="field"><label>Price per Box (optional)</label>
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+                <div class="grid-2">
                     <input type="number" id="boxPrice" placeholder="Box $" step="0.01">
                     <input type="number" id="tilesPerBox" placeholder="Tiles/box">
                 </div>
             </div>
             <button class="btn-primary" onclick="updateCostEstimate()" style="margin-bottom:10px;">💰 Calculate Cost</button>
             <div class="calc-result" id="costEstimate">$0.00</div>
-            <div style="font-size:11px;color:#888;text-align:center;" id="costBreakdown"></div>
+            <div class="hint" id="costBreakdown"></div>
         </div>
     </div>
 
@@ -315,8 +884,8 @@
                 <label>Project Name</label>
                 <input type="text" id="projName" placeholder="My Tile Project" oninput="markUnsaved()">
             </div>
-            <div id="saveStatus" style="font-size:11px;color:#888;margin-bottom:10px;">Not saved yet</div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+            <div id="saveStatus" class="hint mb-3" style="text-align:left;">Not saved yet</div>
+            <div class="grid-2">
                 <button class="btn-primary" onclick="saveCurrentProject()">💾 Save</button>
                 <button class="btn-secondary" onclick="confirmNewProject()">📄 New</button>
             </div>
@@ -327,15 +896,15 @@
             <div id="projectList" style="max-height:250px;overflow-y:auto;">
                 <!-- Filled by JS -->
             </div>
-            <div id="noProjects" style="font-size:12px;color:#666;text-align:center;padding:20px;">
+            <div id="noProjects" class="hint" style="padding:20px;">
                 No saved projects yet.<br>Save your first project above!
             </div>
         </div>
         
         <div class="section">
             <h3>📤 Backup & Share</h3>
-            <p style="font-size:11px;color:#888;margin-bottom:10px;">Export to share or backup. Import to restore.</p>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+            <p class="hint mb-3" style="text-align:left;">Export to share or backup. Import to restore.</p>
+            <div class="grid-2">
                 <button class="btn-secondary" onclick="exportProject()">📤 Export</button>
                 <button class="btn-secondary" onclick="document.getElementById('importFile').click()">📥 Import</button>
             </div>
@@ -349,11 +918,11 @@
             <h3>📏 Laser Position</h3>
             
             <!-- Wall / Floor Toggle -->
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:15px;">
-                <button id="wallModeBtn" class="btn-primary" onclick="setProjectionSurface('wall')" style="padding:12px;font-size:14px;">
+            <div class="grid-2 mb-4">
+                <button id="wallModeBtn" class="btn-primary" onclick="setProjectionSurface('wall')">
                     🧱 Wall
                 </button>
-                <button id="floorModeBtn" class="btn-secondary" onclick="setProjectionSurface('floor')" style="padding:12px;font-size:14px;">
+                <button id="floorModeBtn" class="btn-secondary" onclick="setProjectionSurface('floor')">
                     🏠 Floor
                 </button>
             </div>
@@ -363,33 +932,33 @@
                 
                 <!-- Wall Mode Inputs -->
                 <div id="wallInputs">
-                    <label style="font-size:12px;color:#aaa;">Distance from wall</label>
-                    <div style="display:flex;align-items:center;gap:10px;margin:10px 0;">
+                    <label>Distance from wall</label>
+                    <div class="flex-row" style="margin:10px 0;">
                         <input type="range" id="distanceSlider" min="3" max="15" value="6" step="0.5" 
                                oninput="updateFromDistance()" style="flex:1;">
-                        <span id="distanceValue" style="font-size:18px;font-weight:bold;color:#fff;min-width:50px;">6 ft</span>
+                        <span id="distanceValue" style="font-size:var(--text-xl);font-weight:bold;color:var(--text-primary);min-width:50px;">6 ft</span>
                     </div>
                 </div>
                 
                 <!-- Floor Mode Inputs -->
                 <div id="floorInputs" style="display:none;">
-                    <div style="margin-bottom:12px;">
-                        <label style="font-size:12px;color:#aaa;">Tripod height</label>
-                        <div style="display:flex;align-items:center;gap:10px;margin-top:6px;">
+                    <div class="mb-3">
+                        <label>Tripod height</label>
+                        <div class="flex-row" style="margin-top:6px;">
                             <input type="range" id="tripodHeightSlider" min="2" max="6" value="4" step="0.5" 
                                    oninput="updateFloorCoverage()" style="flex:1;">
-                            <span id="tripodHeightValue" style="font-size:16px;font-weight:bold;color:#fff;min-width:45px;">4 ft</span>
+                            <span id="tripodHeightValue" style="font-size:var(--text-lg);font-weight:bold;color:var(--text-primary);min-width:45px;">4 ft</span>
                         </div>
                     </div>
                     <div>
-                        <label style="font-size:12px;color:#aaa;">Distance to work area</label>
-                        <div style="display:flex;align-items:center;gap:10px;margin-top:6px;">
+                        <label>Distance to work area</label>
+                        <div class="flex-row" style="margin-top:6px;">
                             <input type="range" id="floorDistanceSlider" min="3" max="12" value="5" step="0.5" 
                                    oninput="updateFloorCoverage()" style="flex:1;">
-                            <span id="floorDistanceValue" style="font-size:16px;font-weight:bold;color:#fff;min-width:45px;">5 ft</span>
+                            <span id="floorDistanceValue" style="font-size:var(--text-lg);font-weight:bold;color:var(--text-primary);min-width:45px;">5 ft</span>
                         </div>
                     </div>
-                    <div style="margin-top:10px;padding:10px;background:#1a1a2e;border-radius:6px;font-size:10px;color:#666;text-align:center;">
+                    <div class="hint" style="margin-top:10px;padding:10px;background:var(--bg-base);border-radius:var(--radius-sm);">
                         💡 Position tripod at edge of room, angled down toward floor
                     </div>
                 </div>
@@ -397,10 +966,10 @@
             
             <!-- When laser connected: show detected values -->
             <div id="detectedDistanceSection" style="display:none;">
-                <div style="background:#1a3a1a;border-radius:8px;padding:12px;text-align:center;">
-                    <div style="font-size:11px;color:#4CAF50;">● Laser Connected</div>
-                    <div style="font-size:24px;font-weight:bold;color:#fff;margin:5px 0;" id="detectedDistance">6.2 ft</div>
-                    <div style="font-size:11px;color:#888;" id="detectedDistanceLabel">from wall (detected)</div>
+                <div class="stat-box" style="background:var(--success-subtle);border-color:var(--border-success);">
+                    <div class="stat-label" style="color:var(--success);">● Laser Connected</div>
+                    <div class="stat-value" id="detectedDistance">6.2 ft</div>
+                    <div class="stat-detail" id="detectedDistanceLabel">from wall (detected)</div>
                 </div>
             </div>
             
@@ -416,13 +985,13 @@
             
             <!-- Full Wall Mode -->
             <div id="fullWallMode" style="display:none;">
-                <div style="background:#1a3a1a;border-radius:8px;padding:15px;text-align:center;margin-bottom:15px;">
+                <div class="stat-box mb-4" style="background:var(--success-subtle);border-color:var(--border-success);">
                     <div style="font-size:28px;">✓</div>
-                    <div style="font-size:16px;color:#4CAF50;font-weight:bold;">Full Wall Coverage</div>
-                    <div style="font-size:11px;color:#888;margin-top:4px;">No segments needed</div>
+                    <div style="font-size:var(--text-lg);color:var(--success);font-weight:bold;">Full Wall Coverage</div>
+                    <div class="stat-detail" style="margin-top:4px;">No segments needed</div>
                 </div>
                 
-                <button class="btn-primary" onclick="projectFullWall()" style="font-size:18px;padding:20px;width:100%;background:linear-gradient(135deg, #e94560, #c73e54);">
+                <button class="btn-primary" onclick="projectFullWall()" style="font-size:18px;padding:20px;">
                     🔴 Project Full Wall
                 </button>
             </div>
@@ -437,7 +1006,7 @@
                     <!-- Filled by JS -->
                 </div>
                 
-                <button id="projectSegmentBtn" class="btn-primary" onclick="projectCurrentSegment()" style="font-size:18px;padding:20px;width:100%;background:linear-gradient(135deg, #e94560, #c73e54);">
+                <button id="projectSegmentBtn" class="btn-primary" onclick="projectCurrentSegment()" style="font-size:18px;padding:20px;">
                     🔴 Project Segment 1
                 </button>
                 
@@ -448,9 +1017,9 @@
             
             <!-- No Wall Dimensions -->
             <div id="noWallMode">
-                <div style="text-align:center;padding:20px;color:#666;">
-                    <div style="font-size:14px;">Enter wall dimensions first</div>
-                    <div style="font-size:12px;margin-top:5px;">🧱 Wall tab</div>
+                <div class="hint" style="padding:20px;">
+                    <div style="font-size:var(--text-md);">Enter wall dimensions first</div>
+                    <div style="font-size:var(--text-base);margin-top:5px;">🧱 Wall tab</div>
                 </div>
             </div>
         </div>
@@ -474,7 +1043,7 @@
         <!-- Laser Connection Section -->
         <div class="section">
             <h3>📡 Connect to LayIt Laser</h3>
-            <p style="font-size:11px;color:#aaa;margin-bottom:12px">Connect directly to your LayIt Laser device via WiFi.</p>
+            <p class="hint mb-3" style="text-align:left;">Connect directly to your LayIt Laser device via WiFi.</p>
             
             <div id="laserNotConnected">
                 <div class="field">
@@ -494,17 +1063,17 @@
             </div>
             
             <div id="laserConnected" style="display:none;">
-                <div style="background:#1a3a1a;padding:15px;border-radius:8px;text-align:center;margin-bottom:12px;">
-                    <div style="font-size:12px;color:#4CAF50;">● Connected</div>
-                    <div style="font-size:18px;font-weight:bold;margin:8px 0;" id="laserDeviceName">LayIt Laser Pro</div>
-                    <div style="font-size:11px;color:#888;" id="laserStatus">Ready to project</div>
+                <div class="stat-box mb-3" style="background:var(--success-subtle);border-color:var(--border-success);">
+                    <div class="stat-label" style="color:var(--success);">● Connected</div>
+                    <div class="stat-value" id="laserDeviceName">LayIt Laser Pro</div>
+                    <div class="stat-detail" id="laserStatus">Ready to project</div>
                 </div>
                 
                 <button class="btn-primary" onclick="sendToLaser()" style="padding:15px;width:100%;font-size:16px;">
                     🔴 Project Pattern
                 </button>
                 
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px;">
+                <div class="grid-2 mt-3">
                     <button class="btn-secondary" onclick="laserPreview()">👁️ Preview</button>
                     <button class="btn-secondary" onclick="laserStop()">⏹️ Stop</button>
                 </div>
@@ -518,13 +1087,13 @@
         <!-- Laser Calibration Section -->
         <div class="section">
             <h3>🎯 Laser Calibration</h3>
-            <p style="font-size:11px;color:#aaa;margin-bottom:10px">Calibrate your laser for accurate 1:1 scale projection.</p>
+            <p class="hint mb-3" style="text-align:left;">Calibrate your laser for accurate 1:1 scale projection.</p>
             
             <button class="btn-secondary" onclick="startLaserCalibration()" style="padding:15px;width:100%">
                 📏 Start Calibration
             </button>
             
-            <div style="margin-top:10px;font-size:11px;color:#666;line-height:1.6">
+            <div style="margin-top:10px;font-size:var(--text-sm);color:var(--text-tertiary);line-height:1.6">
                 <b>Calibration Steps:</b><br>
                 1. Laser projects a 12" square<br>
                 2. Measure with tape measure<br>
@@ -536,17 +1105,17 @@
         <!-- Laser Info Section -->
         <div class="section">
             <h3>💡 About LayIt Laser</h3>
-            <div style="font-size:11px;color:#aaa;line-height:1.8">
-                <b style="color:#e94560">What It Does:</b><br>
+            <div style="font-size:var(--text-sm);color:var(--text-secondary);line-height:1.8">
+                <b style="color:var(--accent)">What It Does:</b><br>
                 Projects your exact tile pattern onto walls/floors using a precision laser system. No more chalk lines or guesswork!<br><br>
                 
-                <b style="color:#e94560">Features:</b><br>
+                <b style="color:var(--accent)">Features:</b><br>
                 • 1:1 scale projection<br>
                 • WiFi connected to this app<br>
                 • Works in daylight (green laser)<br>
                 • Battery or plug-in powered<br><br>
                 
-                <b style="color:#e94560">Don't have a LayIt Laser?</b><br>
+                <b style="color:var(--accent)">Don't have a LayIt Laser?</b><br>
                 Export your pattern as SVG/DXF and use with any laser cutter or CNC for templates.
             </div>
         </div>
@@ -690,22 +1259,22 @@ function updateCoverageDisplay() {
         quality = getLineQuality(beamDist);
     }
     
-    var html = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">';
-    
+    var html = '<div class="grid-2">';
+
     // Coverage box
-    html += '<div style="background:#0f3460;border-radius:8px;padding:12px;text-align:center;">';
-    html += '<div style="font-size:10px;color:#888;">Coverage</div>';
-    html += '<div style="font-size:18px;font-weight:bold;color:#fff;">' + coverage + '"</div>';
-    html += '<div style="font-size:10px;color:#666;">(' + (coverage/12).toFixed(1) + ' ft)</div>';
+    html += '<div class="stat-box">';
+    html += '<div class="stat-label">Coverage</div>';
+    html += '<div class="stat-value">' + coverage + '"</div>';
+    html += '<div class="stat-detail">(' + (coverage/12).toFixed(1) + ' ft)</div>';
     html += '</div>';
-    
+
     // Quality box
-    html += '<div style="background:#0f3460;border-radius:8px;padding:12px;text-align:center;">';
-    html += '<div style="font-size:10px;color:#888;">Line Quality</div>';
-    html += '<div style="font-size:18px;font-weight:bold;color:' + quality.color + ';">' + quality.icon + ' ' + quality.label + '</div>';
-    html += '<div style="font-size:10px;color:#666;">~' + quality.width + '</div>';
+    html += '<div class="stat-box">';
+    html += '<div class="stat-label">Line Quality</div>';
+    html += '<div class="stat-value" style="color:' + quality.color + ';">' + quality.icon + ' ' + quality.label + '</div>';
+    html += '<div class="stat-detail">~' + quality.width + '</div>';
     html += '</div>';
-    
+
     html += '</div>';
     
     container.innerHTML = html;
@@ -889,15 +1458,15 @@ function updateProjectionModeUI() {
     var percent = Math.round(completed / total * 100);
     
     // Build segment grid header with progress
-    var gridHtml = '<div style="margin-bottom:12px;">';
-    gridHtml += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">';
-    gridHtml += '<span style="font-size:12px;color:#888;">' + total + ' segments</span>';
-    gridHtml += '<span style="font-size:14px;font-weight:bold;color:' + (percent === 100 ? '#4CAF50' : '#FF9800') + ';">' + percent + '% complete</span>';
+    var gridHtml = '<div class="mb-3">';
+    gridHtml += '<div class="flex-between mb-2">';
+    gridHtml += '<span class="text-sm text-muted">' + total + ' segments</span>';
+    gridHtml += '<span class="text-bold" style="font-size:14px;color:' + (percent === 100 ? '#46a758' : '#f0a000') + ';">' + percent + '% complete</span>';
     gridHtml += '</div>';
-    
+
     // Progress bar
-    gridHtml += '<div style="background:#333;border-radius:4px;height:8px;overflow:hidden;">';
-    gridHtml += '<div style="background:linear-gradient(90deg,#4CAF50,#8BC34A);height:100%;width:' + percent + '%;transition:width 0.3s;"></div>';
+    gridHtml += '<div class="progress-bar">';
+    gridHtml += '<div class="progress-bar-fill" style="width:' + percent + '%;"></div>';
     gridHtml += '</div></div>';
     
     // Segment grid
@@ -927,17 +1496,17 @@ function updateProjectionModeUI() {
                 }
             }
             
-            var bg = '#333', border = '#555', color = '#666', cursor = 'pointer';
+            var bg = '#1c2333', border = '#484f58', color = '#484f58', cursor = 'pointer';
             var content = String(seg.pathOrder + 1); // Show path order, not ID
-            
+
             if (isComplete) {
-                bg = '#1a4a1a'; border = '#4CAF50'; color = '#4CAF50'; content = '✓';
+                bg = 'rgba(70,167,88,0.12)'; border = '#46a758'; color = '#46a758'; content = '✓';
             } else if (isCurrent) {
-                bg = '#4a1a3a'; border = '#e94560'; color = '#fff';
+                bg = 'rgba(229,72,77,0.12)'; border = '#e5484d'; color = '#e6edf3';
             } else if (isNext) {
-                bg = '#3a3a1a'; border = '#FF9800'; color = '#FF9800';
+                bg = 'rgba(240,160,0,0.12)'; border = '#f0a000'; color = '#f0a000';
             } else if (!isReady && !isComplete) {
-                bg = '#252525'; border = '#3a3a3a'; color = '#444'; cursor = 'not-allowed';
+                bg = '#0d1117'; border = 'rgba(240,246,252,0.08)'; color = '#484f58'; cursor = 'not-allowed';
             }
             
             gridHtml += '<div onclick="selectSegment(' + seg.id + ')" style="';
@@ -952,7 +1521,7 @@ function updateProjectionModeUI() {
     
     // Path direction hint
     var pathHint = isFloor ? '↔ Serpentine: follow numbers' : '⬆ Start bottom, work up';
-    gridHtml += '<div style="text-align:center;margin-top:8px;font-size:10px;color:#666;">' + pathHint + '</div>';
+    gridHtml += '<div class="hint mt-2">' + pathHint + '</div>';
     
     document.getElementById('segmentGrid').innerHTML = gridHtml;
     
@@ -960,8 +1529,8 @@ function updateProjectionModeUI() {
     var current = segmentState.segments[segmentState.currentSegment];
     var label = getSegmentLabel(current);
     
-    var infoHtml = '<div style="font-size:16px;font-weight:bold;color:#fff;">Segment ' + (current.pathOrder + 1) + ' of ' + total + '</div>';
-    infoHtml += '<div style="font-size:12px;color:#888;">' + label + '</div>';
+    var infoHtml = '<div style="font-size:16px;font-weight:bold;color:var(--text-primary);">Segment ' + (current.pathOrder + 1) + ' of ' + total + '</div>';
+    infoHtml += '<div class="text-sm text-muted">' + label + '</div>';
     
     // Show adjacent segments for floor mode
     if (isFloor && current.adjacent) {
@@ -1164,28 +1733,28 @@ function startSegmentProjection(seg) {
         // Build overlay UI
         var overlay = document.createElement('div');
         overlay.id = 'projOverlay';
-        overlay.innerHTML = 
+        overlay.innerHTML =
             // Top bar with segment info
-            '<div style="position:fixed;top:0;left:0;right:0;background:rgba(0,0,0,0.85);padding:12px 20px;display:flex;justify-content:space-between;align-items:center;z-index:1003;">' +
+            '<div class="proj-top-bar">' +
                 '<div>' +
                     '<div style="font-size:18px;font-weight:bold;color:#fff;">Segment ' + (seg.pathOrder + 1) + '</div>' +
-                    '<div style="font-size:12px;color:#888;">Row ' + (seg.row + 1) + ', Col ' + (seg.col + 1) + '</div>' +
+                    '<div style="font-size:12px;color:#8b949e;">Row ' + (seg.row + 1) + ', Col ' + (seg.col + 1) + '</div>' +
                 '</div>' +
                 '<div style="display:flex;gap:10px;align-items:center;">' +
-                    '<div id="segmentCutBadge" style="background:#888;color:#fff;padding:6px 12px;border-radius:20px;font-size:14px;font-weight:bold;">...</div>' +
+                    '<div id="segmentCutBadge" style="background:#8b949e;color:#fff;padding:6px 12px;border-radius:20px;font-size:14px;font-weight:bold;">...</div>' +
                 '</div>' +
             '</div>' +
-            
+
             // Bottom controls
-            '<div style="position:fixed;bottom:20px;left:50%;transform:translateX(-50%);display:flex;gap:10px;z-index:1003;">' +
-                '<button class="proj-btn" onclick="prevSegment()" title="Previous" style="background:#333;color:#fff;border:none;padding:15px 20px;border-radius:8px;font-size:18px;cursor:pointer;">◀</button>' +
-                '<button onclick="markSegmentCompleteFromProj()" style="background:#4CAF50;color:#fff;border:none;padding:15px 30px;border-radius:8px;font-size:16px;font-weight:bold;cursor:pointer;">✓ Done</button>' +
-                '<button class="proj-btn" onclick="nextSegment()" title="Next" style="background:#333;color:#fff;border:none;padding:15px 20px;border-radius:8px;font-size:18px;cursor:pointer;">▶</button>' +
-                '<button onclick="exitProj()" style="background:#cc0000;color:#fff;border:none;padding:15px 20px;border-radius:8px;font-size:18px;margin-left:20px;cursor:pointer;">✕</button>' +
+            '<div class="proj-bottom-bar">' +
+                '<button class="proj-btn" onclick="prevSegment()" title="Previous">◀</button>' +
+                '<button onclick="markSegmentCompleteFromProj()" style="background:linear-gradient(135deg,#46a758,#3a8f4a);color:#fff;border:none;padding:15px 30px;border-radius:10px;font-size:16px;font-weight:bold;cursor:pointer;box-shadow:0 0 20px rgba(70,167,88,0.3);">✓ Done</button>' +
+                '<button class="proj-btn" onclick="nextSegment()" title="Next">▶</button>' +
+                '<button onclick="exitProj()" style="background:#cc0000;color:#fff;border:none;padding:15px 20px;border-radius:10px;font-size:18px;margin-left:20px;cursor:pointer;">✕</button>' +
             '</div>' +
-            
+
             // Segment navigation hint
-            '<div style="position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.7);color:#fff;padding:8px 16px;border-radius:6px;font-size:12px;z-index:1003;">' +
+            '<div style="position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.7);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);color:#e6edf3;padding:8px 16px;border-radius:8px;font-size:12px;z-index:1003;border:1px solid rgba(255,255,255,0.06);">' +
                 'Tap cut tiles for measurements • ◀▶ to navigate • ✓ when done' +
             '</div>';
             
@@ -1247,10 +1816,10 @@ function updateSegmentCutCount(seg) {
     var badge = document.getElementById('segmentCutBadge');
     if (badge) {
         if (count > 0) {
-            badge.style.background = '#e94560';
+            badge.style.background = '#e5484d';
             badge.textContent = count + ' cut' + (count > 1 ? 's' : '');
         } else {
-            badge.style.background = '#4CAF50';
+            badge.style.background = '#46a758';
             badge.textContent = 'All done!';
         }
     }
@@ -1606,26 +2175,29 @@ function updateSegmentsList() {
     perimeterState.segments.forEach(function(seg, i) {
         var dirLabel = getSegmentDirection(seg);
         var measured = seg.measured && seg.length;
-        
+
+        var bgColor = measured ? 'rgba(70,167,88,0.12)' : (perimeterState.selectedSegment === i ? 'rgba(229,72,77,0.12)' : 'var(--bg-recessed)');
+        var borderColor = measured ? '#46a758' : (perimeterState.selectedSegment === i ? '#e5484d' : 'rgba(240,246,252,0.12)');
+
         html += '<div onclick="selectSegment(' + i + ')" style="';
-        html += 'display:flex;align-items:center;gap:10px;padding:12px;margin-bottom:8px;';
-        html += 'background:' + (measured ? '#1a3a1a' : (perimeterState.selectedSegment === i ? '#3a1a3a' : '#0f0f1a')) + ';';
-        html += 'border:2px solid ' + (measured ? '#4CAF50' : (perimeterState.selectedSegment === i ? '#e94560' : '#333')) + ';';
-        html += 'border-radius:8px;cursor:pointer;">';
-        
-        html += '<div style="width:30px;height:30px;background:#0f3460;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:bold;color:#fff;">' + (i + 1) + '</div>';
-        
+        html += 'display:flex;align-items:center;gap:12px;padding:12px;margin-bottom:8px;';
+        html += 'background:' + bgColor + ';';
+        html += 'border:2px solid ' + borderColor + ';';
+        html += 'border-radius:10px;cursor:pointer;transition:all 0.15s ease;">';
+
+        html += '<div style="width:30px;height:30px;background:var(--bg-elevated);border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--text-primary);font-size:13px;flex-shrink:0;">' + (i + 1) + '</div>';
+
         html += '<div style="flex:1;">';
-        html += '<div style="font-size:13px;color:#fff;">Wall ' + (i + 1) + ' <span style="color:#666;">(' + dirLabel + ')</span></div>';
+        html += '<div style="font-size:13px;color:var(--text-primary);">Wall ' + (i + 1) + ' <span style="color:var(--text-tertiary);">(' + dirLabel + ')</span></div>';
         html += '</div>';
-        
+
         if (measured) {
-            html += '<div style="font-size:18px;font-weight:bold;color:#4CAF50;">' + seg.length + '"</div>';
-            html += '<button onclick="event.stopPropagation();undoMeasurement(' + i + ')" style="background:#333;color:#aaa;border:none;border-radius:4px;padding:4px 8px;font-size:11px;cursor:pointer;">✏️</button>';
+            html += '<div style="font-size:18px;font-weight:bold;color:#46a758;">' + seg.length + '"</div>';
+            html += '<button onclick="event.stopPropagation();undoMeasurement(' + i + ')" style="background:var(--bg-elevated);color:var(--text-secondary);border:1px solid rgba(240,246,252,0.08);border-radius:6px;padding:4px 8px;font-size:11px;cursor:pointer;">✏️</button>';
         } else {
             html += '<input type="number" id="segInput' + i + '" placeholder="inches" style="width:70px;padding:8px;font-size:14px;" onclick="event.stopPropagation()" onchange="setSegmentLength(' + i + ', this.value)">';
         }
-        
+
         html += '</div>';
     });
     
@@ -2257,7 +2829,7 @@ function showLockHint() {
     var originalBg = lockBtn.style.background;
     
     // Flash the lock button
-    lockBtn.style.background = '#ff9800';
+    lockBtn.style.background = '#f0a000';
     lockBtn.style.transform = 'scale(1.05)';
     
     setTimeout(function() {
@@ -3758,13 +4330,12 @@ function showTab(id) {
 function showToast(msg) {
     var existing = document.querySelector('.toast-notification');
     if (existing) existing.remove();
-    
+
     var toast = document.createElement('div');
     toast.className = 'toast-notification';
     toast.textContent = msg;
-    toast.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#333;color:#fff;padding:12px 20px;border-radius:8px;font-size:13px;z-index:9999;max-width:90%;text-align:center;';
     document.body.appendChild(toast);
-    
+
     setTimeout(function() {
         toast.style.opacity = '0';
         toast.style.transition = 'opacity 0.3s';
@@ -5803,7 +6374,7 @@ function saveCurrentProject() {
     var btn = event.target;
     var originalText = btn.innerHTML;
     btn.innerHTML = '✓ Saved!';
-    btn.style.background = '#4CAF50';
+    btn.style.background = '#46a758';
     setTimeout(function() {
         btn.innerHTML = originalText;
         btn.style.background = '';
@@ -6121,10 +6692,10 @@ function startProj() {
         var sectionNav = '';
         if (projSection !== 'full') {
             sectionNav = '<div style="position:fixed;top:10px;left:10px;z-index:1001;display:flex;gap:5px;">' +
-                '<button class="proj-btn" onclick="setSection(\'TL\');draw()" style="background:' + (projSection==='TL'?'#e94560':'#333') + ';font-size:12px;padding:10px;">TL</button>' +
-                '<button class="proj-btn" onclick="setSection(\'TR\');draw()" style="background:' + (projSection==='TR'?'#e94560':'#333') + ';font-size:12px;padding:10px;">TR</button>' +
-                '<button class="proj-btn" onclick="setSection(\'BL\');draw()" style="background:' + (projSection==='BL'?'#e94560':'#333') + ';font-size:12px;padding:10px;">BL</button>' +
-                '<button class="proj-btn" onclick="setSection(\'BR\');draw()" style="background:' + (projSection==='BR'?'#e94560':'#333') + ';font-size:12px;padding:10px;">BR</button>' +
+                '<button class="proj-btn" onclick="setSection(\'TL\');draw()" style="background:' + (projSection==='TL'?'#e5484d':'rgba(30,30,30,0.85)') + ';font-size:12px;padding:10px;">TL</button>' +
+                '<button class="proj-btn" onclick="setSection(\'TR\');draw()" style="background:' + (projSection==='TR'?'#e5484d':'rgba(30,30,30,0.85)') + ';font-size:12px;padding:10px;">TR</button>' +
+                '<button class="proj-btn" onclick="setSection(\'BL\');draw()" style="background:' + (projSection==='BL'?'#e5484d':'rgba(30,30,30,0.85)') + ';font-size:12px;padding:10px;">BL</button>' +
+                '<button class="proj-btn" onclick="setSection(\'BR\');draw()" style="background:' + (projSection==='BR'?'#e5484d':'rgba(30,30,30,0.85)') + ';font-size:12px;padding:10px;">BR</button>' +
                 '</div>';
         }
         
@@ -6133,12 +6704,12 @@ function startProj() {
         overlay.id = 'projOverlay';
         overlay.innerHTML = sectionNav +
             '<div class="proj-ctrl">' +
-            '<button class="proj-btn" id="projLockBtn" onclick="toggleProjLock()" style="background:' + (patternLocked ? '#4CAF50' : '#333') + '">' + (patternLocked ? '🔒' : '🔓') + '</button>' +
+            '<button class="proj-btn" id="projLockBtn" onclick="toggleProjLock()" style="background:' + (patternLocked ? '#46a758' : 'rgba(30,30,30,0.85)') + '">' + (patternLocked ? '🔒' : '🔓') + '</button>' +
             '<button class="proj-btn" onclick="projZoom(1.25)">➕</button>' +
             '<button class="proj-btn" onclick="projZoom(0.8)">➖</button>' +
             '<button class="proj-btn" style="background:#cc0000" onclick="exitProj()">✕</button>' +
             '</div>' +
-            '<div style="position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.7);color:#fff;padding:10px 20px;border-radius:8px;font-size:12px;z-index:1002;" id="projStatus">' +
+            '<div style="position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.7);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);color:#e6edf3;padding:10px 20px;border-radius:10px;font-size:12px;z-index:1002;border:1px solid rgba(255,255,255,0.06);" id="projStatus">' +
             (patternLocked ? '🔒 Pattern locked • ' : '') +
             (projSection !== 'full' ? 'Section: ' + projSection + ' • ' : '') +
             'Drag to pan • +/- to zoom • ✕ to exit</div>';
@@ -6196,7 +6767,7 @@ function exitProj() {
     
     // Restore UI
     document.getElementById('tabBar').style.display = 'flex';
-    document.body.style.background = '#1a1a2e';
+    document.body.style.background = '#0d1117';
     
     // Remove overlay
     var overlay = document.getElementById('projOverlay');
@@ -6204,7 +6775,7 @@ function exitProj() {
     
     // Restore canvas
     var container = document.getElementById('canvasContainer');
-    container.style.cssText = 'background:#fff;border-radius:10px;overflow:hidden;touch-action:none;';
+    container.style.cssText = '';
     
     // Restore panel visibility (remove forced display:none)
     var panels = document.querySelectorAll('.panel');
@@ -6248,7 +6819,7 @@ function toggleProjLock() {
     // Update projector lock button
     var btn = document.getElementById('projLockBtn');
     if (btn) {
-        btn.style.background = patternLocked ? '#4CAF50' : '#333';
+        btn.style.background = patternLocked ? '#46a758' : 'rgba(30,30,30,0.85)';
         btn.textContent = patternLocked ? '🔒' : '🔓';
     }
     

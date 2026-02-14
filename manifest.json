@@ -4,8 +4,8 @@
   "description": "Tile layout planner with laser projection export",
   "start_url": "/layit/",
   "display": "standalone",
-  "background_color": "#1a3c40",
-  "theme_color": "#1a3c40",
+  "background_color": "#0d1117",
+  "theme_color": "#0d1117",
   "icons": [
     {"src": "icon-192.png", "sizes": "192x192", "type": "image/png"},
     {"src": "icon-512.png", "sizes": "512x512", "type": "image/png"}
