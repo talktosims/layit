@@ -537,9 +537,430 @@
             position:fixed; bottom:20px; left:50%; transform:translateX(-50%);
             display:flex; gap:12px; z-index:1003;
         }
+        /* ---- MEASUREMENT WIZARD ---- */
+        .wizard-overlay {
+            position:fixed; top:0; left:0; right:0; bottom:0;
+            background:var(--bg-base);
+            z-index:200;
+            display:flex; flex-direction:column;
+            overflow-y:auto;
+            -webkit-overflow-scrolling:touch;
+        }
+        .wizard-overlay.hidden { display:none; }
+        .wizard-header {
+            text-align:center;
+            padding:30px 20px 10px;
+        }
+        .wizard-header h2 {
+            font-size:var(--text-2xl);
+            font-weight:700;
+            margin-bottom:6px;
+            background:linear-gradient(135deg,#4ade80,#22c55e);
+            -webkit-background-clip:text;
+            -webkit-text-fill-color:transparent;
+        }
+        .wizard-header p {
+            color:var(--text-secondary);
+            font-size:var(--text-base);
+            line-height:var(--leading-relaxed);
+        }
+        .wizard-steps {
+            padding:10px 20px 20px;
+            flex:1;
+        }
+        .wizard-step {
+            background:var(--bg-surface);
+            border:1px solid var(--border-default);
+            border-radius:var(--radius-lg);
+            padding:20px;
+            margin-bottom:14px;
+            transition:all var(--duration-normal) var(--ease-out);
+        }
+        .wizard-step.active {
+            border-color:var(--success);
+            box-shadow:0 0 20px rgba(34,197,94,0.15);
+        }
+        .wizard-step.completed {
+            border-color:rgba(34,197,94,0.3);
+            opacity:0.7;
+        }
+        .wizard-step-num {
+            display:inline-flex; align-items:center; justify-content:center;
+            width:28px; height:28px;
+            border-radius:50%;
+            background:var(--bg-elevated);
+            border:2px solid var(--text-tertiary);
+            font-size:var(--text-sm);
+            font-weight:700;
+            color:var(--text-secondary);
+            margin-right:10px;
+            flex-shrink:0;
+        }
+        .wizard-step.active .wizard-step-num {
+            background:var(--success);
+            border-color:var(--success);
+            color:#fff;
+        }
+        .wizard-step.completed .wizard-step-num {
+            background:rgba(34,197,94,0.2);
+            border-color:var(--success);
+            color:var(--success);
+        }
+        .wizard-step-header {
+            display:flex; align-items:center;
+            margin-bottom:10px;
+        }
+        .wizard-step-title {
+            font-size:var(--text-md);
+            font-weight:600;
+            color:var(--text-primary);
+        }
+        .wizard-step.completed .wizard-step-title { color:var(--text-secondary); }
+        .wizard-step-body {
+            padding-left:38px;
+            color:var(--text-secondary);
+            font-size:var(--text-base);
+            line-height:var(--leading-relaxed);
+        }
+        .wizard-step-body .wiz-icon {
+            display:block;
+            text-align:center;
+            font-size:48px;
+            margin:12px 0;
+            opacity:0.9;
+        }
+        .wizard-step-body .wiz-visual {
+            background:var(--bg-recessed);
+            border:1px solid var(--border-default);
+            border-radius:var(--radius-md);
+            padding:16px;
+            margin:12px 0;
+            text-align:center;
+        }
+        .wizard-step-body .wiz-tip {
+            background:var(--warning-subtle);
+            border-left:3px solid var(--warning);
+            padding:8px 12px;
+            border-radius:0 var(--radius-sm) var(--radius-sm) 0;
+            margin:10px 0;
+            font-size:var(--text-sm);
+            color:var(--text-primary);
+        }
+        .wizard-actions {
+            padding:10px 20px 30px;
+            display:flex;
+            gap:10px;
+        }
+        .wizard-actions button {
+            flex:1;
+            padding:14px;
+            border-radius:var(--radius-md);
+            border:none;
+            font-size:var(--text-md);
+            font-weight:600;
+            cursor:pointer;
+            transition:all var(--duration-normal) var(--ease-out);
+        }
+        .wiz-btn-primary {
+            background:linear-gradient(135deg,#22c55e,#16a34a);
+            color:#fff;
+            box-shadow:0 0 20px rgba(34,197,94,0.3);
+        }
+        .wiz-btn-primary:active { transform:scale(0.97); }
+        .wiz-btn-secondary {
+            background:var(--bg-elevated);
+            color:var(--text-secondary);
+            border:1px solid var(--border-default) !important;
+        }
+        .wizard-method-cards {
+            display:grid;
+            grid-template-columns:1fr;
+            gap:10px;
+            margin:10px 0;
+        }
+        .wiz-method-card {
+            background:var(--bg-elevated);
+            border:2px solid var(--border-default);
+            border-radius:var(--radius-md);
+            padding:14px;
+            cursor:pointer;
+            transition:all var(--duration-normal) var(--ease-out);
+            text-align:left;
+        }
+        .wiz-method-card:active { transform:scale(0.98); }
+        .wiz-method-card.selected {
+            border-color:var(--success);
+            background:rgba(34,197,94,0.08);
+            box-shadow:0 0 16px rgba(34,197,94,0.15);
+        }
+        .wiz-method-card h4 {
+            font-size:var(--text-md);
+            color:var(--text-primary);
+            margin-bottom:4px;
+        }
+        .wiz-method-card p {
+            font-size:var(--text-sm);
+            color:var(--text-secondary);
+            line-height:var(--leading-normal);
+        }
+        .wiz-method-card .wiz-badge {
+            display:inline-block;
+            background:var(--success);
+            color:#fff;
+            font-size:9px;
+            font-weight:700;
+            padding:2px 6px;
+            border-radius:var(--radius-pill);
+            text-transform:uppercase;
+            letter-spacing:0.05em;
+            margin-left:6px;
+            vertical-align:middle;
+        }
+        .wiz-quick-inputs {
+            margin:12px 0;
+        }
+        .wiz-quick-inputs label {
+            display:block;
+            font-size:var(--text-sm);
+            color:var(--text-secondary);
+            margin-bottom:4px;
+            margin-top:10px;
+        }
+        .wiz-quick-inputs input {
+            width:100%;
+            padding:12px 14px;
+            background:var(--bg-recessed);
+            border:1px solid var(--border-input);
+            border-radius:var(--radius-md);
+            color:var(--text-primary);
+            font-size:var(--text-lg);
+            font-weight:600;
+            text-align:center;
+            transition:border-color var(--duration-normal);
+        }
+        .wiz-quick-inputs input:focus {
+            outline:none;
+            border-color:var(--success);
+            box-shadow:0 0 0 3px rgba(34,197,94,0.2);
+        }
+        .wiz-quick-inputs .wiz-input-row {
+            display:grid;
+            grid-template-columns:1fr 1fr;
+            gap:10px;
+        }
+        .wiz-format-btns {
+            display:flex; gap:6px; margin:8px 0;
+        }
+        .wiz-format-btn {
+            flex:1; padding:8px;
+            background:var(--bg-recessed);
+            border:1px solid var(--border-default);
+            border-radius:var(--radius-sm);
+            color:var(--text-secondary);
+            font-size:var(--text-sm);
+            cursor:pointer;
+            text-align:center;
+        }
+        .wiz-format-btn.active {
+            background:rgba(34,197,94,0.1);
+            border-color:var(--success);
+            color:var(--success);
+        }
+        .wiz-progress {
+            display:flex; gap:4px;
+            padding:0 20px; margin-bottom:10px;
+        }
+        .wiz-progress-dot {
+            flex:1; height:3px;
+            background:var(--bg-elevated);
+            border-radius:2px;
+            transition:background var(--duration-normal);
+        }
+        .wiz-progress-dot.filled { background:var(--success); }
+        .wiz-progress-dot.current { background:var(--success); opacity:0.5; }
+
     </style>
 </head>
 <body>
+    <!-- Measurement Wizard Overlay -->
+    <div id="measureWizard" class="wizard-overlay hidden">
+        <div class="wizard-header">
+            <h2>Measure Your Space</h2>
+            <p>Let's get the dimensions of the area you want to tile</p>
+        </div>
+
+        <div class="wiz-progress" id="wizProgress">
+            <div class="wiz-progress-dot filled"></div>
+            <div class="wiz-progress-dot"></div>
+            <div class="wiz-progress-dot"></div>
+        </div>
+
+        <!-- STEP 1: Choose method -->
+        <div class="wizard-steps" id="wizStep1">
+            <div class="wizard-step active">
+                <div class="wizard-step-header">
+                    <span class="wizard-step-num">1</span>
+                    <span class="wizard-step-title">What are you tiling?</span>
+                </div>
+                <div class="wizard-step-body">
+                    <div class="wizard-method-cards" id="wizSurfaceCards">
+                        <div class="wiz-method-card selected" onclick="wizSelectSurface('wall', this)">
+                            <h4>🧱 A Wall</h4>
+                            <p>Backsplash, shower wall, accent wall, fireplace surround</p>
+                        </div>
+                        <div class="wiz-method-card" onclick="wizSelectSurface('floor', this)">
+                            <h4>🏠 A Floor</h4>
+                            <p>Bathroom floor, kitchen floor, entryway, patio</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="wizard-step active" style="margin-top:6px;">
+                <div class="wizard-step-header">
+                    <span class="wizard-step-num">2</span>
+                    <span class="wizard-step-title">What shape is it?</span>
+                </div>
+                <div class="wizard-step-body">
+                    <div class="wizard-method-cards" id="wizShapeCards">
+                        <div class="wiz-method-card selected" onclick="wizSelectShape('rectangle', this)">
+                            <h4>▭ Simple Rectangle <span class="wiz-badge">Most Common</span></h4>
+                            <p>Standard rectangular wall or floor area — just need width and height</p>
+                        </div>
+                        <div class="wiz-method-card" onclick="wizSelectShape('custom', this)">
+                            <h4>⬡ Custom Shape</h4>
+                            <p>L-shaped, angled, or irregular area — draw the exact outline</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="wizard-actions" id="wizActions1">
+            <button class="wiz-btn-secondary" onclick="closeWizard()">Skip</button>
+            <button class="wiz-btn-primary" onclick="wizNext(1)">Next →</button>
+        </div>
+
+        <!-- STEP 2: Enter measurements (Rectangle) -->
+        <div class="wizard-steps" id="wizStep2" style="display:none;">
+            <div class="wizard-step active">
+                <div class="wizard-step-header">
+                    <span class="wizard-step-num">3</span>
+                    <span class="wizard-step-title" id="wizMeasureTitle">Grab Your Tape Measure</span>
+                </div>
+                <div class="wizard-step-body">
+                    <div class="wiz-visual" id="wizMeasureVisual">
+                        <div style="position:relative;width:200px;height:140px;margin:0 auto;">
+                            <!-- Wall SVG Diagram -->
+                            <svg viewBox="0 0 200 140" width="200" height="140">
+                                <!-- Wall rectangle -->
+                                <rect x="30" y="15" width="140" height="100" rx="3" fill="none" stroke="#4ade80" stroke-width="2" stroke-dasharray="6,3"/>
+                                <!-- Width arrow -->
+                                <line x1="30" y1="128" x2="170" y2="128" stroke="#f59e0b" stroke-width="1.5"/>
+                                <polygon points="30,128 37,125 37,131" fill="#f59e0b"/>
+                                <polygon points="170,128 163,125 163,131" fill="#f59e0b"/>
+                                <text x="100" y="140" text-anchor="middle" fill="#f59e0b" font-size="11" font-weight="600">WIDTH</text>
+                                <!-- Height arrow -->
+                                <line x1="18" y1="15" x2="18" y2="115" stroke="#3b82f6" stroke-width="1.5"/>
+                                <polygon points="18,15 15,22 21,22" fill="#3b82f6"/>
+                                <polygon points="18,115 15,108 21,108" fill="#3b82f6"/>
+                                <text x="9" y="70" text-anchor="middle" fill="#3b82f6" font-size="11" font-weight="600" transform="rotate(-90,9,70)">HEIGHT</text>
+                                <!-- Tile grid hint -->
+                                <line x1="30" y1="40" x2="170" y2="40" stroke="rgba(255,255,255,0.1)" stroke-width="0.5"/>
+                                <line x1="30" y1="65" x2="170" y2="65" stroke="rgba(255,255,255,0.1)" stroke-width="0.5"/>
+                                <line x1="30" y1="90" x2="170" y2="90" stroke="rgba(255,255,255,0.1)" stroke-width="0.5"/>
+                                <line x1="75" y1="15" x2="75" y2="115" stroke="rgba(255,255,255,0.1)" stroke-width="0.5"/>
+                                <line x1="120" y1="15" x2="120" y2="115" stroke="rgba(255,255,255,0.1)" stroke-width="0.5"/>
+                            </svg>
+                        </div>
+                    </div>
+
+                    <p style="margin-bottom:8px;">Measure the <strong style="color:var(--text-primary)">total area</strong> you want to tile:</p>
+
+                    <div class="wiz-format-btns" id="wizFormatBtns">
+                        <button class="wiz-format-btn active" onclick="wizSetFormat('inches', this)">Inches</button>
+                        <button class="wiz-format-btn" onclick="wizSetFormat('feet', this)">Feet & Inches</button>
+                    </div>
+
+                    <div class="wiz-quick-inputs" id="wizInchInputs">
+                        <div class="wiz-input-row">
+                            <div>
+                                <label style="color:#f59e0b;">Width (inches)</label>
+                                <input type="number" id="wizWidth" placeholder="58" inputmode="decimal" autocomplete="off">
+                            </div>
+                            <div>
+                                <label style="color:#3b82f6;">Height (inches)</label>
+                                <input type="number" id="wizHeight" placeholder="70" inputmode="decimal" autocomplete="off">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="wiz-quick-inputs" id="wizFeetInputs" style="display:none;">
+                        <label style="color:#f59e0b;">Width</label>
+                        <div class="wiz-input-row">
+                            <div>
+                                <input type="number" id="wizWidthFt" placeholder="4" inputmode="numeric" autocomplete="off">
+                                <div style="text-align:center;font-size:10px;color:var(--text-tertiary);margin-top:2px;">feet</div>
+                            </div>
+                            <div>
+                                <input type="number" id="wizWidthIn" placeholder="10" inputmode="decimal" autocomplete="off">
+                                <div style="text-align:center;font-size:10px;color:var(--text-tertiary);margin-top:2px;">inches</div>
+                            </div>
+                        </div>
+                        <label style="color:#3b82f6;">Height</label>
+                        <div class="wiz-input-row">
+                            <div>
+                                <input type="number" id="wizHeightFt" placeholder="5" inputmode="numeric" autocomplete="off">
+                                <div style="text-align:center;font-size:10px;color:var(--text-tertiary);margin-top:2px;">feet</div>
+                            </div>
+                            <div>
+                                <input type="number" id="wizHeightIn" placeholder="10" inputmode="decimal" autocomplete="off">
+                                <div style="text-align:center;font-size:10px;color:var(--text-tertiary);margin-top:2px;">inches</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="wiz-tip">
+                        <strong>Tip:</strong> Measure the actual tile area, not the whole wall. If your backsplash goes from counter to cabinets, measure just that space.
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="wizard-actions" id="wizActions2" style="display:none;">
+            <button class="wiz-btn-secondary" onclick="wizBack(2)">← Back</button>
+            <button class="wiz-btn-primary" onclick="wizApply()">Apply & Design →</button>
+        </div>
+
+        <!-- STEP 3: Custom shape redirect -->
+        <div class="wizard-steps" id="wizStep3" style="display:none;">
+            <div class="wizard-step active">
+                <div class="wizard-step-header">
+                    <span class="wizard-step-num">3</span>
+                    <span class="wizard-step-title">Draw Your Shape</span>
+                </div>
+                <div class="wizard-step-body">
+                    <span class="wiz-icon">✏️</span>
+                    <p>For custom shapes, you'll use the <strong style="color:var(--text-primary)">drawing tool</strong>:</p>
+                    <ol style="margin:12px 0; padding-left:18px; line-height:2;">
+                        <li><strong>Tap each corner</strong> of your area on the canvas</li>
+                        <li>Tap the <strong>first point again</strong> (or hit Close) to finish the shape</li>
+                        <li><strong>Enter the measurement</strong> for each wall segment</li>
+                        <li>Hit <strong>"Apply Dimensions"</strong> and you're done!</li>
+                    </ol>
+                    <div class="wiz-tip">
+                        <strong>Tip:</strong> Start at the bottom-left corner and work clockwise. Don't worry about being pixel-perfect — the exact measurements you enter are what matter.
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="wizard-actions" id="wizActions3" style="display:none;">
+            <button class="wiz-btn-secondary" onclick="wizBack(3)">← Back</button>
+            <button class="wiz-btn-primary" onclick="wizGoToDrawing()">Open Drawing Tool →</button>
+        </div>
+    </div>
+
     <!-- Tile Detail View -->
     <div class="detail-overlay" id="detailOverlay">
         <div class="detail-header">📐 Tile Cut Detail</div>
@@ -1784,6 +2205,193 @@ function initLaserTab() {
 }
 
 // ==================== END SEGMENT SYSTEM ====================
+
+// ==================== MEASUREMENT WIZARD ====================
+
+var wizState = {
+    surface: 'wall',    // 'wall' or 'floor'
+    shape: 'rectangle', // 'rectangle' or 'custom'
+    format: 'inches',   // 'inches' or 'feet'
+    currentStep: 1
+};
+
+function showWizard() {
+    document.getElementById('measureWizard').classList.remove('hidden');
+    wizState.currentStep = 1;
+    wizShowStep(1);
+    // Reset selections
+    wizState.surface = 'wall';
+    wizState.shape = 'rectangle';
+    wizState.format = 'inches';
+}
+
+function closeWizard() {
+    document.getElementById('measureWizard').classList.add('hidden');
+}
+
+function wizShowStep(step) {
+    wizState.currentStep = step;
+    // Hide all steps
+    for (var i = 1; i <= 3; i++) {
+        var stepEl = document.getElementById('wizStep' + i);
+        var actEl = document.getElementById('wizActions' + i);
+        if (stepEl) stepEl.style.display = 'none';
+        if (actEl) actEl.style.display = 'none';
+    }
+    // Show current step
+    var s = document.getElementById('wizStep' + step);
+    var a = document.getElementById('wizActions' + step);
+    if (s) s.style.display = '';
+    if (a) a.style.display = '';
+    // Update progress dots
+    var dots = document.querySelectorAll('.wiz-progress-dot');
+    dots.forEach(function(dot, i) {
+        dot.className = 'wiz-progress-dot';
+        if (i < step - 1) dot.classList.add('filled');
+        else if (i === step - 1) { dot.classList.add('filled'); dot.classList.add('current'); }
+    });
+}
+
+function wizSelectSurface(type, el) {
+    wizState.surface = type;
+    var cards = document.querySelectorAll('#wizSurfaceCards .wiz-method-card');
+    cards.forEach(function(c) { c.classList.remove('selected'); });
+    el.classList.add('selected');
+}
+
+function wizSelectShape(type, el) {
+    wizState.shape = type;
+    var cards = document.querySelectorAll('#wizShapeCards .wiz-method-card');
+    cards.forEach(function(c) { c.classList.remove('selected'); });
+    el.classList.add('selected');
+}
+
+function wizSetFormat(fmt, el) {
+    wizState.format = fmt;
+    var btns = document.querySelectorAll('#wizFormatBtns .wiz-format-btn');
+    btns.forEach(function(b) { b.classList.remove('active'); });
+    el.classList.add('active');
+    document.getElementById('wizInchInputs').style.display = (fmt === 'inches') ? '' : 'none';
+    document.getElementById('wizFeetInputs').style.display = (fmt === 'feet') ? '' : 'none';
+}
+
+function wizNext(fromStep) {
+    if (fromStep === 1) {
+        if (wizState.shape === 'rectangle') {
+            // Update visual label for surface type
+            var title = document.getElementById('wizMeasureTitle');
+            if (wizState.surface === 'floor') {
+                title.textContent = 'Measure Your Floor Area';
+            } else {
+                title.textContent = 'Grab Your Tape Measure';
+            }
+            wizShowStep(2);
+            // Focus first input after transition
+            setTimeout(function() {
+                var inp = document.getElementById('wizWidth');
+                if (inp) inp.focus();
+            }, 300);
+        } else {
+            // Custom shape → show drawing instructions
+            wizShowStep(3);
+        }
+    }
+}
+
+function wizBack(fromStep) {
+    if (fromStep === 2 || fromStep === 3) {
+        wizShowStep(1);
+    }
+}
+
+function wizGetDimensions() {
+    var w = 0, h = 0;
+    if (wizState.format === 'inches') {
+        w = parseFloat(document.getElementById('wizWidth').value) || 0;
+        h = parseFloat(document.getElementById('wizHeight').value) || 0;
+    } else {
+        var wFt = parseFloat(document.getElementById('wizWidthFt').value) || 0;
+        var wIn = parseFloat(document.getElementById('wizWidthIn').value) || 0;
+        var hFt = parseFloat(document.getElementById('wizHeightFt').value) || 0;
+        var hIn = parseFloat(document.getElementById('wizHeightIn').value) || 0;
+        w = (wFt * 12) + wIn;
+        h = (hFt * 12) + hIn;
+    }
+    return { width: w, height: h };
+}
+
+function wizApply() {
+    var dims = wizGetDimensions();
+    if (dims.width <= 0 || dims.height <= 0) {
+        showToast('Please enter both width and height');
+        return;
+    }
+
+    // Set perimeter mode
+    setPerimeterMode(wizState.surface);
+
+    // Apply as quick rectangle
+    var widthEl = document.getElementById('quickWidth');
+    var heightEl = document.getElementById('quickHeight');
+    if (widthEl) widthEl.value = dims.width;
+    if (heightEl) heightEl.value = dims.height;
+    applyQuickRectangle();
+
+    // Close wizard
+    closeWizard();
+
+    // Navigate to tile settings with a slight delay so the user sees the result
+    setTimeout(function() {
+        showToast('Wall set to ' + dims.width + '" x ' + dims.height + '" — now pick your tile!');
+        showTab('tile');
+    }, 400);
+}
+
+function wizGoToDrawing() {
+    // Set surface mode
+    setPerimeterMode(wizState.surface);
+    // Close wizard and show wall tab with drawing tools
+    closeWizard();
+    showTab('wall');
+    showToast('Tap the corners of your ' + wizState.surface + ' to draw the outline');
+}
+
+// Override startNewProject to show wizard
+var _originalStartNewProject = null;
+
+function patchStartNewProject() {
+    if (typeof startNewProject === 'function' && !_originalStartNewProject) {
+        _originalStartNewProject = startNewProject;
+        startNewProject = function() {
+            _originalStartNewProject();
+            // Show wizard instead of just dumping user on wall tab
+            setTimeout(function() { showWizard(); }, 100);
+        };
+    }
+}
+
+// Also add a "Measure Wall" button trigger on the wall tab
+function addWizardButton() {
+    var wallPanel = document.getElementById('wall');
+    if (!wallPanel) return;
+    var firstSection = wallPanel.querySelector('.section');
+    if (!firstSection) return;
+
+    var btn = document.createElement('button');
+    btn.className = 'btn-primary';
+    btn.style.cssText = 'width:100%;padding:14px;font-size:14px;font-weight:600;margin-bottom:16px;background:linear-gradient(135deg,#22c55e,#16a34a);border:none;color:#fff;border-radius:14px;cursor:pointer;box-shadow:0 0 20px rgba(34,197,94,0.25);';
+    btn.innerHTML = '📐 Guided Setup — Measure Your Space';
+    btn.onclick = function() { showWizard(); };
+    wallPanel.insertBefore(btn, firstSection);
+}
+
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', function() {
+    setTimeout(function() {
+        patchStartNewProject();
+        addWizardButton();
+    }, 500);
+});
 
 // ==================== PERIMETER DRAWING SYSTEM ====================
 
