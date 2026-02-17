@@ -139,9 +139,9 @@ function makeRoom(o){
     includeCeiling:true, includeBaseboard:true,
     baseboardPrimerCoats:1, baseboardTopCoats:2,
     baseboardOverride:"",
-    wallColor:"", wallProduct:"",
-    ceilingColor:"", ceilingProduct:"",
-    trimColor:"", trimProduct:"",
+    wallColor:"", wallProduct:"", wallPricePerGal:"",
+    ceilingColor:"", ceilingProduct:"", ceilingPricePerGal:"",
+    trimColor:"", trimProduct:"", trimPricePerGal:"",
     extras:[], surfaces:[makeSurface()]
   };
   if(o) for(var k in o) r[k] = o[k];
@@ -398,8 +398,27 @@ function calcJobPaintOrder(job){
   return result;
 }
 
+function calcRoomMaterialsCost(rm){
+  var rt = calcRoomTotal(rm);
+  var wp = pf(rm.wallPricePerGal);
+  var cp = pf(rm.ceilingPricePerGal);
+  var tp = pf(rm.trimPricePerGal);
+  var wallCost = (rt.wallPG + rt.wallTG) * wp;
+  var ceilCost = (rt.ceilPG + rt.ceilTG) * cp;
+  var trimCost = (rt.trimPG + rt.trimTG) * tp;
+  return {wall:wallCost, ceil:ceilCost, trim:trimCost, total:wallCost + ceilCost + trimCost};
+}
+
+function calcJobMaterialsCost(job){
+  var total = 0;
+  for(var i = 0; i < job.rooms.length; i++){
+    total += calcRoomMaterialsCost(job.rooms[i]).total;
+  }
+  return total;
+}
+
 /* ── State ── */
-var STATE = { jobs: [makeJob()], activeJob: 0, view: "rooms", importMode: false, exportMode: false, exportData: "" };
+var STATE = { jobs: [makeJob()], activeJob: 0, view: "rooms", importMode: false, exportMode: false, exportData: "", showPaintOrder: false };
 var saveTimer = null;
 
 function migrateRoom(rm){
@@ -411,6 +430,9 @@ function migrateRoom(rm){
   if(rm.ceilingProduct === undefined) rm.ceilingProduct = "";
   if(rm.trimColor === undefined) rm.trimColor = "";
   if(rm.trimProduct === undefined) rm.trimProduct = "";
+  if(rm.wallPricePerGal === undefined) rm.wallPricePerGal = "";
+  if(rm.ceilingPricePerGal === undefined) rm.ceilingPricePerGal = "";
+  if(rm.trimPricePerGal === undefined) rm.trimPricePerGal = "";
   var surfs = (rm.surfaces || []).concat(rm.extras || []);
   for(var i = 0; i < surfs.length; i++){
     if(surfs[i].color === undefined) surfs[i].color = "";
@@ -911,6 +933,7 @@ function render(){
   var hasOvr = job.priceOverride != null && job.priceOverride !== "";
   var laborPrice = hasOvr ? pf(job.priceOverride) : autoTotal;
   var matDeduct = pf(job.materialsDeduction);
+  var matCost = calcJobMaterialsCost(job);
   var totalPrice = laborPrice - matDeduct;
   var fb = calcJobFixed(job);
 
@@ -920,6 +943,7 @@ function render(){
   statsRow.appendChild(statBlock("LINEAR FT", jt.lf.toFixed(0), "#d4a843"));
   statsRow.appendChild(statBlock("PRIMER", c1(jt.pg) + " gal", "#b07acc"));
   statsRow.appendChild(statBlock("TOPCOAT", c1(jt.tg) + " gal", "#5a9e6f"));
+  if(matCost > 0) statsRow.appendChild(statBlock("MATERIALS", "$" + matCost.toFixed(0), "#c75050"));
   tc.appendChild(statsRow);
 
   var priceSec = el("div", "border-top:1px solid #3a3a3a;padding-top:10px;");
@@ -969,30 +993,43 @@ function render(){
   tc.appendChild(priceSec);
   body.appendChild(tc);
 
-  /* Paint Order */
+  /* Paint Order (collapsible) */
   var po = calcJobPaintOrder(job);
   if(po.length > 0){
     var poc = card([], "border-left:3px solid #b07acc;");
-    poc.appendChild(el("div", "font-size:11px;color:#b07acc;font-weight:600;letter-spacing:1px;margin-bottom:10px;", "PAINT ORDER"));
-    for(var pi = 0; pi < po.length; pi++){
-      var item = po[pi];
-      var poRow = el("div", "display:flex;align-items:flex-start;justify-content:space-between;padding:6px 0;" + (pi > 0 ? "border-top:1px solid #3a3a3a;" : ""));
-      var poLeft = el("div", "flex:1;");
-      var catColor = item.category === "Walls" ? "#5a9e6f" : item.category === "Ceiling" ? "#5588bb" : "#d4a843";
-      poLeft.appendChild(el("div", "font-size:12px;font-weight:600;color:" + catColor + ";", item.category));
-      if(item.color || item.product){
-        var cpStr2 = (item.color || "") + (item.color && item.product ? " · " : "") + (item.product || "");
-        poLeft.appendChild(el("div", "font-size:10px;color:#e8e4de;margin-top:1px;", cpStr2));
-      } else {
-        poLeft.appendChild(el("div", "font-size:10px;color:#8a8580;font-style:italic;margin-top:1px;", "(no color specified)"));
+    var poHdr = el("div", "display:flex;align-items:center;justify-content:space-between;cursor:pointer;");
+    poHdr.appendChild(el("div", "font-size:11px;color:#b07acc;font-weight:600;letter-spacing:1px;", "PAINT ORDER"));
+    var totalGal = 0;
+    for(var pi2 = 0; pi2 < po.length; pi2++) totalGal += po[pi2].pg + po[pi2].tg;
+    var poSummary = el("div", "display:flex;align-items:center;gap:8px;");
+    poSummary.appendChild(span(c1(totalGal) + " gal total", "#8a8580", "font-size:10px;"));
+    poSummary.appendChild(span(STATE.showPaintOrder ? "▼" : "▶", "#b07acc", "font-size:10px;"));
+    poHdr.appendChild(poSummary);
+    poHdr.onclick = function(){ STATE.showPaintOrder = !STATE.showPaintOrder; render(); };
+    poc.appendChild(poHdr);
+    if(STATE.showPaintOrder){
+      var poBody = el("div", "margin-top:10px;");
+      for(var pi = 0; pi < po.length; pi++){
+        var item = po[pi];
+        var poRow = el("div", "display:flex;align-items:flex-start;justify-content:space-between;padding:6px 0;" + (pi > 0 ? "border-top:1px solid #3a3a3a;" : ""));
+        var poLeft = el("div", "flex:1;");
+        var catColor = item.category === "Walls" ? "#5a9e6f" : item.category === "Ceiling" ? "#5588bb" : "#d4a843";
+        poLeft.appendChild(el("div", "font-size:12px;font-weight:600;color:" + catColor + ";", item.category));
+        if(item.color || item.product){
+          var cpStr2 = (item.color || "") + (item.color && item.product ? " · " : "") + (item.product || "");
+          poLeft.appendChild(el("div", "font-size:10px;color:#e8e4de;margin-top:1px;", cpStr2));
+        } else {
+          poLeft.appendChild(el("div", "font-size:10px;color:#8a8580;font-style:italic;margin-top:1px;", "(no color specified)"));
+        }
+        if(item.rooms.length > 0) poLeft.appendChild(el("div", "font-size:9px;color:#8a8580;margin-top:2px;", item.rooms.join(", ")));
+        poRow.appendChild(poLeft);
+        var poRight = el("div", "text-align:right;");
+        if(item.pg > 0) poRight.appendChild(el("div", "font-size:11px;color:#b07acc;", c1(item.pg) + " gal primer"));
+        if(item.tg > 0) poRight.appendChild(el("div", "font-size:11px;color:#5a9e6f;", c1(item.tg) + " gal topcoat"));
+        poRow.appendChild(poRight);
+        poBody.appendChild(poRow);
       }
-      if(item.rooms.length > 0) poLeft.appendChild(el("div", "font-size:9px;color:#8a8580;margin-top:2px;", item.rooms.join(", ")));
-      poRow.appendChild(poLeft);
-      var poRight = el("div", "text-align:right;");
-      if(item.pg > 0) poRight.appendChild(el("div", "font-size:11px;color:#b07acc;", c1(item.pg) + " gal primer"));
-      if(item.tg > 0) poRight.appendChild(el("div", "font-size:11px;color:#5a9e6f;", c1(item.tg) + " gal topcoat"));
-      poRow.appendChild(poRight);
-      poc.appendChild(poRow);
+      poc.appendChild(poBody);
     }
     body.appendChild(poc);
   }
@@ -1099,6 +1136,13 @@ function render(){
     if(wLine) paintBreak.appendChild(wLine);
     if(cLine) paintBreak.appendChild(cLine);
     if(tLine) paintBreak.appendChild(tLine);
+    var rmMat = calcRoomMaterialsCost(ar);
+    if(rmMat.total > 0){
+      var matLine = el("div", "display:flex;justify-content:space-between;padding:4px 0;font-size:10px;margin-top:4px;border-top:1px dashed #3a3a3a;padding-top:6px;");
+      matLine.appendChild(span("Materials Cost", "#c75050", "font-weight:600;"));
+      matLine.appendChild(span("$" + rmMat.total.toFixed(0), "#c75050", "font-weight:600;"));
+      paintBreak.appendChild(matLine);
+    }
     rsc.appendChild(paintBreak);
 
     var rsBot = el("div", "border-top:1px solid #3a3a3a;padding-top:8px;display:flex;align-items:center;justify-content:space-between;");
@@ -1150,6 +1194,8 @@ function render(){
       wColorRow.appendChild(textInput(ar.wallColor, function(v){ ar.wallColor = v; saveState(); }, "e.g. Navy Blue", 100));
       wColorRow.appendChild(span("Product", "#8a8580", "font-size:10px;"));
       wColorRow.appendChild(textInput(ar.wallProduct, function(v){ ar.wallProduct = v; saveState(); }, "e.g. Duration", 100));
+      wColorRow.appendChild(span("$/gal", "#8a8580", "font-size:10px;"));
+      wColorRow.appendChild(numInput(ar.wallPricePerGal, function(v){ ar.wallPricePerGal = v; }, 50));
       wc.appendChild(wColorRow);
       var wCoatRow = flexRow([], 8, "margin-bottom:6px;");
       wCoatRow.appendChild(span("Primer", "#b07acc", "font-size:10px;"));
@@ -1178,6 +1224,8 @@ function render(){
         cColorRow.appendChild(textInput(ar.ceilingColor, function(v){ ar.ceilingColor = v; saveState(); }, "e.g. Ceiling White", 100));
         cColorRow.appendChild(span("Product", "#8a8580", "font-size:10px;"));
         cColorRow.appendChild(textInput(ar.ceilingProduct, function(v){ ar.ceilingProduct = v; saveState(); }, "e.g. Flat", 100));
+        cColorRow.appendChild(span("$/gal", "#8a8580", "font-size:10px;"));
+        cColorRow.appendChild(numInput(ar.ceilingPricePerGal, function(v){ ar.ceilingPricePerGal = v; }, 50));
         cc.appendChild(cColorRow);
         var cCoatRow = flexRow([], 8, "margin-bottom:6px;");
         cCoatRow.appendChild(span("Primer", "#b07acc", "font-size:10px;"));
@@ -1203,6 +1251,8 @@ function render(){
       tColorRow.appendChild(textInput(ar.trimColor, function(v){ ar.trimColor = v; saveState(); }, "e.g. White", 100));
       tColorRow.appendChild(span("Product", "#8a8580", "font-size:10px;"));
       tColorRow.appendChild(textInput(ar.trimProduct, function(v){ ar.trimProduct = v; saveState(); }, "e.g. Semi-gloss", 100));
+      tColorRow.appendChild(span("$/gal", "#8a8580", "font-size:10px;"));
+      tColorRow.appendChild(numInput(ar.trimPricePerGal, function(v){ ar.trimPricePerGal = v; }, 50));
       tc2.appendChild(tColorRow);
 
       /* Baseboard sub-section */
