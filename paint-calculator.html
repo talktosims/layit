@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
+<link rel="apple-touch-icon" href="simco-icon.png">
 <title>Paint Calc</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -1224,6 +1225,10 @@ function render(){
 
 /* ── Init ── */
 loadState();
+// Auto-open import panel if ?importdata=1 in URL
+if(window.location.search.indexOf("importdata=1") !== -1){
+  STATE.importMode = true;
+}
 render();
 
 })();
