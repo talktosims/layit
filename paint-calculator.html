@@ -100,9 +100,12 @@ function dimInput(value, onChange, widthPx){
 
     function update(){
       onChange(ftInToInches(ftInp.value, inInp.value));
+      saveState();
     }
     ftInp.oninput = update;
     inInp.oninput = update;
+    ftInp.onblur = function(){ render(); };
+    inInp.onblur = function(){ render(); };
 
     wrap.appendChild(ftInp);
     wrap.appendChild(ftLabel);
@@ -547,8 +550,10 @@ function span(text, color, extra){
 function numInput(value, onChange, width){
   var inp = el("input", "background:#2e2e2e;color:#e8e4de;border:1px solid #3a3a3a;border-radius:4px;padding:6px 8px;outline:none;text-align:center;font-size:12px;width:" + (width || 60) + "px;font-family:inherit");
   inp.type = "number";
+  inp.inputMode = "decimal";
   inp.value = (value === undefined || value === null) ? "" : value;
-  inp.oninput = function(e){ onChange(e.target.value); };
+  inp.oninput = function(e){ onChange(e.target.value); saveState(); };
+  inp.onblur = function(){ render(); };
   return inp;
 }
 
@@ -692,11 +697,11 @@ function renderSurfCard(surf, types, isExtra){
   } else if(isLinear){
     var lr = flexRow([], 8);
     lr.appendChild(span("Linear Ft", "#8a8580", "font-size:10px;"));
-    lr.appendChild(numInput(surf.linearFt, function(v){ surf.linearFt = v; saveState(); render(); }, 60));
+    lr.appendChild(numInput(surf.linearFt, function(v){ surf.linearFt = v; }, 60));
     lr.appendChild(span("Primer", "#b07acc", "font-size:10px;"));
-    lr.appendChild(numInput(surf.primerCoats, function(v){ surf.primerCoats = v; saveState(); render(); }, 38));
+    lr.appendChild(numInput(surf.primerCoats, function(v){ surf.primerCoats = v; }, 38));
     lr.appendChild(span("Top", "#5a9e6f", "font-size:10px;"));
-    lr.appendChild(numInput(surf.topCoats, function(v){ surf.topCoats = v; saveState(); render(); }, 38));
+    lr.appendChild(numInput(surf.topCoats, function(v){ surf.topCoats = v; }, 38));
     wrapper.appendChild(lr);
 
     var bott = el("div", "margin-top:10px;padding-top:8px;border-top:1px solid #3a3a3a;display:flex;justify-content:space-between;font-size:11px;");
@@ -714,23 +719,23 @@ function renderSurfCard(surf, types, isExtra){
     if(surf.inputMode === "dims"){
       var dr = flexRow([], 8, "flex-wrap:wrap;");
       dr.appendChild(span('W', "#8a8580", "font-size:10px;"));
-      dr.appendChild(dimInput(surf.widthIn, function(v){ surf.widthIn = v; saveState(); render(); }));
+      dr.appendChild(dimInput(surf.widthIn, function(v){ surf.widthIn = v; }));
       dr.appendChild(span("×", "#8a8580"));
       dr.appendChild(span('H', "#8a8580", "font-size:10px;"));
-      dr.appendChild(dimInput(surf.heightIn, function(v){ surf.heightIn = v; saveState(); render(); }));
+      dr.appendChild(dimInput(surf.heightIn, function(v){ surf.heightIn = v; }));
       wrapper.appendChild(dr);
     } else {
       var dr = flexRow([], 8);
       dr.appendChild(span("SF", "#8a8580", "font-size:10px;"));
-      dr.appendChild(numInput(surf.directSqft, function(v){ surf.directSqft = v; saveState(); render(); }));
+      dr.appendChild(numInput(surf.directSqft, function(v){ surf.directSqft = v; }));
       wrapper.appendChild(dr);
     }
 
     var coatRow = flexRow([], 8, "margin-top:8px;");
     coatRow.appendChild(span("Primer", "#b07acc", "font-size:10px;"));
-    coatRow.appendChild(numInput(surf.primerCoats, function(v){ surf.primerCoats = v; saveState(); render(); }, 38));
+    coatRow.appendChild(numInput(surf.primerCoats, function(v){ surf.primerCoats = v; }, 38));
     coatRow.appendChild(span("Top", "#5a9e6f", "font-size:10px;"));
-    coatRow.appendChild(numInput(surf.topCoats, function(v){ surf.topCoats = v; saveState(); render(); }, 38));
+    coatRow.appendChild(numInput(surf.topCoats, function(v){ surf.topCoats = v; }, 38));
     wrapper.appendChild(coatRow);
 
     var bott = el("div", "margin-top:10px;padding-top:8px;border-top:1px solid #3a3a3a;display:flex;justify-content:space-between;font-size:11px;");
@@ -937,7 +942,7 @@ function render(){
   var matHdr = flexRow([], 8);
   matHdr.appendChild(span("Materials Deduction", "#c75050", "font-size:10px;font-weight:600;"));
   matHdr.appendChild(span("$", "#c75050", "font-size:12px;font-weight:600;"));
-  matHdr.appendChild(numInput(job.materialsDeduction, function(v){ job.materialsDeduction = v; saveState(); render(); }, 70));
+  matHdr.appendChild(numInput(job.materialsDeduction, function(v){ job.materialsDeduction = v; }, 70));
   if(matDeduct > 0){
     matHdr.appendChild(btn("Clear", function(){ job.materialsDeduction = ""; saveState(); render(); }, "background:none;border:none;color:#c75050;font-size:9px;cursor:pointer;"));
   }
@@ -950,11 +955,11 @@ function render(){
 
   var rateRow = flexRow([], 8, "font-size:10px;border-top:1px solid #3a3a3a;padding-top:8px;");
   rateRow.appendChild(span("$/sf/coat", "#8a8580", "font-size:10px;"));
-  rateRow.appendChild(numInput(job.pricePerSqftPerCoat, function(v){ job.pricePerSqftPerCoat = v; saveState(); render(); }, 50));
+  rateRow.appendChild(numInput(job.pricePerSqftPerCoat, function(v){ job.pricePerSqftPerCoat = v; }, 50));
   rateRow.appendChild(span("$/lf", "#8a8580", "font-size:10px;"));
-  rateRow.appendChild(numInput(job.enamelRate, function(v){ job.enamelRate = v; saveState(); render(); }, 50));
+  rateRow.appendChild(numInput(job.enamelRate, function(v){ job.enamelRate = v; }, 50));
   rateRow.appendChild(span("Override", "#8a8580", "font-size:10px;"));
-  var ovrInp = numInput(job.priceOverride, function(v){ job.priceOverride = v; saveState(); render(); }, 70);
+  var ovrInp = numInput(job.priceOverride, function(v){ job.priceOverride = v; }, 70);
   ovrInp.placeholder = "auto";
   rateRow.appendChild(ovrInp);
   if(hasOvr){
@@ -1116,11 +1121,11 @@ function render(){
       dc.appendChild(el("div", "font-size:11px;color:#d4a843;font-weight:600;letter-spacing:1px;margin-bottom:10px;", unitMode === "ftin" ? "ROOM DIMENSIONS (ft + in)" : "ROOM DIMENSIONS (inches)"));
       var dimRow = flexRow([], 6, "margin-bottom:6px;flex-wrap:wrap;");
       dimRow.appendChild(span("L", "#8a8580", "font-size:10px;"));
-      dimRow.appendChild(dimInput(ar.roomLength, function(v){ ar.roomLength = v; saveState(); render(); }));
+      dimRow.appendChild(dimInput(ar.roomLength, function(v){ ar.roomLength = v; }));
       dimRow.appendChild(span("×W", "#8a8580"));
-      dimRow.appendChild(dimInput(ar.roomWidth, function(v){ ar.roomWidth = v; saveState(); render(); }));
+      dimRow.appendChild(dimInput(ar.roomWidth, function(v){ ar.roomWidth = v; }));
       dimRow.appendChild(span("×H", "#8a8580"));
-      dimRow.appendChild(dimInput(ar.roomHeight, function(v){ ar.roomHeight = v; saveState(); render(); }));
+      dimRow.appendChild(dimInput(ar.roomHeight, function(v){ ar.roomHeight = v; }));
       dc.appendChild(dimRow);
       if(q.grossWall > 0){
         var dimDetail = el("div", "font-size:10px;color:#8a8580;border-top:1px solid #3a3a3a;padding-top:6px;margin-top:6px;");
@@ -1148,9 +1153,9 @@ function render(){
       wc.appendChild(wColorRow);
       var wCoatRow = flexRow([], 8, "margin-bottom:6px;");
       wCoatRow.appendChild(span("Primer", "#b07acc", "font-size:10px;"));
-      wCoatRow.appendChild(numInput(ar.quickPrimerCoats, function(v){ ar.quickPrimerCoats = v; saveState(); render(); }, 38));
+      wCoatRow.appendChild(numInput(ar.quickPrimerCoats, function(v){ ar.quickPrimerCoats = v; }, 38));
       wCoatRow.appendChild(span("Topcoat", "#5a9e6f", "font-size:10px;"));
-      wCoatRow.appendChild(numInput(ar.quickTopCoats, function(v){ ar.quickTopCoats = v; saveState(); render(); }, 38));
+      wCoatRow.appendChild(numInput(ar.quickTopCoats, function(v){ ar.quickTopCoats = v; }, 38));
       wc.appendChild(wCoatRow);
       if(q.paintableWall > 0){
         var wBot = el("div", "margin-top:8px;padding-top:8px;border-top:1px solid #3a3a3a;font-size:11px;");
@@ -1176,9 +1181,9 @@ function render(){
         cc.appendChild(cColorRow);
         var cCoatRow = flexRow([], 8, "margin-bottom:6px;");
         cCoatRow.appendChild(span("Primer", "#b07acc", "font-size:10px;"));
-        cCoatRow.appendChild(numInput(ar.ceilingPrimerCoats, function(v){ ar.ceilingPrimerCoats = v; saveState(); render(); }, 38));
+        cCoatRow.appendChild(numInput(ar.ceilingPrimerCoats, function(v){ ar.ceilingPrimerCoats = v; }, 38));
         cCoatRow.appendChild(span("Topcoat", "#5a9e6f", "font-size:10px;"));
-        cCoatRow.appendChild(numInput(ar.ceilingTopCoats, function(v){ ar.ceilingTopCoats = v; saveState(); render(); }, 38));
+        cCoatRow.appendChild(numInput(ar.ceilingTopCoats, function(v){ ar.ceilingTopCoats = v; }, 38));
         cc.appendChild(cCoatRow);
         if(q.ceil > 0){
           var cBot = el("div", "margin-top:8px;padding-top:8px;border-top:1px solid #3a3a3a;font-size:11px;");
@@ -1217,9 +1222,9 @@ function render(){
         if(!isOvr) bbRow.appendChild(el("span", "font-size:9px;color:#5a9e6f;background:#2e2e2e;padding:2px 6px;border-radius:3px;", "AUTO"));
         bbRow.appendChild(el("div", "width:1px;height:20px;background:#3a3a3a;"));
         bbRow.appendChild(span("P", "#b07acc", "font-size:10px;"));
-        bbRow.appendChild(numInput(ar.baseboardPrimerCoats, function(v){ ar.baseboardPrimerCoats = v; saveState(); render(); }, 38));
+        bbRow.appendChild(numInput(ar.baseboardPrimerCoats, function(v){ ar.baseboardPrimerCoats = v; }, 38));
         bbRow.appendChild(span("T", "#5a9e6f", "font-size:10px;"));
-        bbRow.appendChild(numInput(ar.baseboardTopCoats, function(v){ ar.baseboardTopCoats = v; saveState(); render(); }, 38));
+        bbRow.appendChild(numInput(ar.baseboardTopCoats, function(v){ ar.baseboardTopCoats = v; }, 38));
         bbSec.appendChild(bbRow);
 
         if(!isOvr && q.perimFt > 0){
@@ -1231,7 +1236,7 @@ function render(){
 
         var ovrRow = flexRow([], 8);
         ovrRow.appendChild(span("Override", "#8a8580", "font-size:10px;"));
-        var ovrInp2 = numInput(ar.baseboardOverride, function(v){ ar.baseboardOverride = v; saveState(); render(); }, 60);
+        var ovrInp2 = numInput(ar.baseboardOverride, function(v){ ar.baseboardOverride = v; }, 60);
         ovrInp2.placeholder = "auto";
         ovrInp2.style.fontSize = "10px";
         ovrRow.appendChild(ovrInp2);
