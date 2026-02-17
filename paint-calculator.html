@@ -3,6 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
@@ -453,6 +455,28 @@ function exportData(){
   render();
 }
 
+function shareExport(){
+  var json = JSON.stringify(STATE.jobs);
+  // Try Web Share API first (native iOS share sheet — no truncation)
+  if(navigator.share){
+    navigator.share({
+      title: "Paint Calc Data",
+      text: json
+    }).catch(function(){});
+    return;
+  }
+  // Fallback: copy to clipboard
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(json).then(function(){
+      alert("Copied to clipboard!");
+    }, function(){
+      alert("Share not available. Use the Export panel and copy manually.");
+    });
+  } else {
+    alert("Share not available on this browser. Use the Export panel instead.");
+  }
+}
+
 function importData(){
   STATE.importMode = true;
   render();
@@ -749,12 +773,37 @@ function render(){
   if(STATE.exportMode){
     var expPanel = el("div", "margin:8px 16px;padding:12px;background:#242424;border:1px solid #5a9e6f;border-radius:8px;");
     expPanel.appendChild(el("div", "font-size:11px;color:#5a9e6f;font-weight:600;margin-bottom:6px;", "EXPORT DATA"));
-    expPanel.appendChild(el("div", "font-size:10px;color:#8a8580;margin-bottom:8px;", "Select all text below, copy it, then paste into Import on your other device:"));
+    expPanel.appendChild(el("div", "font-size:10px;color:#8a8580;margin-bottom:8px;", "Use Share to send via Messages/Notes (most reliable), or copy the text below:"));
     var expTa = el("textarea", "width:100%;height:120px;background:#1a1a1a;color:#e8e4de;border:1px solid #3a3a3a;border-radius:4px;padding:8px;font-size:11px;font-family:inherit;resize:vertical;outline:none;");
     expTa.value = STATE.exportData;
     expTa.readOnly = true;
     expPanel.appendChild(expTa);
-    var expBtns = el("div", "display:flex;gap:8px;margin-top:8px;");
+    var expBtns = el("div", "display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;");
+    // "Send as Link" — most reliable method, encodes data in URL
+    expBtns.appendChild(btn("Send as Link", function(){
+      try {
+        var compact = JSON.stringify(STATE.jobs);
+        var b64 = btoa(encodeURIComponent(compact));
+        var base = window.location.origin + window.location.pathname;
+        var link = base + "#data=" + b64;
+        if(navigator.share){
+          navigator.share({ title: "Paint Calc Data", url: link }).catch(function(){});
+        } else if(navigator.clipboard && navigator.clipboard.writeText){
+          navigator.clipboard.writeText(link).then(function(){
+            alert("Link copied! Open this link to load your data.");
+          }, function(){
+            prompt("Copy this link:", link);
+          });
+        } else {
+          prompt("Copy this link:", link);
+        }
+      } catch(e){ alert("Error: " + e.message); }
+    }, "background:#d4a843;border:none;border-radius:4px;color:#1a1a1a;font-size:11px;padding:6px 16px;cursor:pointer;font-weight:600;"));
+    if(navigator.share){
+      expBtns.appendChild(btn("Share Text", function(){
+        navigator.share({ title: "Paint Calc Data", text: expTa.value }).catch(function(){});
+      }, "background:#b8922e;border:none;border-radius:4px;color:#1a1a1a;font-size:11px;padding:6px 16px;cursor:pointer;font-weight:600;"));
+    }
     expBtns.appendChild(btn("Select All & Copy", function(){
       expTa.select();
       expTa.setSelectionRange(0, 99999);
@@ -1247,6 +1296,26 @@ function render(){
 
 /* ── Init ── */
 loadState();
+
+// Check for data in URL hash (e.g. #data=BASE64ENCODED)
+(function(){
+  var hash = window.location.hash || "";
+  if(hash.indexOf("#data=") === 0){
+    try {
+      var b64 = hash.substring(6);
+      var json = decodeURIComponent(atob(b64));
+      doImport(json);
+      // Clean up URL hash after import
+      if(window.history && window.history.replaceState){
+        window.history.replaceState(null, "", window.location.pathname + window.location.search);
+      }
+      return;
+    } catch(e){
+      alert("Could not load data from link: " + e.message);
+    }
+  }
+})();
+
 // Auto-open import panel if ?importdata=1 in URL
 if(window.location.search.indexOf("importdata=1") !== -1){
   STATE.importMode = true;
