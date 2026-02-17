@@ -3,7 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<meta name="apple-mobile-web-app-capable" content="yes">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <link rel="apple-touch-icon" href="simco-icon.png">
 <title>Paint Calc</title>
 <style>
@@ -145,7 +147,8 @@ function makeJob(o){
   var j = {
     id:uid(), name:"New Job", rooms:[makeRoom()],
     activeRoomId:null, pricePerSqftPerCoat:1,
-    enamelRate:ENAMEL_RATE, priceOverride:""
+    enamelRate:ENAMEL_RATE, priceOverride:"",
+    materialsDeduction:""
   };
   if(o) for(var k in o) j[k] = o[k];
   return j;
@@ -412,6 +415,7 @@ function migrateRoom(rm){
 
 function migrateJobs(jobs){
   for(var j = 0; j < jobs.length; j++){
+    if(jobs[j].materialsDeduction === undefined) jobs[j].materialsDeduction = "";
     var rooms = jobs[j].rooms || [];
     for(var r = 0; r < rooms.length; r++) migrateRoom(rooms[r]);
   }
@@ -851,7 +855,9 @@ function render(){
   for(i = 0; i < rps.length; i++){ sfTotal += rps[i].sfLabor; enTotal += rps[i].enLabor; fxTotal += rps[i].fixed; }
   var autoTotal = sfTotal + enTotal + fxTotal;
   var hasOvr = job.priceOverride != null && job.priceOverride !== "";
-  var totalPrice = hasOvr ? pf(job.priceOverride) : autoTotal;
+  var laborPrice = hasOvr ? pf(job.priceOverride) : autoTotal;
+  var matDeduct = pf(job.materialsDeduction);
+  var totalPrice = laborPrice - matDeduct;
   var fb = calcJobFixed(job);
 
   var tc = card([]);
@@ -876,6 +882,22 @@ function render(){
   if(fb.wi.q > 0) breakdown.appendChild(row("Windows (" + fb.wi.q + ")", "$" + fb.wi.p));
   if(!hasOvr) breakdown.appendChild(span("AUTO", "#5a9e6f"));
   priceSec.appendChild(breakdown);
+
+  /* Materials Deduction */
+  var matSec = el("div", "border-top:1px solid #3a3a3a;padding-top:8px;margin-bottom:8px;");
+  var matHdr = flexRow([], 8);
+  matHdr.appendChild(span("Materials Deduction", "#c75050", "font-size:10px;font-weight:600;"));
+  matHdr.appendChild(span("$", "#c75050", "font-size:12px;font-weight:600;"));
+  matHdr.appendChild(numInput(job.materialsDeduction, function(v){ job.materialsDeduction = v; saveState(); render(); }, 70));
+  if(matDeduct > 0){
+    matHdr.appendChild(btn("Clear", function(){ job.materialsDeduction = ""; saveState(); render(); }, "background:none;border:none;color:#c75050;font-size:9px;cursor:pointer;"));
+  }
+  matSec.appendChild(matHdr);
+  if(matDeduct > 0){
+    matSec.appendChild(el("div", "font-size:10px;color:#8a8580;margin-top:4px;",
+      "Labor $" + laborPrice.toFixed(0) + " − Materials $" + matDeduct.toFixed(0) + " = $" + totalPrice.toFixed(0)));
+  }
+  priceSec.appendChild(matSec);
 
   var rateRow = flexRow([], 8, "font-size:10px;border-top:1px solid #3a3a3a;padding-top:8px;");
   rateRow.appendChild(span("$/sf/coat", "#8a8580", "font-size:10px;"));
