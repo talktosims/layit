@@ -16,6 +16,12 @@ body{background:#1a1a1a;color:#e8e4de;font-family:'SF Mono','Fira Code','Consola
 input,select,button{font-family:inherit}
 input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
 input[type=number]{-moz-appearance:textfield}
+@media print{
+  body{background:#fff!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  #app>*:not(.invoice-view){display:none!important}
+  .invoice-view{margin:0!important;border-radius:0!important}
+  .no-print{display:none!important}
+}
 </style>
 </head>
 <body>
@@ -415,6 +421,57 @@ function calcJobMaterialsCost(job){
     total += calcRoomMaterialsCost(job.rooms[i]).total;
   }
   return total;
+}
+
+function calcJobMaterialsDetail(job){
+  var map = {};
+  function addEntry(cat, color, product, pg, tg, roomName, ppg){
+    if(pg <= 0 && tg <= 0) return;
+    var key = (color || "").toLowerCase().trim() + "|" + (product || "").toLowerCase().trim();
+    if(!map[key]) map[key] = {color:color||"", product:product||"", pg:0, tg:0, costAccum:0, galWithPrice:0, cats:{}};
+    map[key].pg += pg;
+    map[key].tg += tg;
+    var gal = pg + tg;
+    if(ppg > 0){ map[key].costAccum += gal * ppg; map[key].galWithPrice += gal; }
+    if(!map[key].cats[cat]) map[key].cats[cat] = [];
+    if(map[key].cats[cat].indexOf(roomName) < 0) map[key].cats[cat].push(roomName);
+  }
+  for(var i = 0; i < job.rooms.length; i++){
+    var rm = job.rooms[i];
+    var rn = rm.name || ("Room " + (i+1));
+    var wp = pf(rm.wallPricePerGal), cp = pf(rm.ceilingPricePerGal), tp = pf(rm.trimPricePerGal);
+    if(rm.mode === "quick"){
+      var q = calcQuickRoom(rm);
+      addEntry("Walls", rm.wallColor, rm.wallProduct, q.wallPrimerGal, q.wallTopGal, rn, wp);
+      if(rm.includeCeiling) addEntry("Ceiling", rm.ceilingColor, rm.ceilingProduct, q.ceilPrimerGal, q.ceilTopGal, rn, cp);
+      var trimPG = q.bbPG, trimTG = q.bbTG;
+      var extras = rm.extras || [];
+      for(var j = 0; j < extras.length; j++){
+        var sr = calcSurface(extras[j]);
+        var et = extras[j].type;
+        if(et === "trim" || et === "baseboard" || et === "door_frame"){ trimPG += sr.pg; trimTG += sr.tg; }
+      }
+      addEntry("Trim/Frames", rm.trimColor, rm.trimProduct, trimPG, trimTG, rn, tp);
+    } else {
+      for(var k = 0; k < rm.surfaces.length; k++){
+        var s = rm.surfaces[k], sr2 = calcSurface(s), st = s.type;
+        var sp = st === "wall" ? wp : st === "ceiling" ? cp : tp;
+        if(st === "wall") addEntry("Walls", s.color, s.product, sr2.pg, sr2.tg, rn, sp);
+        else if(st === "ceiling") addEntry("Ceiling", s.color, s.product, sr2.pg, sr2.tg, rn, sp);
+        else if(st === "trim" || st === "baseboard" || st === "door_frame") addEntry("Trim/Frames", s.color, s.product, sr2.pg, sr2.tg, rn, sp);
+      }
+    }
+  }
+  var result = [];
+  for(var key in map){
+    var m = map[key];
+    m.totalGal = m.pg + m.tg;
+    m.ppg = m.galWithPrice > 0 ? (m.costAccum / m.galWithPrice) : 0;
+    m.lineCost = m.galWithPrice > 0 ? m.costAccum : 0;
+    result.push(m);
+  }
+  result.sort(function(a,b){ return b.lineCost - a.lineCost || (b.totalGal - a.totalGal); });
+  return result;
 }
 
 /* ── State ── */
@@ -851,6 +908,160 @@ function renderSurfCard(surf, types, isExtra){
   return wrapper;
 }
 
+/* ── Invoice Renderer ── */
+function renderInvoice(job, body, rate, er){
+  // Back button
+  var backBtn = btn("← Back", function(){ STATE.view = "rooms"; render(); },
+    "background:#2e2e2e;border:1px solid #3a3a3a;border-radius:4px;color:#d4a843;font-size:12px;padding:8px 16px;cursor:pointer;margin-bottom:12px;");
+  backBtn.className = "no-print";
+  body.appendChild(backBtn);
+
+  // White invoice container
+  var inv = el("div", "background:#fff;color:#222;border-radius:8px;padding:24px 20px;font-family:-apple-system,'Helvetica Neue',sans-serif;line-height:1.4;");
+  inv.className = "invoice-view";
+
+  // Header
+  inv.appendChild(el("div", "font-size:22px;font-weight:700;color:#1a1a1a;margin-bottom:2px;", job.name));
+  inv.appendChild(el("div", "font-size:12px;color:#888;margin-bottom:4px;", "Date: " + new Date().toLocaleDateString()));
+  inv.appendChild(el("div", "font-size:12px;color:#888;margin-bottom:20px;", job.rooms.length + " room" + (job.rooms.length !== 1 ? "s" : "")));
+
+  // ── PAINT MATERIALS SECTION ──
+  inv.appendChild(el("div", "font-size:14px;font-weight:700;color:#1a1a1a;border-bottom:2px solid #1a1a1a;padding-bottom:4px;margin-bottom:12px;letter-spacing:.5px;", "PAINT MATERIALS"));
+
+  var matDetail = calcJobMaterialsDetail(job);
+  var matGrandTotal = 0;
+  var hasAnyPrice = false;
+
+  if(matDetail.length === 0){
+    inv.appendChild(el("div", "font-size:12px;color:#999;font-style:italic;margin-bottom:16px;", "No paint products entered yet."));
+  } else {
+    for(var mi = 0; mi < matDetail.length; mi++){
+      var md = matDetail[mi];
+      var itemDiv = el("div", "padding:8px 0;" + (mi > 0 ? "border-top:1px solid #eee;" : ""));
+
+      // Product name
+      var prodName = (md.color || "") + (md.color && md.product ? " · " : "") + (md.product || "");
+      if(!prodName) prodName = "(unspecified)";
+      itemDiv.appendChild(el("div", "font-size:13px;font-weight:600;color:#1a1a1a;", prodName));
+
+      // Where used
+      var catKeys = ["Walls", "Ceiling", "Trim/Frames"];
+      var whereStr = "";
+      for(var ci = 0; ci < catKeys.length; ci++){
+        var ck = catKeys[ci];
+        if(md.cats[ck] && md.cats[ck].length > 0){
+          if(whereStr) whereStr += " · ";
+          whereStr += ck + ": " + md.cats[ck].join(", ");
+        }
+      }
+      if(whereStr) itemDiv.appendChild(el("div", "font-size:10px;color:#888;margin-top:2px;", whereStr));
+
+      // Gallons and cost
+      var costRow = el("div", "display:flex;justify-content:space-between;align-items:center;margin-top:4px;");
+      var galStr = c1(md.totalGal) + " gal";
+      if(md.pg > 0 && md.tg > 0) galStr += " (" + c1(md.pg) + "P + " + c1(md.tg) + "T)";
+      costRow.appendChild(el("div", "font-size:11px;color:#555;", galStr));
+
+      if(md.ppg > 0){
+        hasAnyPrice = true;
+        matGrandTotal += md.lineCost;
+        var priceStr = c1(md.totalGal) + " × $" + md.ppg.toFixed(2) + "/gal";
+        costRow.appendChild(el("div", "font-size:12px;font-weight:600;color:#1a1a1a;", "$" + md.lineCost.toFixed(2)));
+      } else {
+        costRow.appendChild(el("div", "font-size:11px;color:#aaa;", "—"));
+      }
+      itemDiv.appendChild(costRow);
+      if(md.ppg > 0){
+        itemDiv.appendChild(el("div", "font-size:10px;color:#888;text-align:right;", priceStr));
+      }
+
+      inv.appendChild(itemDiv);
+    }
+
+    // Materials subtotal
+    var matSubRow = el("div", "display:flex;justify-content:space-between;padding:10px 0;border-top:2px solid #ddd;margin-top:4px;font-weight:700;");
+    matSubRow.appendChild(el("div", "font-size:12px;color:#555;", "Materials Subtotal"));
+    matSubRow.appendChild(el("div", "font-size:14px;color:#1a1a1a;", hasAnyPrice ? "$" + matGrandTotal.toFixed(2) : "—"));
+    inv.appendChild(matSubRow);
+
+    if(!hasAnyPrice){
+      inv.appendChild(el("div", "font-size:10px;color:#aaa;font-style:italic;margin-bottom:8px;", "Tip: Enter $/gal in room paint settings for cost tracking."));
+    }
+  }
+
+  // ── LABOR SECTION ──
+  inv.appendChild(el("div", "font-size:14px;font-weight:700;color:#1a1a1a;border-bottom:2px solid #1a1a1a;padding-bottom:4px;margin-top:20px;margin-bottom:12px;letter-spacing:.5px;", "LABOR"));
+
+  var rps = job.rooms.map(function(rm){ return calcRoomPrice(rm, rate, er); });
+  var sfTotal = 0, enTotal = 0, fxTotal = 0;
+  for(var ri = 0; ri < rps.length; ri++){ sfTotal += rps[ri].sfLabor; enTotal += rps[ri].enLabor; fxTotal += rps[ri].fixed; }
+  var autoTotal = sfTotal + enTotal + fxTotal;
+  var hasOvr = job.priceOverride != null && job.priceOverride !== "";
+  var laborPrice = hasOvr ? pf(job.priceOverride) : autoTotal;
+
+  function invRow(label, amount, bold){
+    var r = el("div", "display:flex;justify-content:space-between;padding:4px 0;font-size:12px;" + (bold ? "font-weight:700;border-top:1px solid #ddd;padding-top:8px;margin-top:4px;" : ""));
+    r.appendChild(el("div", "color:" + (bold ? "#1a1a1a" : "#555") + ";", label));
+    r.appendChild(el("div", "color:#1a1a1a;" + (bold ? "font-size:14px;" : ""), amount));
+    return r;
+  }
+
+  if(hasOvr){
+    inv.appendChild(invRow("Labor (flat rate)", "$" + laborPrice.toFixed(2)));
+  } else {
+    if(sfTotal > 0) inv.appendChild(invRow("Walls & Ceiling (sqft labor)", "$" + sfTotal.toFixed(2)));
+    if(enTotal > 0) inv.appendChild(invRow("Enamel / Trim (linear ft labor)", "$" + enTotal.toFixed(2)));
+    if(fxTotal > 0){
+      var fb = calcJobFixed(job);
+      if(fb.df.q > 0) inv.appendChild(invRow("Door faces (" + fb.df.q + ")", "$" + fb.df.p));
+      if(fb.dr.q > 0) inv.appendChild(invRow("Door frames (" + fb.dr.q + ")", "$" + fb.dr.p));
+      if(fb.wi.q > 0) inv.appendChild(invRow("Windows (" + fb.wi.q + ")", "$" + fb.wi.p));
+    }
+  }
+  inv.appendChild(invRow("Labor Subtotal", "$" + laborPrice.toFixed(2), true));
+
+  // ── SUMMARY SECTION ──
+  inv.appendChild(el("div", "font-size:14px;font-weight:700;color:#1a1a1a;border-bottom:2px solid #1a1a1a;padding-bottom:4px;margin-top:20px;margin-bottom:12px;letter-spacing:.5px;", "SUMMARY"));
+
+  inv.appendChild(invRow("Labor", "$" + laborPrice.toFixed(2)));
+  if(hasAnyPrice) inv.appendChild(invRow("Materials", "$" + matGrandTotal.toFixed(2)));
+  var matDeduct = pf(job.materialsDeduction);
+  if(matDeduct > 0) inv.appendChild(invRow("Materials Deduction", "−$" + matDeduct.toFixed(2)));
+
+  var grandTotal = laborPrice + (hasAnyPrice ? matGrandTotal : 0) - matDeduct;
+  var gtRow = el("div", "display:flex;justify-content:space-between;padding:12px 0;border-top:3px double #1a1a1a;margin-top:8px;");
+  gtRow.appendChild(el("div", "font-size:14px;font-weight:700;color:#1a1a1a;letter-spacing:.5px;", "TOTAL"));
+  gtRow.appendChild(el("div", "font-size:20px;font-weight:700;color:#1a1a1a;", "$" + grandTotal.toFixed(2)));
+  inv.appendChild(gtRow);
+
+  body.appendChild(inv);
+
+  // Action buttons
+  var actions = el("div", "display:flex;gap:8px;margin-top:12px;justify-content:center;");
+  actions.className = "no-print";
+  actions.appendChild(btn("Print / Save PDF", function(){ window.print(); },
+    "background:#1a1a1a;border:none;border-radius:4px;color:#fff;font-size:12px;padding:10px 20px;cursor:pointer;font-weight:600;"));
+  if(navigator.share){
+    actions.appendChild(btn("Share", function(){
+      var text = job.name + "\n" + new Date().toLocaleDateString() + "\n\n";
+      text += "PAINT MATERIALS\n";
+      for(var i = 0; i < matDetail.length; i++){
+        var md2 = matDetail[i];
+        var name = (md2.color || "") + (md2.color && md2.product ? " · " : "") + (md2.product || "") || "(unspecified)";
+        text += name + " — " + c1(md2.totalGal) + " gal";
+        if(md2.ppg > 0) text += " — $" + md2.lineCost.toFixed(2);
+        text += "\n";
+      }
+      if(hasAnyPrice) text += "Materials Subtotal: $" + matGrandTotal.toFixed(2) + "\n";
+      text += "\nLABOR: $" + laborPrice.toFixed(2) + "\n";
+      if(matDeduct > 0) text += "Materials Deduction: −$" + matDeduct.toFixed(2) + "\n";
+      text += "\nTOTAL: $" + grandTotal.toFixed(2);
+      navigator.share({ title: job.name + " — Invoice", text: text }).catch(function(){});
+    }, "background:#2e2e2e;border:1px solid #3a3a3a;border-radius:4px;color:#e8e4de;font-size:12px;padding:10px 20px;cursor:pointer;font-weight:600;"));
+  }
+  body.appendChild(actions);
+}
+
 /* ── Main Render ── */
 function render(){
   var app = document.getElementById("app");
@@ -987,6 +1198,13 @@ function render(){
   /* Body */
   var body = el("div", "padding:12px 16px 20px;");
 
+  /* Invoice View */
+  if(STATE.view === "invoice"){
+    renderInvoice(job, body, rate, er);
+    app.appendChild(body);
+    return;
+  }
+
   /* Job Name */
   var jnRow = flexRow([], 8, "margin-bottom:12px;");
   var jnInp = el("input", "flex:1;font-size:15px;font-weight:600;background:transparent;border:none;border-bottom:1px solid #3a3a3a;padding:4px 0;color:#e8e4de;outline:none;font-family:inherit;");
@@ -1074,6 +1292,11 @@ function render(){
   priceSec.appendChild(rateRow);
   tc.appendChild(priceSec);
   body.appendChild(tc);
+
+  /* Invoice Button */
+  body.appendChild(btn("View Invoice & Materials", function(){
+    STATE.view = "invoice"; render();
+  }, "background:#d4a843;color:#1a1a1a;border:none;border-radius:4px;padding:10px 0;cursor:pointer;font-size:12px;font-weight:600;letter-spacing:.5px;width:100%;margin-bottom:12px;"));
 
   /* Paint Order (collapsible) */
   var po = calcJobPaintOrder(job);
