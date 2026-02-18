@@ -606,30 +606,33 @@ function getJobSuggestions(job, field){
   return list;
 }
 
-function autoTextInput(value, onChange, placeholder, width, suggestions){
-  var wrap = el("div", "position:relative;display:inline-block;width:" + (width || 90) + "px;");
-  var inp = el("input", "background:#2e2e2e;color:#e8e4de;border:1px solid #3a3a3a;border-radius:4px;padding:6px 8px;outline:none;font-size:11px;width:100%;font-family:inherit;box-sizing:border-box;");
+function autoTextInput(value, onChange, placeholder, width, suggestFn){
+  var wrap = el("div", "position:relative;" + (width ? "width:" + width + "px;" : "flex:1;min-width:80px;"));
+  var inp = el("input", "background:#2e2e2e;color:#e8e4de;border:1px solid #3a3a3a;border-radius:4px;padding:6px 8px;outline:none;font-size:11px;width:100%;font-family:inherit;box-sizing:border-box;text-overflow:ellipsis;");
   inp.type = "text";
   inp.value = (value === undefined || value === null) ? "" : value;
   inp.placeholder = placeholder || "";
+  inp.autocomplete = "off";
+  inp.autocorrect = "off";
+  inp.spellcheck = false;
 
   var dropdown = el("div", "display:none;position:absolute;top:100%;left:0;right:0;background:#2e2e2e;border:1px solid #555;border-radius:0 0 4px 4px;max-height:150px;overflow-y:auto;z-index:999;");
 
   function buildOptions(filter){
     dropdown.innerHTML = "";
+    // Get fresh suggestions each time (reflects latest edits)
+    var suggestions = suggestFn();
     var count = 0;
     var fLc = (filter || "").toLowerCase();
     for(var i = 0; i < suggestions.length; i++){
       var s = suggestions[i];
-      // Don't show suggestion that exactly matches current value
       if(s.toLowerCase() === fLc) continue;
-      // Filter: show all on focus, or matching on type
       if(fLc && s.toLowerCase().indexOf(fLc) < 0) continue;
       (function(val){
-        var opt = el("div", "padding:6px 8px;font-size:11px;color:#e8e4de;cursor:pointer;border-bottom:1px solid #3a3a3a;");
+        var opt = el("div", "padding:8px 10px;font-size:12px;color:#e8e4de;cursor:pointer;border-bottom:1px solid #3a3a3a;");
         opt.textContent = val;
         opt.onmousedown = function(e){
-          e.preventDefault(); // Prevent blur from firing before click
+          e.preventDefault();
           inp.value = val;
           onChange(val);
           saveState();
@@ -643,14 +646,13 @@ function autoTextInput(value, onChange, placeholder, width, suggestions){
     dropdown.style.display = count > 0 ? "block" : "none";
   }
 
-  inp.onfocus = function(){ if(suggestions.length > 0) buildOptions(inp.value); };
+  inp.onfocus = function(){ buildOptions(inp.value); };
   inp.oninput = function(e){
     onChange(e.target.value);
     saveState();
     buildOptions(e.target.value);
   };
   inp.onblur = function(){
-    // Small delay to allow click on dropdown option
     setTimeout(function(){ dropdown.style.display = "none"; render(); }, 200);
   };
 
@@ -765,9 +767,9 @@ function renderSurfCard(surf, types, isExtra){
   if(!isFixed){
     var cpRow = flexRow([], 6, "margin-bottom:6px;margin-top:6px;");
     cpRow.appendChild(span("Color", "#8a8580", "font-size:9px;"));
-    cpRow.appendChild(autoTextInput(surf.color, function(v){ surf.color = v; }, "Color", 80, getJobSuggestions(getJob(), "color")));
+    cpRow.appendChild(autoTextInput(surf.color, function(v){ surf.color = v; }, "Color", null, function(){ return getJobSuggestions(getJob(), "color"); }));
     cpRow.appendChild(span("Product", "#8a8580", "font-size:9px;"));
-    cpRow.appendChild(autoTextInput(surf.product, function(v){ surf.product = v; }, "Product", 80, getJobSuggestions(getJob(), "product")));
+    cpRow.appendChild(autoTextInput(surf.product, function(v){ surf.product = v; }, "Product", null, function(){ return getJobSuggestions(getJob(), "product"); }));
     wrapper.appendChild(cpRow);
   }
 
@@ -1287,14 +1289,16 @@ function render(){
       /* ── WALLS card ── */
       var wc = card([], "border-left:3px solid #5a9e6f;");
       wc.appendChild(el("div", "font-size:11px;color:#5a9e6f;font-weight:600;letter-spacing:1px;margin-bottom:8px;", "WALLS"));
-      var wColorRow = flexRow([], 6, "margin-bottom:8px;");
-      wColorRow.appendChild(span("Color", "#8a8580", "font-size:10px;"));
-      wColorRow.appendChild(autoTextInput(ar.wallColor, function(v){ ar.wallColor = v; }, "e.g. Navy Blue", 100, getJobSuggestions(job, "color")));
-      wColorRow.appendChild(span("Product", "#8a8580", "font-size:10px;"));
-      wColorRow.appendChild(autoTextInput(ar.wallProduct, function(v){ ar.wallProduct = v; }, "e.g. Duration", 100, getJobSuggestions(job, "product")));
-      wColorRow.appendChild(span("$/gal", "#8a8580", "font-size:10px;"));
-      wColorRow.appendChild(numInput(ar.wallPricePerGal, function(v){ ar.wallPricePerGal = v; }, 50));
+      var wColorRow = flexRow([], 6, "margin-bottom:6px;");
+      wColorRow.appendChild(span("Color", "#8a8580", "font-size:10px;min-width:32px;"));
+      wColorRow.appendChild(autoTextInput(ar.wallColor, function(v){ ar.wallColor = v; }, "e.g. Navy Blue", null, function(){ return getJobSuggestions(job, "color"); }));
       wc.appendChild(wColorRow);
+      var wProdRow = flexRow([], 6, "margin-bottom:6px;");
+      wProdRow.appendChild(span("Product", "#8a8580", "font-size:10px;min-width:32px;"));
+      wProdRow.appendChild(autoTextInput(ar.wallProduct, function(v){ ar.wallProduct = v; }, "e.g. Duration Semi-Gloss", null, function(){ return getJobSuggestions(job, "product"); }));
+      wProdRow.appendChild(span("$/gal", "#8a8580", "font-size:10px;"));
+      wProdRow.appendChild(numInput(ar.wallPricePerGal, function(v){ ar.wallPricePerGal = v; }, 55));
+      wc.appendChild(wProdRow);
       var wCoatRow = flexRow([], 8, "margin-bottom:6px;");
       wCoatRow.appendChild(span("Primer", "#b07acc", "font-size:10px;"));
       wCoatRow.appendChild(numInput(ar.quickPrimerCoats, function(v){ ar.quickPrimerCoats = v; }, 38));
@@ -1317,14 +1321,16 @@ function render(){
       ccHdr.appendChild(toggleBtn(ar.includeCeiling ? "On" : "Off", ar.includeCeiling, function(){ ar.includeCeiling = !ar.includeCeiling; saveState(); render(); }, "flex:0;padding:4px 12px;"));
       cc.appendChild(ccHdr);
       if(ar.includeCeiling){
-        var cColorRow = flexRow([], 6, "margin-bottom:8px;");
-        cColorRow.appendChild(span("Color", "#8a8580", "font-size:10px;"));
-        cColorRow.appendChild(autoTextInput(ar.ceilingColor, function(v){ ar.ceilingColor = v; }, "e.g. Ceiling White", 100, getJobSuggestions(job, "color")));
-        cColorRow.appendChild(span("Product", "#8a8580", "font-size:10px;"));
-        cColorRow.appendChild(autoTextInput(ar.ceilingProduct, function(v){ ar.ceilingProduct = v; }, "e.g. Flat", 100, getJobSuggestions(job, "product")));
-        cColorRow.appendChild(span("$/gal", "#8a8580", "font-size:10px;"));
-        cColorRow.appendChild(numInput(ar.ceilingPricePerGal, function(v){ ar.ceilingPricePerGal = v; }, 50));
+        var cColorRow = flexRow([], 6, "margin-bottom:6px;");
+        cColorRow.appendChild(span("Color", "#8a8580", "font-size:10px;min-width:32px;"));
+        cColorRow.appendChild(autoTextInput(ar.ceilingColor, function(v){ ar.ceilingColor = v; }, "e.g. Ceiling White", null, function(){ return getJobSuggestions(job, "color"); }));
         cc.appendChild(cColorRow);
+        var cProdRow = flexRow([], 6, "margin-bottom:6px;");
+        cProdRow.appendChild(span("Product", "#8a8580", "font-size:10px;min-width:32px;"));
+        cProdRow.appendChild(autoTextInput(ar.ceilingProduct, function(v){ ar.ceilingProduct = v; }, "e.g. Flat Ceiling Paint", null, function(){ return getJobSuggestions(job, "product"); }));
+        cProdRow.appendChild(span("$/gal", "#8a8580", "font-size:10px;"));
+        cProdRow.appendChild(numInput(ar.ceilingPricePerGal, function(v){ ar.ceilingPricePerGal = v; }, 55));
+        cc.appendChild(cProdRow);
         var cCoatRow = flexRow([], 8, "margin-bottom:6px;");
         cCoatRow.appendChild(span("Primer", "#b07acc", "font-size:10px;"));
         cCoatRow.appendChild(numInput(ar.ceilingPrimerCoats, function(v){ ar.ceilingPrimerCoats = v; }, 38));
@@ -1344,14 +1350,16 @@ function render(){
       /* ── TRIM & FRAMES card ── */
       var tc2 = card([], "border-left:3px solid #d4a843;");
       tc2.appendChild(el("div", "font-size:11px;color:#d4a843;font-weight:600;letter-spacing:1px;margin-bottom:8px;", "TRIM & FRAMES"));
-      var tColorRow = flexRow([], 6, "margin-bottom:10px;");
-      tColorRow.appendChild(span("Color", "#8a8580", "font-size:10px;"));
-      tColorRow.appendChild(autoTextInput(ar.trimColor, function(v){ ar.trimColor = v; }, "e.g. White", 100, getJobSuggestions(job, "color")));
-      tColorRow.appendChild(span("Product", "#8a8580", "font-size:10px;"));
-      tColorRow.appendChild(autoTextInput(ar.trimProduct, function(v){ ar.trimProduct = v; }, "e.g. Semi-gloss", 100, getJobSuggestions(job, "product")));
-      tColorRow.appendChild(span("$/gal", "#8a8580", "font-size:10px;"));
-      tColorRow.appendChild(numInput(ar.trimPricePerGal, function(v){ ar.trimPricePerGal = v; }, 50));
+      var tColorRow = flexRow([], 6, "margin-bottom:6px;");
+      tColorRow.appendChild(span("Color", "#8a8580", "font-size:10px;min-width:32px;"));
+      tColorRow.appendChild(autoTextInput(ar.trimColor, function(v){ ar.trimColor = v; }, "e.g. SW Extra White", null, function(){ return getJobSuggestions(job, "color"); }));
       tc2.appendChild(tColorRow);
+      var tProdRow = flexRow([], 6, "margin-bottom:10px;");
+      tProdRow.appendChild(span("Product", "#8a8580", "font-size:10px;min-width:32px;"));
+      tProdRow.appendChild(autoTextInput(ar.trimProduct, function(v){ ar.trimProduct = v; }, "e.g. ProClassic Semi-Gloss", null, function(){ return getJobSuggestions(job, "product"); }));
+      tProdRow.appendChild(span("$/gal", "#8a8580", "font-size:10px;"));
+      tProdRow.appendChild(numInput(ar.trimPricePerGal, function(v){ ar.trimPricePerGal = v; }, 55));
+      tc2.appendChild(tProdRow);
 
       /* Baseboard sub-section */
       var bbSec = el("div", "margin-bottom:10px;");
