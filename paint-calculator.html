@@ -145,9 +145,9 @@ function makeRoom(o){
     includeCeiling:true, includeBaseboard:true,
     baseboardPrimerCoats:1, baseboardTopCoats:2,
     baseboardOverride:"",
-    wallColor:"", wallProduct:"", wallPricePerGal:"",
-    ceilingColor:"", ceilingProduct:"", ceilingPricePerGal:"",
-    trimColor:"", trimProduct:"", trimPricePerGal:"",
+    wallColor:"", wallProduct:"", wallPricePerGal:"", wallPrimerProduct:"", wallPrimerPricePerGal:"",
+    ceilingColor:"", ceilingProduct:"", ceilingPricePerGal:"", ceilingPrimerProduct:"", ceilingPrimerPricePerGal:"",
+    trimColor:"", trimProduct:"", trimPricePerGal:"", trimPrimerProduct:"", trimPrimerPricePerGal:"",
     extras:[], surfaces:[makeSurface()]
   };
   if(o) for(var k in o) r[k] = o[k];
@@ -374,8 +374,15 @@ function calcJobPaintOrder(job){
     var rn = rm.name || ("Room " + (i+1));
     if(rm.mode === "quick"){
       var q = calcQuickRoom(rm);
-      addEntry("Walls", rm.wallColor, rm.wallProduct, q.wallPrimerGal, q.wallTopGal, rn);
-      if(rm.includeCeiling) addEntry("Ceiling", rm.ceilingColor, rm.ceilingProduct, q.ceilPrimerGal, q.ceilTopGal, rn);
+      // Walls: separate primer and topcoat
+      if(q.wallPrimerGal > 0) addEntry("Walls", rm.wallColor, rm.wallPrimerProduct || "Primer", q.wallPrimerGal, 0, rn);
+      if(q.wallTopGal > 0) addEntry("Walls", rm.wallColor, rm.wallProduct || "Topcoat", 0, q.wallTopGal, rn);
+      // Ceiling: separate primer and topcoat
+      if(rm.includeCeiling){
+        if(q.ceilPrimerGal > 0) addEntry("Ceiling", rm.ceilingColor, rm.ceilingPrimerProduct || "Primer", q.ceilPrimerGal, 0, rn);
+        if(q.ceilTopGal > 0) addEntry("Ceiling", rm.ceilingColor, rm.ceilingProduct || "Topcoat", 0, q.ceilTopGal, rn);
+      }
+      // Trim: separate primer and topcoat
       var trimPG = q.bbPG, trimTG = q.bbTG;
       var extras = rm.extras || [];
       for(var j = 0; j < extras.length; j++){
@@ -385,15 +392,26 @@ function calcJobPaintOrder(job){
           trimPG += sr.pg; trimTG += sr.tg;
         }
       }
-      addEntry("Trim/Frames", rm.trimColor, rm.trimProduct, trimPG, trimTG, rn);
+      if(trimPG > 0) addEntry("Trim/Frames", rm.trimColor, rm.trimPrimerProduct || "Primer", trimPG, 0, rn);
+      if(trimTG > 0) addEntry("Trim/Frames", rm.trimColor, rm.trimProduct || "Topcoat", 0, trimTG, rn);
     } else {
       for(var k = 0; k < rm.surfaces.length; k++){
         var s = rm.surfaces[k];
         var sr2 = calcSurface(s);
         var st = s.type;
-        if(st === "wall") addEntry("Walls", s.color, s.product, sr2.pg, sr2.tg, rn);
-        else if(st === "ceiling") addEntry("Ceiling", s.color, s.product, sr2.pg, sr2.tg, rn);
-        else if(st === "trim" || st === "baseboard" || st === "door_frame") addEntry("Trim/Frames", s.color, s.product, sr2.pg, sr2.tg, rn);
+        // Custom mode: primer product comes from room-level fields based on surface type
+        var pp = st === "wall" ? rm.wallPrimerProduct : st === "ceiling" ? rm.ceilingPrimerProduct : rm.trimPrimerProduct;
+        var tp = st === "wall" ? rm.wallProduct : st === "ceiling" ? rm.ceilingProduct : rm.trimProduct;
+        if(st === "wall"){
+          if(sr2.pg > 0) addEntry("Walls", s.color, pp || "Primer", sr2.pg, 0, rn);
+          if(sr2.tg > 0) addEntry("Walls", s.color, tp || "Topcoat", 0, sr2.tg, rn);
+        } else if(st === "ceiling"){
+          if(sr2.pg > 0) addEntry("Ceiling", s.color, pp || "Primer", sr2.pg, 0, rn);
+          if(sr2.tg > 0) addEntry("Ceiling", s.color, tp || "Topcoat", 0, sr2.tg, rn);
+        } else if(st === "trim" || st === "baseboard" || st === "door_frame"){
+          if(sr2.pg > 0) addEntry("Trim/Frames", s.color, pp || "Primer", sr2.pg, 0, rn);
+          if(sr2.tg > 0) addEntry("Trim/Frames", s.color, tp || "Topcoat", 0, sr2.tg, rn);
+        }
       }
     }
   }
@@ -406,12 +424,9 @@ function calcJobPaintOrder(job){
 
 function calcRoomMaterialsCost(rm){
   var rt = calcRoomTotal(rm);
-  var wp = pf(rm.wallPricePerGal);
-  var cp = pf(rm.ceilingPricePerGal);
-  var tp = pf(rm.trimPricePerGal);
-  var wallCost = (rt.wallPG + rt.wallTG) * wp;
-  var ceilCost = (rt.ceilPG + rt.ceilTG) * cp;
-  var trimCost = (rt.trimPG + rt.trimTG) * tp;
+  var wallCost = rt.wallPG * pf(rm.wallPrimerPricePerGal) + rt.wallTG * pf(rm.wallPricePerGal);
+  var ceilCost = rt.ceilPG * pf(rm.ceilingPrimerPricePerGal) + rt.ceilTG * pf(rm.ceilingPricePerGal);
+  var trimCost = rt.trimPG * pf(rm.trimPrimerPricePerGal) + rt.trimTG * pf(rm.trimPricePerGal);
   return {wall:wallCost, ceil:ceilCost, trim:trimCost, total:wallCost + ceilCost + trimCost};
 }
 
@@ -439,11 +454,20 @@ function calcJobMaterialsDetail(job){
   for(var i = 0; i < job.rooms.length; i++){
     var rm = job.rooms[i];
     var rn = rm.name || ("Room " + (i+1));
-    var wp = pf(rm.wallPricePerGal), cp = pf(rm.ceilingPricePerGal), tp = pf(rm.trimPricePerGal);
+    var wpp = pf(rm.wallPrimerPricePerGal), wp = pf(rm.wallPricePerGal);
+    var cpp = pf(rm.ceilingPrimerPricePerGal), cp = pf(rm.ceilingPricePerGal);
+    var tpp = pf(rm.trimPrimerPricePerGal), tp = pf(rm.trimPricePerGal);
     if(rm.mode === "quick"){
       var q = calcQuickRoom(rm);
-      addEntry("Walls", rm.wallColor, rm.wallProduct, q.wallPrimerGal, q.wallTopGal, rn, wp);
-      if(rm.includeCeiling) addEntry("Ceiling", rm.ceilingColor, rm.ceilingProduct, q.ceilPrimerGal, q.ceilTopGal, rn, cp);
+      // Walls: separate primer and topcoat
+      if(q.wallPrimerGal > 0) addEntry("Walls", rm.wallColor, rm.wallPrimerProduct || "Primer", q.wallPrimerGal, 0, rn, wpp);
+      if(q.wallTopGal > 0) addEntry("Walls", rm.wallColor, rm.wallProduct || "Topcoat", 0, q.wallTopGal, rn, wp);
+      // Ceiling
+      if(rm.includeCeiling){
+        if(q.ceilPrimerGal > 0) addEntry("Ceiling", rm.ceilingColor, rm.ceilingPrimerProduct || "Primer", q.ceilPrimerGal, 0, rn, cpp);
+        if(q.ceilTopGal > 0) addEntry("Ceiling", rm.ceilingColor, rm.ceilingProduct || "Topcoat", 0, q.ceilTopGal, rn, cp);
+      }
+      // Trim
       var trimPG = q.bbPG, trimTG = q.bbTG;
       var extras = rm.extras || [];
       for(var j = 0; j < extras.length; j++){
@@ -451,14 +475,25 @@ function calcJobMaterialsDetail(job){
         var et = extras[j].type;
         if(et === "trim" || et === "baseboard" || et === "door_frame"){ trimPG += sr.pg; trimTG += sr.tg; }
       }
-      addEntry("Trim/Frames", rm.trimColor, rm.trimProduct, trimPG, trimTG, rn, tp);
+      if(trimPG > 0) addEntry("Trim/Frames", rm.trimColor, rm.trimPrimerProduct || "Primer", trimPG, 0, rn, tpp);
+      if(trimTG > 0) addEntry("Trim/Frames", rm.trimColor, rm.trimProduct || "Topcoat", 0, trimTG, rn, tp);
     } else {
       for(var k = 0; k < rm.surfaces.length; k++){
         var s = rm.surfaces[k], sr2 = calcSurface(s), st = s.type;
-        var sp = st === "wall" ? wp : st === "ceiling" ? cp : tp;
-        if(st === "wall") addEntry("Walls", s.color, s.product, sr2.pg, sr2.tg, rn, sp);
-        else if(st === "ceiling") addEntry("Ceiling", s.color, s.product, sr2.pg, sr2.tg, rn, sp);
-        else if(st === "trim" || st === "baseboard" || st === "door_frame") addEntry("Trim/Frames", s.color, s.product, sr2.pg, sr2.tg, rn, sp);
+        var sPP = st === "wall" ? wpp : st === "ceiling" ? cpp : tpp;
+        var sTP = st === "wall" ? wp : st === "ceiling" ? cp : tp;
+        var sPrimerProd = st === "wall" ? rm.wallPrimerProduct : st === "ceiling" ? rm.ceilingPrimerProduct : rm.trimPrimerProduct;
+        var sTopProd = st === "wall" ? rm.wallProduct : st === "ceiling" ? rm.ceilingProduct : rm.trimProduct;
+        if(st === "wall"){
+          if(sr2.pg > 0) addEntry("Walls", s.color, sPrimerProd || "Primer", sr2.pg, 0, rn, sPP);
+          if(sr2.tg > 0) addEntry("Walls", s.color, sTopProd || "Topcoat", 0, sr2.tg, rn, sTP);
+        } else if(st === "ceiling"){
+          if(sr2.pg > 0) addEntry("Ceiling", s.color, sPrimerProd || "Primer", sr2.pg, 0, rn, sPP);
+          if(sr2.tg > 0) addEntry("Ceiling", s.color, sTopProd || "Topcoat", 0, sr2.tg, rn, sTP);
+        } else if(st === "trim" || st === "baseboard" || st === "door_frame"){
+          if(sr2.pg > 0) addEntry("Trim/Frames", s.color, sPrimerProd || "Primer", sr2.pg, 0, rn, sPP);
+          if(sr2.tg > 0) addEntry("Trim/Frames", s.color, sTopProd || "Topcoat", 0, sr2.tg, rn, sTP);
+        }
       }
     }
   }
@@ -490,6 +525,12 @@ function migrateRoom(rm){
   if(rm.wallPricePerGal === undefined) rm.wallPricePerGal = "";
   if(rm.ceilingPricePerGal === undefined) rm.ceilingPricePerGal = "";
   if(rm.trimPricePerGal === undefined) rm.trimPricePerGal = "";
+  if(rm.wallPrimerProduct === undefined) rm.wallPrimerProduct = "";
+  if(rm.wallPrimerPricePerGal === undefined) rm.wallPrimerPricePerGal = "";
+  if(rm.ceilingPrimerProduct === undefined) rm.ceilingPrimerProduct = "";
+  if(rm.ceilingPrimerPricePerGal === undefined) rm.ceilingPrimerPricePerGal = "";
+  if(rm.trimPrimerProduct === undefined) rm.trimPrimerProduct = "";
+  if(rm.trimPrimerPricePerGal === undefined) rm.trimPrimerPricePerGal = "";
   var surfs = (rm.surfaces || []).concat(rm.extras || []);
   for(var i = 0; i < surfs.length; i++){
     if(surfs[i].color === undefined) surfs[i].color = "";
@@ -651,6 +692,7 @@ function getJobSuggestions(job, field){
       add(rm.wallColor); add(rm.ceilingColor); add(rm.trimColor);
     } else {
       add(rm.wallProduct); add(rm.ceilingProduct); add(rm.trimProduct);
+      add(rm.wallPrimerProduct); add(rm.ceilingPrimerProduct); add(rm.trimPrimerProduct);
     }
     // Custom mode surfaces
     var surfs = (rm.surfaces || []).concat(rm.extras || []);
@@ -1513,11 +1555,17 @@ function render(){
       var wc = card([], "border-left:3px solid #5a9e6f;");
       wc.appendChild(el("div", "font-size:11px;color:#5a9e6f;font-weight:600;letter-spacing:1px;margin-bottom:8px;", "WALLS"));
       var wColorRow = flexRow([], 6, "margin-bottom:6px;");
-      wColorRow.appendChild(span("Color", "#8a8580", "font-size:10px;min-width:32px;"));
+      wColorRow.appendChild(span("Color", "#8a8580", "font-size:10px;min-width:48px;"));
       wColorRow.appendChild(autoTextInput(ar.wallColor, function(v){ ar.wallColor = v; }, "e.g. Navy Blue", null, function(){ return getJobSuggestions(job, "color"); }));
       wc.appendChild(wColorRow);
+      var wPrimRow = flexRow([], 6, "margin-bottom:6px;");
+      wPrimRow.appendChild(span("Primer", "#b07acc", "font-size:10px;min-width:48px;font-weight:600;"));
+      wPrimRow.appendChild(autoTextInput(ar.wallPrimerProduct, function(v){ ar.wallPrimerProduct = v; }, "e.g. Kilz Original", null, function(){ return getJobSuggestions(job, "product"); }));
+      wPrimRow.appendChild(span("$/gal", "#8a8580", "font-size:10px;"));
+      wPrimRow.appendChild(numInput(ar.wallPrimerPricePerGal, function(v){ ar.wallPrimerPricePerGal = v; }, 55));
+      wc.appendChild(wPrimRow);
       var wProdRow = flexRow([], 6, "margin-bottom:6px;");
-      wProdRow.appendChild(span("Product", "#8a8580", "font-size:10px;min-width:32px;"));
+      wProdRow.appendChild(span("Topcoat", "#5a9e6f", "font-size:10px;min-width:48px;font-weight:600;"));
       wProdRow.appendChild(autoTextInput(ar.wallProduct, function(v){ ar.wallProduct = v; }, "e.g. Duration Semi-Gloss", null, function(){ return getJobSuggestions(job, "product"); }));
       wProdRow.appendChild(span("$/gal", "#8a8580", "font-size:10px;"));
       wProdRow.appendChild(numInput(ar.wallPricePerGal, function(v){ ar.wallPricePerGal = v; }, 55));
@@ -1545,11 +1593,17 @@ function render(){
       cc.appendChild(ccHdr);
       if(ar.includeCeiling){
         var cColorRow = flexRow([], 6, "margin-bottom:6px;");
-        cColorRow.appendChild(span("Color", "#8a8580", "font-size:10px;min-width:32px;"));
+        cColorRow.appendChild(span("Color", "#8a8580", "font-size:10px;min-width:48px;"));
         cColorRow.appendChild(autoTextInput(ar.ceilingColor, function(v){ ar.ceilingColor = v; }, "e.g. Ceiling White", null, function(){ return getJobSuggestions(job, "color"); }));
         cc.appendChild(cColorRow);
+        var cPrimRow = flexRow([], 6, "margin-bottom:6px;");
+        cPrimRow.appendChild(span("Primer", "#b07acc", "font-size:10px;min-width:48px;font-weight:600;"));
+        cPrimRow.appendChild(autoTextInput(ar.ceilingPrimerProduct, function(v){ ar.ceilingPrimerProduct = v; }, "e.g. Kilz Original", null, function(){ return getJobSuggestions(job, "product"); }));
+        cPrimRow.appendChild(span("$/gal", "#8a8580", "font-size:10px;"));
+        cPrimRow.appendChild(numInput(ar.ceilingPrimerPricePerGal, function(v){ ar.ceilingPrimerPricePerGal = v; }, 55));
+        cc.appendChild(cPrimRow);
         var cProdRow = flexRow([], 6, "margin-bottom:6px;");
-        cProdRow.appendChild(span("Product", "#8a8580", "font-size:10px;min-width:32px;"));
+        cProdRow.appendChild(span("Topcoat", "#5a9e6f", "font-size:10px;min-width:48px;font-weight:600;"));
         cProdRow.appendChild(autoTextInput(ar.ceilingProduct, function(v){ ar.ceilingProduct = v; }, "e.g. Flat Ceiling Paint", null, function(){ return getJobSuggestions(job, "product"); }));
         cProdRow.appendChild(span("$/gal", "#8a8580", "font-size:10px;"));
         cProdRow.appendChild(numInput(ar.ceilingPricePerGal, function(v){ ar.ceilingPricePerGal = v; }, 55));
@@ -1574,11 +1628,17 @@ function render(){
       var tc2 = card([], "border-left:3px solid #d4a843;");
       tc2.appendChild(el("div", "font-size:11px;color:#d4a843;font-weight:600;letter-spacing:1px;margin-bottom:8px;", "TRIM & FRAMES"));
       var tColorRow = flexRow([], 6, "margin-bottom:6px;");
-      tColorRow.appendChild(span("Color", "#8a8580", "font-size:10px;min-width:32px;"));
+      tColorRow.appendChild(span("Color", "#8a8580", "font-size:10px;min-width:48px;"));
       tColorRow.appendChild(autoTextInput(ar.trimColor, function(v){ ar.trimColor = v; }, "e.g. SW Extra White", null, function(){ return getJobSuggestions(job, "color"); }));
       tc2.appendChild(tColorRow);
+      var tPrimRow = flexRow([], 6, "margin-bottom:6px;");
+      tPrimRow.appendChild(span("Primer", "#b07acc", "font-size:10px;min-width:48px;font-weight:600;"));
+      tPrimRow.appendChild(autoTextInput(ar.trimPrimerProduct, function(v){ ar.trimPrimerProduct = v; }, "e.g. BIN Shellac Primer", null, function(){ return getJobSuggestions(job, "product"); }));
+      tPrimRow.appendChild(span("$/gal", "#8a8580", "font-size:10px;"));
+      tPrimRow.appendChild(numInput(ar.trimPrimerPricePerGal, function(v){ ar.trimPrimerPricePerGal = v; }, 55));
+      tc2.appendChild(tPrimRow);
       var tProdRow = flexRow([], 6, "margin-bottom:10px;");
-      tProdRow.appendChild(span("Product", "#8a8580", "font-size:10px;min-width:32px;"));
+      tProdRow.appendChild(span("Topcoat", "#5a9e6f", "font-size:10px;min-width:48px;font-weight:600;"));
       tProdRow.appendChild(autoTextInput(ar.trimProduct, function(v){ ar.trimProduct = v; }, "e.g. ProClassic Semi-Gloss", null, function(){ return getJobSuggestions(job, "product"); }));
       tProdRow.appendChild(span("$/gal", "#8a8580", "font-size:10px;"));
       tProdRow.appendChild(numInput(ar.trimPricePerGal, function(v){ ar.trimPricePerGal = v; }, 55));
