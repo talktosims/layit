@@ -129,7 +129,7 @@ function makeSurface(o){
     id:uid(), type:"wall", inputMode:"dims",
     widthIn:"", heightIn:"", directSqft:"", linearFt:"",
     subtractWindows:0, subtractDoors:0,
-    primerCoats:1, topCoats:2, label:"", qty:1, doorSides:"both",
+    primerCoats:0, topCoats:2, label:"", qty:1, doorSides:"both",
     color:"", product:""
   };
   if(o) for(var k in o) s[k] = o[k];
@@ -140,10 +140,10 @@ function makeRoom(o){
   var r = {
     id:uid(), name:"Room 1", mode:"quick",
     roomLength:"", roomWidth:"", roomHeight:"",
-    quickPrimerCoats:1, quickTopCoats:2,
-    ceilingPrimerCoats:1, ceilingTopCoats:2,
+    quickPrimerCoats:0, quickTopCoats:2,
+    ceilingPrimerCoats:0, ceilingTopCoats:2,
     includeCeiling:true, includeBaseboard:true,
-    baseboardPrimerCoats:1, baseboardTopCoats:2,
+    baseboardPrimerCoats:0, baseboardTopCoats:2,
     baseboardOverride:"",
     wallColor:"", wallProduct:"", wallPricePerGal:"", wallPrimerProduct:"", wallPrimerPricePerGal:"",
     ceilingColor:"", ceilingProduct:"", ceilingPricePerGal:"", ceilingPrimerProduct:"", ceilingPrimerPricePerGal:"",
@@ -564,6 +564,10 @@ function migrateRoom(rm){
   if(rm.ceilingPrimerPricePerGal === undefined) rm.ceilingPrimerPricePerGal = "";
   if(rm.trimPrimerProduct === undefined) rm.trimPrimerProduct = "";
   if(rm.trimPrimerPricePerGal === undefined) rm.trimPrimerPricePerGal = "";
+  // Zero out primer coats when no primer product is specified
+  if(!rm.wallPrimerProduct && pi2(rm.quickPrimerCoats) > 0) rm.quickPrimerCoats = 0;
+  if(!rm.ceilingPrimerProduct && pi2(rm.ceilingPrimerCoats) > 0) rm.ceilingPrimerCoats = 0;
+  if(!rm.trimPrimerProduct && pi2(rm.baseboardPrimerCoats) > 0) rm.baseboardPrimerCoats = 0;
   var surfs = (rm.surfaces || []).concat(rm.extras || []);
   for(var i = 0; i < surfs.length; i++){
     if(surfs[i].color === undefined) surfs[i].color = "";
@@ -1889,7 +1893,7 @@ function render(){
       wc.appendChild(wColorRow);
       var wPrimRow = flexRow([], 6, "margin-bottom:6px;");
       wPrimRow.appendChild(span("Primer", "#b07acc", "font-size:10px;min-width:48px;font-weight:600;"));
-      wPrimRow.appendChild(autoTextInput(ar.wallPrimerProduct, function(v){ ar.wallPrimerProduct = v; }, "e.g. Kilz Original", null, function(){ return getJobSuggestions(job, "product"); }, function(v){ if(!ar.wallPrimerPricePerGal){ var p = getJobProductPrice(job, v); if(p){ ar.wallPrimerPricePerGal = p; saveState(); } } }));
+      wPrimRow.appendChild(autoTextInput(ar.wallPrimerProduct, function(v){ ar.wallPrimerProduct = v; }, "e.g. Kilz Original", null, function(){ return getJobSuggestions(job, "product"); }, function(v){ if(v && v.trim() && !pi2(ar.quickPrimerCoats)){ ar.quickPrimerCoats = 1; } if(!ar.wallPrimerPricePerGal){ var p = getJobProductPrice(job, v); if(p){ ar.wallPrimerPricePerGal = p; } } saveState(); }));
       wPrimRow.appendChild(span("$/gal", "#8a8580", "font-size:10px;"));
       wPrimRow.appendChild(numInput(ar.wallPrimerPricePerGal, function(v){ ar.wallPrimerPricePerGal = v; }, 55));
       wc.appendChild(wPrimRow);
@@ -1927,7 +1931,7 @@ function render(){
         cc.appendChild(cColorRow);
         var cPrimRow = flexRow([], 6, "margin-bottom:6px;");
         cPrimRow.appendChild(span("Primer", "#b07acc", "font-size:10px;min-width:48px;font-weight:600;"));
-        cPrimRow.appendChild(autoTextInput(ar.ceilingPrimerProduct, function(v){ ar.ceilingPrimerProduct = v; }, "e.g. Kilz Original", null, function(){ return getJobSuggestions(job, "product"); }, function(v){ if(!ar.ceilingPrimerPricePerGal){ var p = getJobProductPrice(job, v); if(p){ ar.ceilingPrimerPricePerGal = p; saveState(); } } }));
+        cPrimRow.appendChild(autoTextInput(ar.ceilingPrimerProduct, function(v){ ar.ceilingPrimerProduct = v; }, "e.g. Kilz Original", null, function(){ return getJobSuggestions(job, "product"); }, function(v){ if(v && v.trim() && !pi2(ar.ceilingPrimerCoats)){ ar.ceilingPrimerCoats = 1; } if(!ar.ceilingPrimerPricePerGal){ var p = getJobProductPrice(job, v); if(p){ ar.ceilingPrimerPricePerGal = p; } } saveState(); }));
         cPrimRow.appendChild(span("$/gal", "#8a8580", "font-size:10px;"));
         cPrimRow.appendChild(numInput(ar.ceilingPrimerPricePerGal, function(v){ ar.ceilingPrimerPricePerGal = v; }, 55));
         cc.appendChild(cPrimRow);
@@ -1962,7 +1966,7 @@ function render(){
       tc2.appendChild(tColorRow);
       var tPrimRow = flexRow([], 6, "margin-bottom:6px;");
       tPrimRow.appendChild(span("Primer", "#b07acc", "font-size:10px;min-width:48px;font-weight:600;"));
-      tPrimRow.appendChild(autoTextInput(ar.trimPrimerProduct, function(v){ ar.trimPrimerProduct = v; }, "e.g. BIN Shellac Primer", null, function(){ return getJobSuggestions(job, "product"); }, function(v){ if(!ar.trimPrimerPricePerGal){ var p = getJobProductPrice(job, v); if(p){ ar.trimPrimerPricePerGal = p; saveState(); } } }));
+      tPrimRow.appendChild(autoTextInput(ar.trimPrimerProduct, function(v){ ar.trimPrimerProduct = v; }, "e.g. BIN Shellac Primer", null, function(){ return getJobSuggestions(job, "product"); }, function(v){ if(v && v.trim() && !pi2(ar.baseboardPrimerCoats)){ ar.baseboardPrimerCoats = 1; } if(!ar.trimPrimerPricePerGal){ var p = getJobProductPrice(job, v); if(p){ ar.trimPrimerPricePerGal = p; } } saveState(); }));
       tPrimRow.appendChild(span("$/gal", "#8a8580", "font-size:10px;"));
       tPrimRow.appendChild(numInput(ar.trimPrimerPricePerGal, function(v){ ar.trimPrimerPricePerGal = v; }, 55));
       tc2.appendChild(tPrimRow);
