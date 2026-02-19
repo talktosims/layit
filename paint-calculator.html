@@ -259,9 +259,9 @@ function calcSurface(s){
       pg = (pc > 0) ? (dfSf * pc) / COV.primerSqft : 0;
       tg = (tc > 0) ? (dfSf * tc) / COV.sqft : 0;
     } else if(s.type === "door_frame"){
-      price = 200 * q;
-      // ~30 lf equivalent per frame
-      var dfLf = 30 * q;
+      price = 100 * q;
+      // ~15 lf equivalent per frame (single side)
+      var dfLf = 15 * q;
       pg = (pc > 0) ? (dfLf * pc) / COV.primerLinear : 0;
       tg = (tc > 0) ? (dfLf * tc) / COV.linear : 0;
     } else if(s.type === "window_frame"){
@@ -379,7 +379,7 @@ function calcJobFixed(job){
       var s = items[i];
       var q = pi2(s.qty) || 1;
       if(s.type === "door_face"){ df.q += q; df.p += (s.doorSides === "both" ? 100 : 50) * q; }
-      else if(s.type === "door_frame"){ dr.q += q; dr.p += 200 * q; }
+      else if(s.type === "door_frame"){ dr.q += q; dr.p += 100 * q; }
       else if(s.type === "window_frame"){ wi.q += q; wi.p += 125 * q; }
     }
   }
@@ -1018,7 +1018,7 @@ function renderSurfCard(surf, types, isExtra){
     var desc = surf.type === "door_face"
       ? (surf.qty || 1) + "× " + (surf.doorSides === "both" ? "$100" : "$50")
       : surf.type === "door_frame"
-      ? (surf.qty || 1) + "× $200"
+      ? (surf.qty || 1) + "× $100"
       : (surf.qty || 1) + "× $125";
     descRow.appendChild(span(desc, "#8a8580"));
     descRow.appendChild(span("$" + sr.price, "#d4a843", "font-weight:600;"));
