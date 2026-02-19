@@ -210,7 +210,7 @@ function makeJob(o){
     id:uid(), name:"New Job", rooms:[makeRoom()],
     activeRoomId:null, pricePerSqftPerCoat:1,
     enamelRate:ENAMEL_RATE, priceOverride:"",
-    materialsDeduction:"",
+    materialsDeduction:"", builderSuppliesPaint:false,
     consumables:[],
     hoursWorked:""
   };
@@ -654,6 +654,10 @@ function migrateRoom(rm){
 function migrateJobs(jobs){
   for(var j = 0; j < jobs.length; j++){
     if(jobs[j].materialsDeduction === undefined) jobs[j].materialsDeduction = "";
+    if(jobs[j].builderSuppliesPaint === undefined){
+      // Migrate: if they had a materials deduction, they were using builder-supplied paint
+      jobs[j].builderSuppliesPaint = pf(jobs[j].materialsDeduction) > 0;
+    }
     if(jobs[j].consumables === undefined) jobs[j].consumables = [];
     if(jobs[j].hoursWorked === undefined) jobs[j].hoursWorked = "";
     var rooms = jobs[j].rooms || [];
@@ -1485,12 +1489,17 @@ function renderInvoice(job, body, rate, er){
   inv.appendChild(secHead("SUMMARY", 20));
 
   inv.appendChild(invRow("Labor", "$" + laborPrice.toFixed(2)));
-  if(hasAnyPrice) inv.appendChild(invRow("Paint Materials", "$" + matGrandTotal.toFixed(2)));
   if(conTotal > 0) inv.appendChild(invRow("Consumables & Extras", "$" + conTotal.toFixed(2)));
-  var matDeduct = pf(job.materialsDeduction);
-  if(matDeduct > 0) inv.appendChild(invRow("Materials Deduction", "−$" + matDeduct.toFixed(2)));
+  if(job.builderSuppliesPaint && hasAnyPrice && matGrandTotal > 0){
+    inv.appendChild(invRow("Paint Materials Deduction (builder supplied)", "−$" + matGrandTotal.toFixed(2)));
+  }
 
-  var grandTotal = laborPrice + (hasAnyPrice ? matGrandTotal : 0) + conTotal - matDeduct;
+  var grandTotal;
+  if(job.builderSuppliesPaint){
+    grandTotal = laborPrice + conTotal - (hasAnyPrice ? matGrandTotal : 0);
+  } else {
+    grandTotal = laborPrice + conTotal;
+  }
   var gtRow = el("div", "display:flex;justify-content:space-between;padding:12px 0;border-top:3px double #1a1a1a;margin-top:8px;");
   gtRow.appendChild(el("div", "font-size:14px;font-weight:700;color:#1a1a1a;letter-spacing:.5px;", "TOTAL"));
   gtRow.appendChild(el("div", "font-size:20px;font-weight:700;color:#1a1a1a;", "$" + grandTotal.toFixed(2)));
@@ -1545,9 +1554,8 @@ function renderInvoice(job, body, rate, er){
       }
       text += "\n═══ SUMMARY ═══\n";
       text += "Labor: $" + laborPrice.toFixed(2) + "\n";
-      if(hasAnyPrice) text += "Paint Materials: $" + matGrandTotal.toFixed(2) + "\n";
       if(conTotal > 0) text += "Consumables: $" + conTotal.toFixed(2) + "\n";
-      if(matDeduct > 0) text += "Materials Deduction: −$" + matDeduct.toFixed(2) + "\n";
+      if(job.builderSuppliesPaint && hasAnyPrice && matGrandTotal > 0) text += "Paint Materials Deduction (builder supplied): −$" + matGrandTotal.toFixed(2) + "\n";
       text += "\nTOTAL: $" + grandTotal.toFixed(2);
       navigator.share({ title: job.name + " — Invoice", text: text }).catch(function(){});
     }, "background:#2e2e2e;border:1px solid #3a3a3a;border-radius:4px;color:#e8e4de;font-size:12px;padding:10px 20px;cursor:pointer;font-weight:600;"));
@@ -1725,10 +1733,9 @@ function render(){
   var autoTotal = sfTotal + enTotal + fxTotal;
   var hasOvr = job.priceOverride != null && job.priceOverride !== "";
   var laborPrice = hasOvr ? pf(job.priceOverride) : autoTotal;
-  var matDeduct = pf(job.materialsDeduction);
   var matCost = calcJobMaterialsCost(job);
   var consTot = calcConsumablesTotal(job);
-  var totalPrice = laborPrice - matDeduct;
+  var totalPrice = job.builderSuppliesPaint ? (laborPrice + consTot - matCost) : (laborPrice + consTot);
   var fb = calcJobFixed(job);
 
   var tc = card([]);
@@ -1756,21 +1763,19 @@ function render(){
   if(!hasOvr) breakdown.appendChild(span("AUTO", "#5a9e6f"));
   priceSec.appendChild(breakdown);
 
-  /* Materials Deduction */
-  var matSec = el("div", "border-top:1px solid #3a3a3a;padding-top:8px;margin-bottom:8px;");
-  var matHdr = flexRow([], 8);
-  matHdr.appendChild(span("Materials Deduction", "#c75050", "font-size:10px;font-weight:600;"));
-  matHdr.appendChild(span("$", "#c75050", "font-size:12px;font-weight:600;"));
-  matHdr.appendChild(numInput(job.materialsDeduction, function(v){ job.materialsDeduction = v; }, 70));
-  if(matDeduct > 0){
-    matHdr.appendChild(btn("Clear", function(){ job.materialsDeduction = ""; saveState(); render(); }, "background:none;border:none;color:#c75050;font-size:9px;cursor:pointer;"));
+  /* Builder Supplies Paint toggle */
+  var bspSec = el("div", "border-top:1px solid #3a3a3a;padding-top:8px;margin-bottom:8px;");
+  var bspRow = el("div", "display:flex;align-items:center;justify-content:space-between;");
+  bspRow.appendChild(span("Builder Supplies Paint", "#c75050", "font-size:10px;font-weight:600;"));
+  bspRow.appendChild(toggleBtn(job.builderSuppliesPaint ? "Yes" : "No", job.builderSuppliesPaint, function(){
+    job.builderSuppliesPaint = !job.builderSuppliesPaint; saveState(); render();
+  }, "flex:0;padding:4px 12px;"));
+  bspSec.appendChild(bspRow);
+  if(job.builderSuppliesPaint && matCost > 0){
+    bspSec.appendChild(el("div", "font-size:10px;color:#8a8580;margin-top:4px;",
+      "Paint deduction: −$" + matCost.toFixed(0) + " (Labor $" + laborPrice.toFixed(0) + " − Paint $" + matCost.toFixed(0) + " = $" + (laborPrice - matCost + consTot).toFixed(0) + ")"));
   }
-  matSec.appendChild(matHdr);
-  if(matDeduct > 0){
-    matSec.appendChild(el("div", "font-size:10px;color:#8a8580;margin-top:4px;",
-      "Labor $" + laborPrice.toFixed(0) + " − Materials $" + matDeduct.toFixed(0) + " = $" + totalPrice.toFixed(0)));
-  }
-  priceSec.appendChild(matSec);
+  priceSec.appendChild(bspSec);
 
   /* Consumables / Extra Materials */
   var conItems = job.consumables || [];
