@@ -33,6 +33,57 @@ input[type=number]{-moz-appearance:textfield}
 /* ── Constants ── */
 var COV = {sqft:350, linear:150, primerSqft:300, primerLinear:130};
 var ENAMEL_RATE = 4;
+
+/* ── Product Database with real coverage rates from manufacturer TDS ── */
+var PRODUCTS = [
+  // Benjamin Moore
+  {name:"BM Advance Semi-Gloss", coverage:450},
+  {name:"BM Advance Satin", coverage:450},
+  {name:"BM Advance High Gloss", coverage:450},
+  {name:"BM Regal Select Eggshell", coverage:425},
+  {name:"BM Regal Select Flat", coverage:425},
+  {name:"BM Regal Select Semi-Gloss", coverage:425},
+  {name:"BM Aura Matte", coverage:375},
+  {name:"BM Aura Eggshell", coverage:375},
+  {name:"BM Aura Satin", coverage:375},
+  {name:"BM Ceiling Paint Ultra Flat", coverage:425},
+  {name:"BM Scuff-X Eggshell", coverage:375},
+  {name:"BM Scuff-X Matte", coverage:400},
+  {name:"BM Scuff-X Satin", coverage:375},
+  {name:"BM Fresh Start Acrylic Primer", coverage:425},
+  // Sherwin-Williams
+  {name:"SW Duration Interior Flat", coverage:375},
+  {name:"SW Duration Interior Satin", coverage:375},
+  {name:"SW Duration Interior Semi-Gloss", coverage:375},
+  {name:"SW ProClassic Semi-Gloss", coverage:375},
+  {name:"SW ProClassic Satin", coverage:375},
+  {name:"SW Emerald Interior Flat", coverage:375},
+  {name:"SW Emerald Interior Satin", coverage:375},
+  {name:"SW SuperPaint Interior Flat", coverage:375},
+  {name:"SW SuperPaint Interior Satin", coverage:375},
+  // Primers
+  {name:"Kilz Original", coverage:350},
+  {name:"Kilz 2 All-Purpose", coverage:350},
+  {name:"Zinsser BIN Shellac Primer", coverage:400},
+  {name:"Zinsser Bulls Eye 1-2-3", coverage:400},
+  {name:"PVA Drywall Primer", coverage:350},
+  {name:"PVA Drywall primer and sealer", coverage:350},
+];
+
+function findProductCoverage(productName){
+  if(!productName) return 0;
+  var lc = productName.trim().toLowerCase();
+  // Exact match first
+  for(var i = 0; i < PRODUCTS.length; i++){
+    if(PRODUCTS[i].name.toLowerCase() === lc) return PRODUCTS[i].coverage;
+  }
+  // Fuzzy: check if typed name contains a known product or vice versa
+  for(var i = 0; i < PRODUCTS.length; i++){
+    var pLc = PRODUCTS[i].name.toLowerCase();
+    if(lc.indexOf(pLc) >= 0 || pLc.indexOf(lc) >= 0) return PRODUCTS[i].coverage;
+  }
+  return 0;
+}
 var SKEY = "paint-calc-jobs-v4";
 var SKEY_OLD = "paint-calc-jobs-v3";
 
@@ -145,9 +196,9 @@ function makeRoom(o){
     includeCeiling:true, includeBaseboard:true,
     baseboardPrimerCoats:0, baseboardTopCoats:2,
     baseboardOverride:"",
-    wallColor:"", wallProduct:"", wallPricePerGal:"", wallPrimerProduct:"", wallPrimerPricePerGal:"",
-    ceilingColor:"", ceilingProduct:"", ceilingPricePerGal:"", ceilingPrimerProduct:"", ceilingPrimerPricePerGal:"",
-    trimColor:"", trimProduct:"", trimPricePerGal:"", trimPrimerProduct:"", trimPrimerPricePerGal:"",
+    wallColor:"", wallProduct:"", wallPricePerGal:"", wallCoverage:"", wallPrimerProduct:"", wallPrimerPricePerGal:"", wallPrimerCoverage:"",
+    ceilingColor:"", ceilingProduct:"", ceilingPricePerGal:"", ceilingCoverage:"", ceilingPrimerProduct:"", ceilingPrimerPricePerGal:"", ceilingPrimerCoverage:"",
+    trimColor:"", trimProduct:"", trimPricePerGal:"", trimCoverage:"", trimPrimerProduct:"", trimPrimerPricePerGal:"", trimPrimerCoverage:"",
     extras:[], surfaces:[makeSurface()]
   };
   if(o) for(var k in o) r[k] = o[k];
@@ -208,11 +259,17 @@ function calcQuickRoom(rm){
   var paintableWall = Math.max(0, grossWall - openingSqft);
   var paintable = paintableWall + ceil;
 
+  // Per-product coverage (fall back to global COV defaults)
+  var wpc = pf(rm.wallPrimerCoverage) || COV.primerSqft;
+  var wtc2 = pf(rm.wallCoverage) || COV.sqft;
+  var cpCov = pf(rm.ceilingPrimerCoverage) || COV.primerSqft;
+  var ctCov = pf(rm.ceilingCoverage) || COV.sqft;
+
   // Separate wall vs ceiling gallons
-  var wallPrimerGal = (pc > 0 && paintableWall > 0) ? (paintableWall * pc) / COV.primerSqft : 0;
-  var wallTopGal = (tc > 0 && paintableWall > 0) ? (paintableWall * tc) / COV.sqft : 0;
-  var ceilPrimerGal = (cpc > 0 && ceil > 0) ? (ceil * cpc) / COV.primerSqft : 0;
-  var ceilTopGal = (ctc > 0 && ceil > 0) ? (ceil * ctc) / COV.sqft : 0;
+  var wallPrimerGal = (pc > 0 && paintableWall > 0) ? (paintableWall * pc) / wpc : 0;
+  var wallTopGal = (tc > 0 && paintableWall > 0) ? (paintableWall * tc) / wtc2 : 0;
+  var ceilPrimerGal = (cpc > 0 && ceil > 0) ? (ceil * cpc) / cpCov : 0;
+  var ceilTopGal = (ctc > 0 && ceil > 0) ? (ceil * ctc) / ctCov : 0;
 
   // Combined totals for backward compat with pricing
   var primerGal = wallPrimerGal + ceilPrimerGal;
@@ -225,8 +282,10 @@ function calcQuickRoom(rm){
   var bbFt = incBB ? (bbOvr !== "" ? pf(bbOvr) : autoBB) : 0;
   var bbPC = pi2(rm.baseboardPrimerCoats);
   var bbTC = pi2(rm.baseboardTopCoats) || (rm.baseboardTopCoats === undefined ? 2 : 0);
-  var bbPG = (bbFt > 0 && bbPC > 0) ? (bbFt * bbPC) / COV.primerLinear : 0;
-  var bbTG = (bbFt > 0 && bbTC > 0) ? (bbFt * bbTC) / COV.linear : 0;
+  var tpCov = pf(rm.trimPrimerCoverage) || COV.primerLinear;
+  var ttCov = pf(rm.trimCoverage) || COV.linear;
+  var bbPG = (bbFt > 0 && bbPC > 0) ? (bbFt * bbPC) / tpCov : 0;
+  var bbTG = (bbFt > 0 && bbTC > 0) ? (bbFt * bbTC) / ttCov : 0;
 
   return {
     grossWall:grossWall, paintableWall:paintableWall, ceil:ceil,
@@ -237,13 +296,19 @@ function calcQuickRoom(rm){
     pc:pc, tc:tc, cpc:cpc, ctc:ctc, openingSqft:openingSqft,
     winCount:winCount, totalDoors:totalDoors,
     bbFt:bbFt, autoBB:autoBB, perimFt:perim/12,
-    bbPG:bbPG, bbTG:bbTG
+    bbPG:bbPG, bbTG:bbTG,
+    wpc:wpc, wtc2:wtc2, cpCov:cpCov, ctCov:ctCov, tpCov:tpCov, ttCov:ttCov
   };
 }
 
-function calcSurface(s){
+function calcSurface(s, covOverrides){
   var info = findType(s.type);
   if(!info) return {sqft:0, lf:0, gal:0, pg:0, tg:0, price:0};
+  var cov = covOverrides || {};
+  var covSqft = cov.sqft || COV.sqft;
+  var covPrimerSqft = cov.primerSqft || COV.primerSqft;
+  var covLinear = cov.linear || COV.linear;
+  var covPrimerLinear = cov.primerLinear || COV.primerLinear;
   var pc = pi2(s.primerCoats);
   var tc = pi2(s.topCoats);
 
@@ -256,28 +321,28 @@ function calcSurface(s){
       price = (s.doorSides === "both" ? 100 : 50) * q;
       // 21 sf per side per door, divided by coverage rate, per coat
       var dfSf = 21 * sides * q;
-      pg = (pc > 0) ? (dfSf * pc) / COV.primerSqft : 0;
-      tg = (tc > 0) ? (dfSf * tc) / COV.sqft : 0;
+      pg = (pc > 0) ? (dfSf * pc) / covPrimerSqft : 0;
+      tg = (tc > 0) ? (dfSf * tc) / covSqft : 0;
     } else if(s.type === "door_frame"){
       price = 100 * q;
       // ~15 lf equivalent per frame (single side)
       var dfLf = 15 * q;
-      pg = (pc > 0) ? (dfLf * pc) / COV.primerLinear : 0;
-      tg = (tc > 0) ? (dfLf * tc) / COV.linear : 0;
+      pg = (pc > 0) ? (dfLf * pc) / covPrimerLinear : 0;
+      tg = (tc > 0) ? (dfLf * tc) / covLinear : 0;
     } else if(s.type === "window_frame"){
       price = 125 * q;
       // ~20 lf equivalent per frame
       var wfLf = 20 * q;
-      pg = (pc > 0) ? (wfLf * pc) / COV.primerLinear : 0;
-      tg = (tc > 0) ? (wfLf * tc) / COV.linear : 0;
+      pg = (pc > 0) ? (wfLf * pc) / covPrimerLinear : 0;
+      tg = (tc > 0) ? (wfLf * tc) / covLinear : 0;
     }
     return {sqft:0, lf:0, gal:pg+tg, pg:pg, tg:tg, price:price};
   }
 
   if(info.u === "linear"){
     var lf = pf(s.linearFt);
-    var pg = (lf > 0 && pc > 0) ? (lf * pc) / COV.primerLinear : 0;
-    var tg = (lf > 0 && tc > 0) ? (lf * tc) / COV.linear : 0;
+    var pg = (lf > 0 && pc > 0) ? (lf * pc) / covPrimerLinear : 0;
+    var tg = (lf > 0 && tc > 0) ? (lf * tc) / covLinear : 0;
     return {sqft:0, lf:lf, gal:pg+tg, pg:pg, tg:tg, price:0};
   }
 
@@ -287,9 +352,18 @@ function calcSurface(s){
   sqft -= pi2(s.subtractWindows) * 15;
   sqft -= pi2(s.subtractDoors) * 21;
   sqft = Math.max(0, sqft);
-  var pg = (sqft > 0 && pc > 0) ? (sqft * pc) / COV.primerSqft : 0;
-  var tg = (sqft > 0 && tc > 0) ? (sqft * tc) / COV.sqft : 0;
+  var pg = (sqft > 0 && pc > 0) ? (sqft * pc) / covPrimerSqft : 0;
+  var tg = (sqft > 0 && tc > 0) ? (sqft * tc) / covSqft : 0;
   return {sqft:sqft, lf:0, gal:pg+tg, pg:pg, tg:tg, price:0};
+}
+
+function roomCov(rm, surfType){
+  // Build coverage overrides for calcSurface based on surface type
+  if(surfType === "wall") return {sqft:pf(rm.wallCoverage)||undefined, primerSqft:pf(rm.wallPrimerCoverage)||undefined};
+  if(surfType === "ceiling") return {sqft:pf(rm.ceilingCoverage)||undefined, primerSqft:pf(rm.ceilingPrimerCoverage)||undefined};
+  // trim, baseboard, door_frame, door_face, window_frame all use trim coverage
+  return {linear:pf(rm.trimCoverage)||undefined, primerLinear:pf(rm.trimPrimerCoverage)||undefined,
+          sqft:pf(rm.trimCoverage)||undefined, primerSqft:pf(rm.trimPrimerCoverage)||undefined};
 }
 
 function calcRoomTotal(rm){
@@ -316,7 +390,7 @@ function calcRoomTotal(rm){
     out.trimTG += q.bbTG;
     var extras = rm.extras || [];
     for(i = 0; i < extras.length; i++){
-      r = calcSurface(extras[i]);
+      r = calcSurface(extras[i], roomCov(rm, extras[i].type));
       out.sqft += r.sqft; out.billable += r.sqft; out.lf += r.lf;
       out.gal += r.gal; out.pg += r.pg; out.tg += r.tg; out.price += r.price;
       // Trim extras go into trim category
@@ -327,7 +401,7 @@ function calcRoomTotal(rm){
     }
   } else {
     for(i = 0; i < rm.surfaces.length; i++){
-      r = calcSurface(rm.surfaces[i]);
+      r = calcSurface(rm.surfaces[i], roomCov(rm, rm.surfaces[i].type));
       out.sqft += r.sqft; out.billable += r.sqft; out.lf += r.lf;
       out.gal += r.gal; out.pg += r.pg; out.tg += r.tg; out.price += r.price;
       var st = rm.surfaces[i].type;
@@ -392,6 +466,7 @@ function calcJobFixed(job){
 
 function calcJobPaintOrder(job){
   // Consolidate by color+product (regardless of surface category)
+  var defPrimer = getJobDefaultPrimer(job) || "Primer";
   var map = {}; // key: "color|product" → {color, product, pg, tg, cats:{catName→[rooms]}}
   function addEntry(cat, color, product, pg, tg, roomName){
     if(pg <= 0 && tg <= 0) return;
@@ -408,41 +483,41 @@ function calcJobPaintOrder(job){
     if(rm.mode === "quick"){
       var q = calcQuickRoom(rm);
       // Walls: separate primer and topcoat
-      if(q.wallPrimerGal > 0) addEntry("Walls", "", rm.wallPrimerProduct || "Primer", q.wallPrimerGal, 0, rn);
+      if(q.wallPrimerGal > 0) addEntry("Walls", "", rm.wallPrimerProduct || defPrimer, q.wallPrimerGal, 0, rn);
       if(q.wallTopGal > 0) addEntry("Walls", rm.wallColor, rm.wallProduct || "Topcoat", 0, q.wallTopGal, rn);
       // Ceiling: separate primer and topcoat
       if(rm.includeCeiling){
-        if(q.ceilPrimerGal > 0) addEntry("Ceiling", "", rm.ceilingPrimerProduct || "Primer", q.ceilPrimerGal, 0, rn);
+        if(q.ceilPrimerGal > 0) addEntry("Ceiling", "", rm.ceilingPrimerProduct || defPrimer, q.ceilPrimerGal, 0, rn);
         if(q.ceilTopGal > 0) addEntry("Ceiling", rm.ceilingColor, rm.ceilingProduct || "Topcoat", 0, q.ceilTopGal, rn);
       }
       // Trim: separate primer and topcoat
       var trimPG = q.bbPG, trimTG = q.bbTG;
       var extras = rm.extras || [];
       for(var j = 0; j < extras.length; j++){
-        var sr = calcSurface(extras[j]);
+        var sr = calcSurface(extras[j], roomCov(rm, extras[j].type));
         var et = extras[j].type;
         if(et === "trim" || et === "baseboard" || et === "door_frame" || et === "door_face" || et === "window_frame"){
           trimPG += sr.pg; trimTG += sr.tg;
         }
       }
-      if(trimPG > 0) addEntry("Trim/Frames", "", rm.trimPrimerProduct || "Primer", trimPG, 0, rn);
+      if(trimPG > 0) addEntry("Trim/Frames", "", rm.trimPrimerProduct || defPrimer, trimPG, 0, rn);
       if(trimTG > 0) addEntry("Trim/Frames", rm.trimColor, rm.trimProduct || "Topcoat", 0, trimTG, rn);
     } else {
       for(var k = 0; k < rm.surfaces.length; k++){
         var s = rm.surfaces[k];
-        var sr2 = calcSurface(s);
+        var sr2 = calcSurface(s, roomCov(rm, s.type));
         var st = s.type;
         // Custom mode: primer product comes from room-level fields based on surface type
         var pp = st === "wall" ? rm.wallPrimerProduct : st === "ceiling" ? rm.ceilingPrimerProduct : rm.trimPrimerProduct;
         var tp = st === "wall" ? rm.wallProduct : st === "ceiling" ? rm.ceilingProduct : rm.trimProduct;
         if(st === "wall"){
-          if(sr2.pg > 0) addEntry("Walls", "", pp || "Primer", sr2.pg, 0, rn);
+          if(sr2.pg > 0) addEntry("Walls", "", pp || defPrimer, sr2.pg, 0, rn);
           if(sr2.tg > 0) addEntry("Walls", s.color, tp || "Topcoat", 0, sr2.tg, rn);
         } else if(st === "ceiling"){
-          if(sr2.pg > 0) addEntry("Ceiling", "", pp || "Primer", sr2.pg, 0, rn);
+          if(sr2.pg > 0) addEntry("Ceiling", "", pp || defPrimer, sr2.pg, 0, rn);
           if(sr2.tg > 0) addEntry("Ceiling", s.color, tp || "Topcoat", 0, sr2.tg, rn);
         } else if(st === "trim" || st === "baseboard" || st === "door_frame" || st === "door_face" || st === "window_frame"){
-          if(sr2.pg > 0) addEntry("Trim/Frames", "", pp || "Primer", sr2.pg, 0, rn);
+          if(sr2.pg > 0) addEntry("Trim/Frames", "", pp || defPrimer, sr2.pg, 0, rn);
           if(sr2.tg > 0) addEntry("Trim/Frames", s.color, tp || "Topcoat", 0, sr2.tg, rn);
         }
       }
@@ -472,6 +547,7 @@ function calcJobMaterialsCost(job){
 }
 
 function calcJobMaterialsDetail(job){
+  var defPrimer = getJobDefaultPrimer(job) || "Primer";
   var map = {};
   function addEntry(cat, color, product, pg, tg, roomName, ppg){
     if(pg <= 0 && tg <= 0) return;
@@ -493,38 +569,38 @@ function calcJobMaterialsDetail(job){
     if(rm.mode === "quick"){
       var q = calcQuickRoom(rm);
       // Walls: separate primer and topcoat
-      if(q.wallPrimerGal > 0) addEntry("Walls", "", rm.wallPrimerProduct || "Primer", q.wallPrimerGal, 0, rn, wpp);
+      if(q.wallPrimerGal > 0) addEntry("Walls", "", rm.wallPrimerProduct || defPrimer, q.wallPrimerGal, 0, rn, wpp);
       if(q.wallTopGal > 0) addEntry("Walls", rm.wallColor, rm.wallProduct || "Topcoat", 0, q.wallTopGal, rn, wp);
       // Ceiling
       if(rm.includeCeiling){
-        if(q.ceilPrimerGal > 0) addEntry("Ceiling", "", rm.ceilingPrimerProduct || "Primer", q.ceilPrimerGal, 0, rn, cpp);
+        if(q.ceilPrimerGal > 0) addEntry("Ceiling", "", rm.ceilingPrimerProduct || defPrimer, q.ceilPrimerGal, 0, rn, cpp);
         if(q.ceilTopGal > 0) addEntry("Ceiling", rm.ceilingColor, rm.ceilingProduct || "Topcoat", 0, q.ceilTopGal, rn, cp);
       }
       // Trim
       var trimPG = q.bbPG, trimTG = q.bbTG;
       var extras = rm.extras || [];
       for(var j = 0; j < extras.length; j++){
-        var sr = calcSurface(extras[j]);
+        var sr = calcSurface(extras[j], roomCov(rm, extras[j].type));
         var et = extras[j].type;
         if(et === "trim" || et === "baseboard" || et === "door_frame" || et === "door_face" || et === "window_frame"){ trimPG += sr.pg; trimTG += sr.tg; }
       }
-      if(trimPG > 0) addEntry("Trim/Frames", "", rm.trimPrimerProduct || "Primer", trimPG, 0, rn, tpp);
+      if(trimPG > 0) addEntry("Trim/Frames", "", rm.trimPrimerProduct || defPrimer, trimPG, 0, rn, tpp);
       if(trimTG > 0) addEntry("Trim/Frames", rm.trimColor, rm.trimProduct || "Topcoat", 0, trimTG, rn, tp);
     } else {
       for(var k = 0; k < rm.surfaces.length; k++){
-        var s = rm.surfaces[k], sr2 = calcSurface(s), st = s.type;
+        var s = rm.surfaces[k], sr2 = calcSurface(s, roomCov(rm, s.type)), st = s.type;
         var sPP = st === "wall" ? wpp : st === "ceiling" ? cpp : tpp;
         var sTP = st === "wall" ? wp : st === "ceiling" ? cp : tp;
         var sPrimerProd = st === "wall" ? rm.wallPrimerProduct : st === "ceiling" ? rm.ceilingPrimerProduct : rm.trimPrimerProduct;
         var sTopProd = st === "wall" ? rm.wallProduct : st === "ceiling" ? rm.ceilingProduct : rm.trimProduct;
         if(st === "wall"){
-          if(sr2.pg > 0) addEntry("Walls", "", sPrimerProd || "Primer", sr2.pg, 0, rn, sPP);
+          if(sr2.pg > 0) addEntry("Walls", "", sPrimerProd || defPrimer, sr2.pg, 0, rn, sPP);
           if(sr2.tg > 0) addEntry("Walls", s.color, sTopProd || "Topcoat", 0, sr2.tg, rn, sTP);
         } else if(st === "ceiling"){
-          if(sr2.pg > 0) addEntry("Ceiling", "", sPrimerProd || "Primer", sr2.pg, 0, rn, sPP);
+          if(sr2.pg > 0) addEntry("Ceiling", "", sPrimerProd || defPrimer, sr2.pg, 0, rn, sPP);
           if(sr2.tg > 0) addEntry("Ceiling", s.color, sTopProd || "Topcoat", 0, sr2.tg, rn, sTP);
         } else if(st === "trim" || st === "baseboard" || st === "door_frame" || st === "door_face" || st === "window_frame"){
-          if(sr2.pg > 0) addEntry("Trim/Frames", "", sPrimerProd || "Primer", sr2.pg, 0, rn, sPP);
+          if(sr2.pg > 0) addEntry("Trim/Frames", "", sPrimerProd || defPrimer, sr2.pg, 0, rn, sPP);
           if(sr2.tg > 0) addEntry("Trim/Frames", s.color, sTopProd || "Topcoat", 0, sr2.tg, rn, sTP);
         }
       }
@@ -740,6 +816,12 @@ function getJobSuggestions(job, field){
       else add(surfs[j].product);
     }
   }
+  // For product fields, also include PRODUCTS database entries
+  if(field === "product"){
+    for(var pi = 0; pi < PRODUCTS.length; pi++){
+      add(PRODUCTS[pi].name);
+    }
+  }
   list.sort();
   return list;
 }
@@ -781,6 +863,38 @@ function getJobProductPrice(job, productName){
     if((rm.trimProduct||"").trim().toLowerCase() === pLc && rm.trimPricePerGal) return rm.trimPricePerGal;
   }
   return "";
+}
+
+function getJobProductCoverage(job, productName){
+  // Look up coverage (sf/gal) for a product name across all rooms
+  if(!productName || !productName.trim()) return "";
+  var pLc = productName.trim().toLowerCase();
+  for(var i = job.rooms.length - 1; i >= 0; i--){
+    var rm = job.rooms[i];
+    if((rm.wallPrimerProduct||"").trim().toLowerCase() === pLc && rm.wallPrimerCoverage) return rm.wallPrimerCoverage;
+    if((rm.wallProduct||"").trim().toLowerCase() === pLc && rm.wallCoverage) return rm.wallCoverage;
+    if((rm.ceilingPrimerProduct||"").trim().toLowerCase() === pLc && rm.ceilingPrimerCoverage) return rm.ceilingPrimerCoverage;
+    if((rm.ceilingProduct||"").trim().toLowerCase() === pLc && rm.ceilingCoverage) return rm.ceilingCoverage;
+    if((rm.trimPrimerProduct||"").trim().toLowerCase() === pLc && rm.trimPrimerCoverage) return rm.trimPrimerCoverage;
+    if((rm.trimProduct||"").trim().toLowerCase() === pLc && rm.trimCoverage) return rm.trimCoverage;
+  }
+  return "";
+}
+
+function getJobDefaultPrimer(job){
+  // Find the most-used primer product name across all rooms
+  var counts = {};
+  for(var i = 0; i < job.rooms.length; i++){
+    var rm = job.rooms[i];
+    var ps = [rm.wallPrimerProduct, rm.ceilingPrimerProduct, rm.trimPrimerProduct];
+    for(var j = 0; j < ps.length; j++){
+      var p = (ps[j]||"").trim();
+      if(p){ counts[p] = (counts[p]||0) + 1; }
+    }
+  }
+  var best = "", bestN = 0;
+  for(var k in counts){ if(counts[k] > bestN){ best = k; bestN = counts[k]; } }
+  return best;
 }
 
 /* Global dropdown overlay — lives outside #app so it survives render() */
@@ -936,9 +1050,9 @@ function galSpan(pg, tg){
 }
 
 /* ── Surface Card Renderer ── */
-function renderSurfCard(surf, types, isExtra){
+function renderSurfCard(surf, types, isExtra, rm){
   var info = findType(surf.type);
-  var sr = calcSurface(surf);
+  var sr = calcSurface(surf, rm ? roomCov(rm, surf.type) : undefined);
   var isFixed = info && info.u === "fixed";
   var isLinear = info && info.u === "linear";
 
@@ -1198,7 +1312,7 @@ function renderInvoice(job, body, rate, er){
         for(var ei = 0; ei < extras.length; ei++){
           var ex = extras[ei];
           var exInfo = findType(ex.type);
-          var exr = calcSurface(ex);
+          var exr = calcSurface(ex, roomCov(rm, ex.type));
           var exLabel = (exInfo ? exInfo.l : ex.type);
           if(ex.label) exLabel += " (" + ex.label + ")";
           var exQty = pi2(ex.qty) || 1;
@@ -1233,7 +1347,7 @@ function renderInvoice(job, body, rate, er){
       for(var si = 0; si < rm.surfaces.length; si++){
         var s = rm.surfaces[si];
         var sInfo = findType(s.type);
-        var sr = calcSurface(s);
+        var sr = calcSurface(s, roomCov(rm, s.type));
         var sLabel = (sInfo ? sInfo.l : s.type) + (s.label ? " (" + s.label + ")" : "");
         if(sInfo && sInfo.u === "fixed"){
           roomBox.appendChild(invRow(sLabel + " × " + (pi2(s.qty) || 1), "$" + sr.price.toFixed(2)));
@@ -1957,15 +2071,19 @@ function render(){
       wc.appendChild(wColorRow);
       var wPrimRow = flexRow([], 6, "margin-bottom:6px;");
       wPrimRow.appendChild(span("Primer", "#b07acc", "font-size:10px;min-width:48px;font-weight:600;"));
-      wPrimRow.appendChild(autoTextInput(ar.wallPrimerProduct, function(v){ ar.wallPrimerProduct = v; }, "e.g. Kilz Original", null, function(){ return getJobSuggestions(job, "product"); }, function(v){ if(!v || !v.trim()){ ar.wallPrimerPricePerGal = ""; ar.quickPrimerCoats = 0; } else { if(!pi2(ar.quickPrimerCoats)) ar.quickPrimerCoats = 1; var p = getJobProductPrice(job, v); if(p) ar.wallPrimerPricePerGal = p; } saveState(); }, function(v){ removeJobSuggestion(job, "product", v); }));
-      wPrimRow.appendChild(span("$/gal", "#8a8580", "font-size:10px;"));
-      wPrimRow.appendChild(numInput(ar.wallPrimerPricePerGal, function(v){ ar.wallPrimerPricePerGal = v; }, 55));
+      wPrimRow.appendChild(autoTextInput(ar.wallPrimerProduct, function(v){ ar.wallPrimerProduct = v; }, "e.g. Kilz Original", null, function(){ return getJobSuggestions(job, "product"); }, function(v){ if(!v || !v.trim()){ ar.wallPrimerPricePerGal = ""; ar.wallPrimerCoverage = ""; ar.quickPrimerCoats = 0; } else { if(!pi2(ar.quickPrimerCoats)) ar.quickPrimerCoats = 1; var p = getJobProductPrice(job, v); if(p) ar.wallPrimerPricePerGal = p; var cv = getJobProductCoverage(job, v) || findProductCoverage(v); if(cv) ar.wallPrimerCoverage = cv; } saveState(); }, function(v){ removeJobSuggestion(job, "product", v); }));
+      wPrimRow.appendChild(span("$/g", "#8a8580", "font-size:9px;"));
+      wPrimRow.appendChild(numInput(ar.wallPrimerPricePerGal, function(v){ ar.wallPrimerPricePerGal = v; }, 45));
+      wPrimRow.appendChild(span("sf/g", "#8a8580", "font-size:9px;"));
+      wPrimRow.appendChild(numInput(ar.wallPrimerCoverage, function(v){ ar.wallPrimerCoverage = v; }, 42));
       wc.appendChild(wPrimRow);
       var wProdRow = flexRow([], 6, "margin-bottom:6px;");
       wProdRow.appendChild(span("Product", "#5a9e6f", "font-size:10px;min-width:48px;font-weight:600;"));
-      wProdRow.appendChild(autoTextInput(ar.wallProduct, function(v){ ar.wallProduct = v; }, "e.g. Duration Semi-Gloss", null, function(){ return getJobSuggestions(job, "product"); }, function(v){ if(!v || !v.trim()){ ar.wallPricePerGal = ""; } else { var p = getJobProductPrice(job, v); if(p) ar.wallPricePerGal = p; } saveState(); }, function(v){ removeJobSuggestion(job, "product", v); }));
-      wProdRow.appendChild(span("$/gal", "#8a8580", "font-size:10px;"));
-      wProdRow.appendChild(numInput(ar.wallPricePerGal, function(v){ ar.wallPricePerGal = v; }, 55));
+      wProdRow.appendChild(autoTextInput(ar.wallProduct, function(v){ ar.wallProduct = v; }, "e.g. Duration Semi-Gloss", null, function(){ return getJobSuggestions(job, "product"); }, function(v){ if(!v || !v.trim()){ ar.wallPricePerGal = ""; ar.wallCoverage = ""; } else { var p = getJobProductPrice(job, v); if(p) ar.wallPricePerGal = p; var cv = getJobProductCoverage(job, v) || findProductCoverage(v); if(cv) ar.wallCoverage = cv; } saveState(); }, function(v){ removeJobSuggestion(job, "product", v); }));
+      wProdRow.appendChild(span("$/g", "#8a8580", "font-size:9px;"));
+      wProdRow.appendChild(numInput(ar.wallPricePerGal, function(v){ ar.wallPricePerGal = v; }, 45));
+      wProdRow.appendChild(span("sf/g", "#8a8580", "font-size:9px;"));
+      wProdRow.appendChild(numInput(ar.wallCoverage, function(v){ ar.wallCoverage = v; }, 42));
       wc.appendChild(wProdRow);
       var wCoatRow = flexRow([], 8, "margin-bottom:6px;");
       wCoatRow.appendChild(span("Primer", "#b07acc", "font-size:10px;"));
@@ -1976,8 +2094,8 @@ function render(){
       if(q.paintableWall > 0){
         var wBot = el("div", "margin-top:8px;padding-top:8px;border-top:1px solid #3a3a3a;font-size:11px;");
         wBot.appendChild(row("Paintable", q.paintableWall.toFixed(0) + " sf"));
-        if(q.pc > 0) wBot.appendChild(row("Primer (" + q.pc + "×@" + COV.primerSqft + "sf/g)", c1(q.wallPrimerGal) + " gal"));
-        if(q.tc > 0) wBot.appendChild(row("Topcoat (" + q.tc + "×@" + COV.sqft + "sf/g)", c1(q.wallTopGal) + " gal"));
+        if(q.pc > 0) wBot.appendChild(row("Primer (" + q.pc + "×@" + q.wpc + "sf/g)", c1(q.wallPrimerGal) + " gal"));
+        if(q.tc > 0) wBot.appendChild(row("Topcoat (" + q.tc + "×@" + q.wtc2 + "sf/g)", c1(q.wallTopGal) + " gal"));
         wc.appendChild(wBot);
       }
       body.appendChild(wc);
@@ -1995,15 +2113,19 @@ function render(){
         cc.appendChild(cColorRow);
         var cPrimRow = flexRow([], 6, "margin-bottom:6px;");
         cPrimRow.appendChild(span("Primer", "#b07acc", "font-size:10px;min-width:48px;font-weight:600;"));
-        cPrimRow.appendChild(autoTextInput(ar.ceilingPrimerProduct, function(v){ ar.ceilingPrimerProduct = v; }, "e.g. Kilz Original", null, function(){ return getJobSuggestions(job, "product"); }, function(v){ if(!v || !v.trim()){ ar.ceilingPrimerPricePerGal = ""; ar.ceilingPrimerCoats = 0; } else { if(!pi2(ar.ceilingPrimerCoats)) ar.ceilingPrimerCoats = 1; var p = getJobProductPrice(job, v); if(p) ar.ceilingPrimerPricePerGal = p; } saveState(); }, function(v){ removeJobSuggestion(job, "product", v); }));
-        cPrimRow.appendChild(span("$/gal", "#8a8580", "font-size:10px;"));
-        cPrimRow.appendChild(numInput(ar.ceilingPrimerPricePerGal, function(v){ ar.ceilingPrimerPricePerGal = v; }, 55));
+        cPrimRow.appendChild(autoTextInput(ar.ceilingPrimerProduct, function(v){ ar.ceilingPrimerProduct = v; }, "e.g. Kilz Original", null, function(){ return getJobSuggestions(job, "product"); }, function(v){ if(!v || !v.trim()){ ar.ceilingPrimerPricePerGal = ""; ar.ceilingPrimerCoverage = ""; ar.ceilingPrimerCoats = 0; } else { if(!pi2(ar.ceilingPrimerCoats)) ar.ceilingPrimerCoats = 1; var p = getJobProductPrice(job, v); if(p) ar.ceilingPrimerPricePerGal = p; var cv = getJobProductCoverage(job, v) || findProductCoverage(v); if(cv) ar.ceilingPrimerCoverage = cv; } saveState(); }, function(v){ removeJobSuggestion(job, "product", v); }));
+        cPrimRow.appendChild(span("$/g", "#8a8580", "font-size:9px;"));
+        cPrimRow.appendChild(numInput(ar.ceilingPrimerPricePerGal, function(v){ ar.ceilingPrimerPricePerGal = v; }, 45));
+        cPrimRow.appendChild(span("sf/g", "#8a8580", "font-size:9px;"));
+        cPrimRow.appendChild(numInput(ar.ceilingPrimerCoverage, function(v){ ar.ceilingPrimerCoverage = v; }, 42));
         cc.appendChild(cPrimRow);
         var cProdRow = flexRow([], 6, "margin-bottom:6px;");
         cProdRow.appendChild(span("Product", "#5a9e6f", "font-size:10px;min-width:48px;font-weight:600;"));
-        cProdRow.appendChild(autoTextInput(ar.ceilingProduct, function(v){ ar.ceilingProduct = v; }, "e.g. Flat Ceiling Paint", null, function(){ return getJobSuggestions(job, "product"); }, function(v){ if(!v || !v.trim()){ ar.ceilingPricePerGal = ""; } else { var p = getJobProductPrice(job, v); if(p) ar.ceilingPricePerGal = p; } saveState(); }, function(v){ removeJobSuggestion(job, "product", v); }));
-        cProdRow.appendChild(span("$/gal", "#8a8580", "font-size:10px;"));
-        cProdRow.appendChild(numInput(ar.ceilingPricePerGal, function(v){ ar.ceilingPricePerGal = v; }, 55));
+        cProdRow.appendChild(autoTextInput(ar.ceilingProduct, function(v){ ar.ceilingProduct = v; }, "e.g. Flat Ceiling Paint", null, function(){ return getJobSuggestions(job, "product"); }, function(v){ if(!v || !v.trim()){ ar.ceilingPricePerGal = ""; ar.ceilingCoverage = ""; } else { var p = getJobProductPrice(job, v); if(p) ar.ceilingPricePerGal = p; var cv = getJobProductCoverage(job, v) || findProductCoverage(v); if(cv) ar.ceilingCoverage = cv; } saveState(); }, function(v){ removeJobSuggestion(job, "product", v); }));
+        cProdRow.appendChild(span("$/g", "#8a8580", "font-size:9px;"));
+        cProdRow.appendChild(numInput(ar.ceilingPricePerGal, function(v){ ar.ceilingPricePerGal = v; }, 45));
+        cProdRow.appendChild(span("sf/g", "#8a8580", "font-size:9px;"));
+        cProdRow.appendChild(numInput(ar.ceilingCoverage, function(v){ ar.ceilingCoverage = v; }, 42));
         cc.appendChild(cProdRow);
         var cCoatRow = flexRow([], 8, "margin-bottom:6px;");
         cCoatRow.appendChild(span("Primer", "#b07acc", "font-size:10px;"));
@@ -2014,8 +2136,8 @@ function render(){
         if(q.ceil > 0){
           var cBot = el("div", "margin-top:8px;padding-top:8px;border-top:1px solid #3a3a3a;font-size:11px;");
           cBot.appendChild(row("Ceiling area", q.ceil.toFixed(1) + " sf"));
-          if(q.cpc > 0) cBot.appendChild(row("Primer (" + q.cpc + "×@" + COV.primerSqft + "sf/g)", c1(q.ceilPrimerGal) + " gal"));
-          if(q.ctc > 0) cBot.appendChild(row("Topcoat (" + q.ctc + "×@" + COV.sqft + "sf/g)", c1(q.ceilTopGal) + " gal"));
+          if(q.cpc > 0) cBot.appendChild(row("Primer (" + q.cpc + "×@" + q.cpCov + "sf/g)", c1(q.ceilPrimerGal) + " gal"));
+          if(q.ctc > 0) cBot.appendChild(row("Topcoat (" + q.ctc + "×@" + q.ctCov + "sf/g)", c1(q.ceilTopGal) + " gal"));
           cc.appendChild(cBot);
         }
       }
@@ -2030,15 +2152,19 @@ function render(){
       tc2.appendChild(tColorRow);
       var tPrimRow = flexRow([], 6, "margin-bottom:6px;");
       tPrimRow.appendChild(span("Primer", "#b07acc", "font-size:10px;min-width:48px;font-weight:600;"));
-      tPrimRow.appendChild(autoTextInput(ar.trimPrimerProduct, function(v){ ar.trimPrimerProduct = v; }, "e.g. BIN Shellac Primer", null, function(){ return getJobSuggestions(job, "product"); }, function(v){ if(!v || !v.trim()){ ar.trimPrimerPricePerGal = ""; ar.baseboardPrimerCoats = 0; } else { if(!pi2(ar.baseboardPrimerCoats)) ar.baseboardPrimerCoats = 1; var p = getJobProductPrice(job, v); if(p) ar.trimPrimerPricePerGal = p; } saveState(); }, function(v){ removeJobSuggestion(job, "product", v); }));
-      tPrimRow.appendChild(span("$/gal", "#8a8580", "font-size:10px;"));
-      tPrimRow.appendChild(numInput(ar.trimPrimerPricePerGal, function(v){ ar.trimPrimerPricePerGal = v; }, 55));
+      tPrimRow.appendChild(autoTextInput(ar.trimPrimerProduct, function(v){ ar.trimPrimerProduct = v; }, "e.g. BIN Shellac Primer", null, function(){ return getJobSuggestions(job, "product"); }, function(v){ if(!v || !v.trim()){ ar.trimPrimerPricePerGal = ""; ar.trimPrimerCoverage = ""; ar.baseboardPrimerCoats = 0; } else { if(!pi2(ar.baseboardPrimerCoats)) ar.baseboardPrimerCoats = 1; var p = getJobProductPrice(job, v); if(p) ar.trimPrimerPricePerGal = p; var cv = getJobProductCoverage(job, v) || findProductCoverage(v); if(cv) ar.trimPrimerCoverage = cv; } saveState(); }, function(v){ removeJobSuggestion(job, "product", v); }));
+      tPrimRow.appendChild(span("$/g", "#8a8580", "font-size:9px;"));
+      tPrimRow.appendChild(numInput(ar.trimPrimerPricePerGal, function(v){ ar.trimPrimerPricePerGal = v; }, 45));
+      tPrimRow.appendChild(span("sf/g", "#8a8580", "font-size:9px;"));
+      tPrimRow.appendChild(numInput(ar.trimPrimerCoverage, function(v){ ar.trimPrimerCoverage = v; }, 42));
       tc2.appendChild(tPrimRow);
       var tProdRow = flexRow([], 6, "margin-bottom:10px;");
       tProdRow.appendChild(span("Product", "#5a9e6f", "font-size:10px;min-width:48px;font-weight:600;"));
-      tProdRow.appendChild(autoTextInput(ar.trimProduct, function(v){ ar.trimProduct = v; }, "e.g. ProClassic Semi-Gloss", null, function(){ return getJobSuggestions(job, "product"); }, function(v){ if(!v || !v.trim()){ ar.trimPricePerGal = ""; } else { var p = getJobProductPrice(job, v); if(p) ar.trimPricePerGal = p; } saveState(); }, function(v){ removeJobSuggestion(job, "product", v); }));
-      tProdRow.appendChild(span("$/gal", "#8a8580", "font-size:10px;"));
-      tProdRow.appendChild(numInput(ar.trimPricePerGal, function(v){ ar.trimPricePerGal = v; }, 55));
+      tProdRow.appendChild(autoTextInput(ar.trimProduct, function(v){ ar.trimProduct = v; }, "e.g. ProClassic Semi-Gloss", null, function(){ return getJobSuggestions(job, "product"); }, function(v){ if(!v || !v.trim()){ ar.trimPricePerGal = ""; ar.trimCoverage = ""; } else { var p = getJobProductPrice(job, v); if(p) ar.trimPricePerGal = p; var cv = getJobProductCoverage(job, v) || findProductCoverage(v); if(cv) ar.trimCoverage = cv; } saveState(); }, function(v){ removeJobSuggestion(job, "product", v); }));
+      tProdRow.appendChild(span("$/g", "#8a8580", "font-size:9px;"));
+      tProdRow.appendChild(numInput(ar.trimPricePerGal, function(v){ ar.trimPricePerGal = v; }, 45));
+      tProdRow.appendChild(span("sf/g", "#8a8580", "font-size:9px;"));
+      tProdRow.appendChild(numInput(ar.trimCoverage, function(v){ ar.trimCoverage = v; }, 42));
       tc2.appendChild(tProdRow);
 
       /* Baseboard sub-section */
@@ -2092,7 +2218,7 @@ function render(){
       tc2.appendChild(el("div", "font-size:10px;color:#8a8580;letter-spacing:1px;font-weight:600;margin-bottom:6px;border-top:1px solid #3a3a3a;padding-top:10px;", "ADDITIONAL ITEMS"));
       var extras = ar.extras || [];
       for(i = 0; i < extras.length; i++){
-        tc2.appendChild(renderSurfCard(extras[i], EXTRA_TYPES, true));
+        tc2.appendChild(renderSurfCard(extras[i], EXTRA_TYPES, true, ar));
       }
       tc2.appendChild(btn("+ Add Trim / Doors / Windows", function(){
         ar.extras = ar.extras || [];
@@ -2104,7 +2230,7 @@ function render(){
     } else {
       /* Custom mode */
       for(i = 0; i < ar.surfaces.length; i++){
-        body.appendChild(renderSurfCard(ar.surfaces[i], TYPES, false));
+        body.appendChild(renderSurfCard(ar.surfaces[i], TYPES, false, ar));
       }
       body.appendChild(btn("+ Add Surface", function(){
         ar.surfaces.push(makeSurface());
@@ -2132,7 +2258,7 @@ function render(){
 
   app.appendChild(body);
   app.appendChild(el("div", "text-align:center;color:#8a8580;font-size:9px;padding:8px 16px 20px;",
-    COV.sqft + "sf/g top · " + COV.primerSqft + "sf/g primer · " + COV.linear + "lf/g trim · Auto-saves"));
+    "Default: " + COV.sqft + "sf/g top · " + COV.primerSqft + "sf/g primer · Per-product overrides · Auto-saves"));
 }
 
 /* ── Init ── */
