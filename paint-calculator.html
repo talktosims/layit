@@ -24,6 +24,8 @@ input[type=number]{-moz-appearance:textfield}
   .no-print{display:none!important}
 }
 </style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
 <body>
 <div id="app" style="max-width:600px;margin:0 auto;min-height:100vh"></div>
@@ -1510,10 +1512,71 @@ function renderInvoice(job, body, rate, er){
   body.appendChild(inv);
 
   // Action buttons
-  var actions = el("div", "display:flex;gap:8px;margin-top:12px;justify-content:center;");
+  var actions = el("div", "display:flex;gap:8px;margin-top:12px;justify-content:center;flex-wrap:wrap;");
   actions.className = "no-print";
-  actions.appendChild(btn("Print / Save PDF", function(){ window.print(); },
-    "background:#1a1a1a;border:none;border-radius:4px;color:#fff;font-size:12px;padding:10px 20px;cursor:pointer;font-weight:600;"));
+  actions.appendChild(btn("Download PDF", function(){
+    var dlBtn = this;
+    var orig = dlBtn.textContent;
+    dlBtn.textContent = "Generating…";
+    dlBtn.disabled = true;
+    // Hide action buttons during capture
+    actions.style.display = "none";
+    // Small delay to let DOM update
+    setTimeout(function(){
+      html2canvas(inv, { scale: 2, useCORS: true, backgroundColor: "#ffffff" }).then(function(canvas){
+        var imgData = canvas.toDataURL("image/png");
+        var pdf = new jspdf.jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+        var pageW = pdf.internal.pageSize.getWidth();
+        var pageH = pdf.internal.pageSize.getHeight();
+        var margin = 8;
+        var usableW = pageW - margin * 2;
+        var imgW = canvas.width;
+        var imgH = canvas.height;
+        var ratio = usableW / imgW;
+        var scaledH = imgH * ratio;
+        var usableH = pageH - margin * 2;
+        // Multi-page support
+        if(scaledH <= usableH){
+          pdf.addImage(imgData, "PNG", margin, margin, usableW, scaledH);
+        } else {
+          // Slice canvas into pages
+          var pageCanvas = document.createElement("canvas");
+          pageCanvas.width = imgW;
+          var sliceH = Math.floor(usableH / ratio);
+          var y = 0;
+          var pg = 0;
+          while(y < imgH){
+            var h = Math.min(sliceH, imgH - y);
+            pageCanvas.height = h;
+            var ctx = pageCanvas.getContext("2d");
+            ctx.drawImage(canvas, 0, y, imgW, h, 0, 0, imgW, h);
+            var sliceData = pageCanvas.toDataURL("image/png");
+            if(pg > 0) pdf.addPage();
+            pdf.addImage(sliceData, "PNG", margin, margin, usableW, h * ratio);
+            y += h;
+            pg++;
+          }
+        }
+        var fname = (job.name || "Invoice").replace(/[^a-zA-Z0-9 ]/g, "").replace(/\s+/g, "_") + ".pdf";
+        // iOS Safari: open in new tab since direct download doesn't always work
+        if(/iPad|iPhone|iPod/.test(navigator.userAgent)){
+          var blob = pdf.output("blob");
+          var url = URL.createObjectURL(blob);
+          window.open(url, "_blank");
+        } else {
+          pdf.save(fname);
+        }
+        actions.style.display = "flex";
+        dlBtn.textContent = orig;
+        dlBtn.disabled = false;
+      }).catch(function(err){
+        actions.style.display = "flex";
+        dlBtn.textContent = orig;
+        dlBtn.disabled = false;
+        alert("PDF error: " + err.message);
+      });
+    }, 100);
+  }, "background:#c75050;border:none;border-radius:4px;color:#fff;font-size:12px;padding:10px 20px;cursor:pointer;font-weight:600;"));
   if(navigator.share){
     actions.appendChild(btn("Share", function(){
       var text = job.name + "\nDate: " + new Date().toLocaleDateString() + "\n" + job.rooms.length + " room(s)\n";
