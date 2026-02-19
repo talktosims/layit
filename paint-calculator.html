@@ -1519,46 +1519,67 @@ function renderInvoice(job, body, rate, er){
     var orig = dlBtn.textContent;
     dlBtn.textContent = "Generating…";
     dlBtn.disabled = true;
-    // Hide action buttons during capture
     actions.style.display = "none";
-    // Small delay to let DOM update
     setTimeout(function(){
+      // Measure child positions after DOM settles, before canvas capture
+      var childBottoms = [];
+      var kids = inv.children;
+      for(var ci = 0; ci < kids.length; ci++){
+        childBottoms.push(kids[ci].offsetTop + kids[ci].offsetHeight);
+      }
       html2canvas(inv, { scale: 2, useCORS: true, backgroundColor: "#ffffff" }).then(function(canvas){
-        var imgData = canvas.toDataURL("image/png");
         var pdf = new jspdf.jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
         var pageW = pdf.internal.pageSize.getWidth();
         var pageH = pdf.internal.pageSize.getHeight();
         var margin = 8;
         var usableW = pageW - margin * 2;
+        var usableH = pageH - margin * 2;
         var imgW = canvas.width;
         var imgH = canvas.height;
         var ratio = usableW / imgW;
         var scaledH = imgH * ratio;
-        var usableH = pageH - margin * 2;
-        // Multi-page support
+        var cssToPx = imgW / inv.offsetWidth;
+
         if(scaledH <= usableH){
-          pdf.addImage(imgData, "PNG", margin, margin, usableW, scaledH);
+          pdf.addImage(canvas.toDataURL("image/png"), "PNG", margin, margin, usableW, scaledH);
         } else {
-          // Slice canvas into pages
+          // Find smart slice points using child element boundaries
+          var maxSliceH = usableH / ratio;
+          var slicePoints = [0];
+          var y = 0;
+          while(y < imgH){
+            var target = y + maxSliceH;
+            if(target >= imgH){ slicePoints.push(imgH); break; }
+            // Find last child whose bottom fits within this page
+            var bestSlice = -1;
+            for(var ci2 = 0; ci2 < childBottoms.length; ci2++){
+              var cbPx = childBottoms[ci2] * cssToPx;
+              if(cbPx <= y + 1) continue;
+              if(cbPx <= target){ bestSlice = cbPx; } else { break; }
+            }
+            if(bestSlice > y){
+              slicePoints.push(Math.round(bestSlice));
+            } else {
+              slicePoints.push(Math.round(target));
+            }
+            y = slicePoints[slicePoints.length - 1];
+          }
+          // Render each slice to a PDF page
           var pageCanvas = document.createElement("canvas");
           pageCanvas.width = imgW;
-          var sliceH = Math.floor(usableH / ratio);
-          var y = 0;
-          var pg = 0;
-          while(y < imgH){
-            var h = Math.min(sliceH, imgH - y);
+          for(var pg = 0; pg < slicePoints.length - 1; pg++){
+            var sliceTop = slicePoints[pg];
+            var sliceBot = slicePoints[pg + 1];
+            var h = sliceBot - sliceTop;
             pageCanvas.height = h;
             var ctx = pageCanvas.getContext("2d");
-            ctx.drawImage(canvas, 0, y, imgW, h, 0, 0, imgW, h);
-            var sliceData = pageCanvas.toDataURL("image/png");
+            ctx.clearRect(0, 0, imgW, h);
+            ctx.drawImage(canvas, 0, sliceTop, imgW, h, 0, 0, imgW, h);
             if(pg > 0) pdf.addPage();
-            pdf.addImage(sliceData, "PNG", margin, margin, usableW, h * ratio);
-            y += h;
-            pg++;
+            pdf.addImage(pageCanvas.toDataURL("image/png"), "PNG", margin, margin, usableW, h * ratio);
           }
         }
         var fname = (job.name || "Invoice").replace(/[^a-zA-Z0-9 ]/g, "").replace(/\s+/g, "_") + ".pdf";
-        // iOS Safari: open in new tab since direct download doesn't always work
         if(/iPad|iPhone|iPod/.test(navigator.userAgent)){
           var blob = pdf.output("blob");
           var url = URL.createObjectURL(blob);
