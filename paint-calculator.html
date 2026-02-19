@@ -408,11 +408,11 @@ function calcJobPaintOrder(job){
     if(rm.mode === "quick"){
       var q = calcQuickRoom(rm);
       // Walls: separate primer and topcoat
-      if(q.wallPrimerGal > 0) addEntry("Walls", rm.wallColor, rm.wallPrimerProduct || "Primer", q.wallPrimerGal, 0, rn);
+      if(q.wallPrimerGal > 0) addEntry("Walls", "", rm.wallPrimerProduct || "Primer", q.wallPrimerGal, 0, rn);
       if(q.wallTopGal > 0) addEntry("Walls", rm.wallColor, rm.wallProduct || "Topcoat", 0, q.wallTopGal, rn);
       // Ceiling: separate primer and topcoat
       if(rm.includeCeiling){
-        if(q.ceilPrimerGal > 0) addEntry("Ceiling", rm.ceilingColor, rm.ceilingPrimerProduct || "Primer", q.ceilPrimerGal, 0, rn);
+        if(q.ceilPrimerGal > 0) addEntry("Ceiling", "", rm.ceilingPrimerProduct || "Primer", q.ceilPrimerGal, 0, rn);
         if(q.ceilTopGal > 0) addEntry("Ceiling", rm.ceilingColor, rm.ceilingProduct || "Topcoat", 0, q.ceilTopGal, rn);
       }
       // Trim: separate primer and topcoat
@@ -425,7 +425,7 @@ function calcJobPaintOrder(job){
           trimPG += sr.pg; trimTG += sr.tg;
         }
       }
-      if(trimPG > 0) addEntry("Trim/Frames", rm.trimColor, rm.trimPrimerProduct || "Primer", trimPG, 0, rn);
+      if(trimPG > 0) addEntry("Trim/Frames", "", rm.trimPrimerProduct || "Primer", trimPG, 0, rn);
       if(trimTG > 0) addEntry("Trim/Frames", rm.trimColor, rm.trimProduct || "Topcoat", 0, trimTG, rn);
     } else {
       for(var k = 0; k < rm.surfaces.length; k++){
@@ -436,13 +436,13 @@ function calcJobPaintOrder(job){
         var pp = st === "wall" ? rm.wallPrimerProduct : st === "ceiling" ? rm.ceilingPrimerProduct : rm.trimPrimerProduct;
         var tp = st === "wall" ? rm.wallProduct : st === "ceiling" ? rm.ceilingProduct : rm.trimProduct;
         if(st === "wall"){
-          if(sr2.pg > 0) addEntry("Walls", s.color, pp || "Primer", sr2.pg, 0, rn);
+          if(sr2.pg > 0) addEntry("Walls", "", pp || "Primer", sr2.pg, 0, rn);
           if(sr2.tg > 0) addEntry("Walls", s.color, tp || "Topcoat", 0, sr2.tg, rn);
         } else if(st === "ceiling"){
-          if(sr2.pg > 0) addEntry("Ceiling", s.color, pp || "Primer", sr2.pg, 0, rn);
+          if(sr2.pg > 0) addEntry("Ceiling", "", pp || "Primer", sr2.pg, 0, rn);
           if(sr2.tg > 0) addEntry("Ceiling", s.color, tp || "Topcoat", 0, sr2.tg, rn);
         } else if(st === "trim" || st === "baseboard" || st === "door_frame" || st === "door_face" || st === "window_frame"){
-          if(sr2.pg > 0) addEntry("Trim/Frames", s.color, pp || "Primer", sr2.pg, 0, rn);
+          if(sr2.pg > 0) addEntry("Trim/Frames", "", pp || "Primer", sr2.pg, 0, rn);
           if(sr2.tg > 0) addEntry("Trim/Frames", s.color, tp || "Topcoat", 0, sr2.tg, rn);
         }
       }
@@ -493,11 +493,11 @@ function calcJobMaterialsDetail(job){
     if(rm.mode === "quick"){
       var q = calcQuickRoom(rm);
       // Walls: separate primer and topcoat
-      if(q.wallPrimerGal > 0) addEntry("Walls", rm.wallColor, rm.wallPrimerProduct || "Primer", q.wallPrimerGal, 0, rn, wpp);
+      if(q.wallPrimerGal > 0) addEntry("Walls", "", rm.wallPrimerProduct || "Primer", q.wallPrimerGal, 0, rn, wpp);
       if(q.wallTopGal > 0) addEntry("Walls", rm.wallColor, rm.wallProduct || "Topcoat", 0, q.wallTopGal, rn, wp);
       // Ceiling
       if(rm.includeCeiling){
-        if(q.ceilPrimerGal > 0) addEntry("Ceiling", rm.ceilingColor, rm.ceilingPrimerProduct || "Primer", q.ceilPrimerGal, 0, rn, cpp);
+        if(q.ceilPrimerGal > 0) addEntry("Ceiling", "", rm.ceilingPrimerProduct || "Primer", q.ceilPrimerGal, 0, rn, cpp);
         if(q.ceilTopGal > 0) addEntry("Ceiling", rm.ceilingColor, rm.ceilingProduct || "Topcoat", 0, q.ceilTopGal, rn, cp);
       }
       // Trim
@@ -508,7 +508,7 @@ function calcJobMaterialsDetail(job){
         var et = extras[j].type;
         if(et === "trim" || et === "baseboard" || et === "door_frame" || et === "door_face" || et === "window_frame"){ trimPG += sr.pg; trimTG += sr.tg; }
       }
-      if(trimPG > 0) addEntry("Trim/Frames", rm.trimColor, rm.trimPrimerProduct || "Primer", trimPG, 0, rn, tpp);
+      if(trimPG > 0) addEntry("Trim/Frames", "", rm.trimPrimerProduct || "Primer", trimPG, 0, rn, tpp);
       if(trimTG > 0) addEntry("Trim/Frames", rm.trimColor, rm.trimProduct || "Topcoat", 0, trimTG, rn, tp);
     } else {
       for(var k = 0; k < rm.surfaces.length; k++){
@@ -518,13 +518,13 @@ function calcJobMaterialsDetail(job){
         var sPrimerProd = st === "wall" ? rm.wallPrimerProduct : st === "ceiling" ? rm.ceilingPrimerProduct : rm.trimPrimerProduct;
         var sTopProd = st === "wall" ? rm.wallProduct : st === "ceiling" ? rm.ceilingProduct : rm.trimProduct;
         if(st === "wall"){
-          if(sr2.pg > 0) addEntry("Walls", s.color, sPrimerProd || "Primer", sr2.pg, 0, rn, sPP);
+          if(sr2.pg > 0) addEntry("Walls", "", sPrimerProd || "Primer", sr2.pg, 0, rn, sPP);
           if(sr2.tg > 0) addEntry("Walls", s.color, sTopProd || "Topcoat", 0, sr2.tg, rn, sTP);
         } else if(st === "ceiling"){
-          if(sr2.pg > 0) addEntry("Ceiling", s.color, sPrimerProd || "Primer", sr2.pg, 0, rn, sPP);
+          if(sr2.pg > 0) addEntry("Ceiling", "", sPrimerProd || "Primer", sr2.pg, 0, rn, sPP);
           if(sr2.tg > 0) addEntry("Ceiling", s.color, sTopProd || "Topcoat", 0, sr2.tg, rn, sTP);
         } else if(st === "trim" || st === "baseboard" || st === "door_frame" || st === "door_face" || st === "window_frame"){
-          if(sr2.pg > 0) addEntry("Trim/Frames", s.color, sPrimerProd || "Primer", sr2.pg, 0, rn, sPP);
+          if(sr2.pg > 0) addEntry("Trim/Frames", "", sPrimerProd || "Primer", sr2.pg, 0, rn, sPP);
           if(sr2.tg > 0) addEntry("Trim/Frames", s.color, sTopProd || "Topcoat", 0, sr2.tg, rn, sTP);
         }
       }
