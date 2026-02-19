@@ -2120,19 +2120,15 @@ loadState();
   }
 })();
 
-// Global handler: tapping a dropdown option picks it; tapping elsewhere dismisses it
+// Global handler: tapping a dropdown option picks it
 document.addEventListener("click", function(e){
   var dd = _autoDropdown;
   if(!dd || dd.style.display === "none") return;
-  // Check if tap was on a dropdown option
-  var t = e.target;
-  if(dd.contains(t)){
-    var val = t.textContent;
+  if(dd.contains(e.target)){
+    var val = e.target.textContent;
     if(dd._pickCb) dd._pickCb(val);
-  } else {
-    hideAutoDropdown();
-    render();
   }
+  /* Don't hide/render on clicks elsewhere — the input's onblur handles that */
 }, true);
 
 // Auto-open import panel if ?importdata=1 in URL
