@@ -1521,12 +1521,26 @@ function renderInvoice(job, body, rate, er){
     dlBtn.disabled = true;
     actions.style.display = "none";
     setTimeout(function(){
-      // Measure child positions after DOM settles, before canvas capture
-      var childBottoms = [];
+      // Measure break points from children AND grandchildren of inv
+      // This handles tall room boxes that span more than one page
+      var breakSet = {};
       var kids = inv.children;
       for(var ci = 0; ci < kids.length; ci++){
-        childBottoms.push(kids[ci].offsetTop + kids[ci].offsetHeight);
+        var kid = kids[ci];
+        var kb = kid.offsetTop + kid.offsetHeight;
+        breakSet[kb] = 1;
+        // Also measure grandchildren (rows inside room boxes, paint order items, etc.)
+        var gkids = kid.children;
+        for(var gi = 0; gi < gkids.length; gi++){
+          // grandchild offsets are relative to their parent, need to add parent's offsetTop
+          var gb = kid.offsetTop + gkids[gi].offsetTop + gkids[gi].offsetHeight;
+          breakSet[gb] = 1;
+        }
       }
+      // Sort break points numerically
+      var childBottoms = [];
+      for(var bp in breakSet) childBottoms.push(Number(bp));
+      childBottoms.sort(function(a,b){ return a - b; });
       html2canvas(inv, { scale: 2, useCORS: true, backgroundColor: "#ffffff" }).then(function(canvas){
         var pdf = new jspdf.jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
         var pageW = pdf.internal.pageSize.getWidth();
