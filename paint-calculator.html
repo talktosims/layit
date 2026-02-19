@@ -18,8 +18,9 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
 input[type=number]{-moz-appearance:textfield}
 @media print{
   body{background:#fff!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  #app{max-width:100%!important}
   #app>*:not(.invoice-view){display:none!important}
-  .invoice-view{margin:0!important;border-radius:0!important}
+  .invoice-view{margin:0!important;padding:0!important;border-radius:0!important}
   .no-print{display:none!important}
 }
 </style>
@@ -1702,6 +1703,7 @@ function render(){
 
   /* Invoice View */
   if(STATE.view === "invoice"){
+    body.className = "invoice-view";
     renderInvoice(job, body, rate, er);
     app.appendChild(body);
     return;
