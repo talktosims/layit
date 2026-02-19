@@ -1768,6 +1768,21 @@ function render(){
           line2.appendChild(el("div", "font-size:11px;color:#8a8580;white-space:nowrap;", "$" + item.ppg.toFixed(2) + "/gal · ~$" + item.lineCost.toFixed(2)));
         }
         poRow.appendChild(line2);
+        // Line 3: Which rooms use this (small text)
+        var allRooms = [];
+        var catKeys3 = ["Walls", "Ceiling", "Trim/Frames"];
+        for(var ci3 = 0; ci3 < catKeys3.length; ci3++){
+          var ck3 = catKeys3[ci3];
+          if(item.cats[ck3]){
+            for(var ri3 = 0; ri3 < item.cats[ck3].length; ri3++){
+              var rName = item.cats[ck3][ri3];
+              if(allRooms.indexOf(rName) < 0) allRooms.push(rName);
+            }
+          }
+        }
+        if(allRooms.length > 0){
+          poRow.appendChild(el("div", "font-size:9px;color:#555;margin-top:2px;", allRooms.join(", ")));
+        }
         poBody.appendChild(poRow);
       }
       // Grand total
