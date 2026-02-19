@@ -1734,58 +1734,47 @@ function render(){
   }, "background:#d4a843;color:#1a1a1a;border:none;border-radius:4px;padding:10px 0;cursor:pointer;font-size:12px;font-weight:600;letter-spacing:.5px;width:100%;margin-bottom:12px;"));
 
   /* Paint Order (collapsible) */
-  var po = calcJobPaintOrder(job);
+  var po = calcJobMaterialsDetail(job);
   if(po.length > 0){
     var poc = card([], "border-left:3px solid #b07acc;");
     var poHdr = el("div", "display:flex;align-items:center;justify-content:space-between;cursor:pointer;");
     poHdr.appendChild(el("div", "font-size:11px;color:#b07acc;font-weight:600;letter-spacing:1px;", "PAINT ORDER"));
-    var totalGal = 0;
-    for(var pk = 0; pk < po.length; pk++) totalGal += po[pk].pg + po[pk].tg;
+    var totalGal = 0, grandTotal = 0, hasPrice = false;
+    for(var pk = 0; pk < po.length; pk++){ totalGal += po[pk].totalGal; if(po[pk].lineCost > 0){ grandTotal += po[pk].lineCost; hasPrice = true; } }
     var poSummary = el("div", "display:flex;align-items:center;gap:8px;");
-    poSummary.appendChild(span(po.length + " product" + (po.length !== 1 ? "s" : "") + " · " + c1(totalGal) + " gal", "#8a8580", "font-size:10px;"));
+    var sumText = po.length + " product" + (po.length !== 1 ? "s" : "") + " · " + c1(totalGal) + " gal";
+    if(hasPrice) sumText += " · ~$" + grandTotal.toFixed(2);
+    poSummary.appendChild(span(sumText, "#8a8580", "font-size:10px;"));
     poSummary.appendChild(span(STATE.showPaintOrder ? "▼" : "▶", "#b07acc", "font-size:10px;"));
     poHdr.appendChild(poSummary);
     poHdr.onclick = function(){ STATE.showPaintOrder = !STATE.showPaintOrder; render(); };
     poc.appendChild(poHdr);
     if(STATE.showPaintOrder){
       var poBody = el("div", "margin-top:10px;");
-      var catColors = {"Walls":"#5a9e6f", "Ceiling":"#5588bb", "Trim/Frames":"#d4a843"};
       for(var pi = 0; pi < po.length; pi++){
         var item = po[pi];
-        var poRow = el("div", "display:flex;align-items:flex-start;justify-content:space-between;padding:8px 0;" + (pi > 0 ? "border-top:1px solid #3a3a3a;" : ""));
-        var poLeft = el("div", "flex:1;");
-        // Product name as main header
-        if(item.color || item.product){
-          var cpStr2 = (item.color || "") + (item.color && item.product ? " · " : "") + (item.product || "");
-          poLeft.appendChild(el("div", "font-size:12px;font-weight:600;color:#e8e4de;", cpStr2));
-        } else {
-          poLeft.appendChild(el("div", "font-size:12px;color:#8a8580;font-style:italic;", "(no color specified)"));
+        var poRow = el("div", "padding:10px 0;" + (pi > 0 ? "border-top:1px solid #3a3a3a;" : ""));
+        // Line 1: Product name (left) — Gallons (right)
+        var line1 = el("div", "display:flex;justify-content:space-between;align-items:baseline;");
+        var prodName = item.product || "(no product)";
+        line1.appendChild(el("div", "font-size:13px;font-weight:600;color:#e8e4de;flex:1;margin-right:8px;", prodName));
+        line1.appendChild(el("div", "font-size:13px;color:#e8e4de;white-space:nowrap;font-weight:600;", c1(item.totalGal) + " gal"));
+        poRow.appendChild(line1);
+        // Line 2: Color (left) — $/gal · Est total (right)
+        var line2 = el("div", "display:flex;justify-content:space-between;align-items:baseline;margin-top:2px;");
+        var colorText = item.color || "";
+        line2.appendChild(el("div", "font-size:11px;color:#8a8580;flex:1;", colorText));
+        if(item.ppg > 0){
+          line2.appendChild(el("div", "font-size:11px;color:#8a8580;white-space:nowrap;", "$" + item.ppg.toFixed(2) + "/gal · ~$" + item.lineCost.toFixed(2)));
         }
-        // Category + room breakdown
-        var catLine = el("div", "font-size:9px;margin-top:3px;display:flex;flex-wrap:wrap;gap:4px;");
-        var catKeys = ["Walls", "Ceiling", "Trim/Frames"];
-        for(var ci = 0; ci < catKeys.length; ci++){
-          var ck = catKeys[ci];
-          if(item.cats[ck] && item.cats[ck].length > 0){
-            var cs = el("span", "color:" + (catColors[ck] || "#8a8580") + ";");
-            cs.textContent = ck + ": " + item.cats[ck].join(", ");
-            catLine.appendChild(cs);
-            if(ci < catKeys.length - 1){
-              var hasMore = false;
-              for(var ci2 = ci + 1; ci2 < catKeys.length; ci2++){
-                if(item.cats[catKeys[ci2]] && item.cats[catKeys[ci2]].length > 0) hasMore = true;
-              }
-              if(hasMore) catLine.appendChild(span(" · ", "#3a3a3a"));
-            }
-          }
-        }
-        poLeft.appendChild(catLine);
-        poRow.appendChild(poLeft);
-        var poRight = el("div", "text-align:right;white-space:nowrap;");
-        if(item.pg > 0) poRight.appendChild(el("div", "font-size:11px;color:#b07acc;", c1(item.pg) + " gal P"));
-        if(item.tg > 0) poRight.appendChild(el("div", "font-size:11px;color:#5a9e6f;", c1(item.tg) + " gal T"));
-        poRow.appendChild(poRight);
+        poRow.appendChild(line2);
         poBody.appendChild(poRow);
+      }
+      // Grand total
+      if(hasPrice){
+        var gtRow = el("div", "display:flex;justify-content:flex-end;padding-top:10px;border-top:1px solid #555;margin-top:4px;");
+        gtRow.appendChild(el("div", "font-size:13px;font-weight:600;color:#d4a843;", "Est. Total ~$" + grandTotal.toFixed(2)));
+        poBody.appendChild(gtRow);
       }
       poc.appendChild(poBody);
     }
