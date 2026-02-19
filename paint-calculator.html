@@ -763,14 +763,18 @@ function getJobProductPrice(job, productName){
 
 /* Global dropdown overlay — lives outside #app so it survives render() */
 var _autoDropdown = null;
+var _ddHover = false;
 function getAutoDropdown(){
   if(!_autoDropdown){
     _autoDropdown = el("div", "display:none;position:fixed;background:#2e2e2e;border:1px solid #555;border-radius:0 0 4px 4px;max-height:150px;overflow-y:auto;z-index:9999;");
+    _autoDropdown.addEventListener("mouseenter", function(){ _ddHover = true; });
+    _autoDropdown.addEventListener("mouseleave", function(){ _ddHover = false; });
+    _autoDropdown.addEventListener("touchstart", function(){ _ddHover = true; });
     document.body.appendChild(_autoDropdown);
   }
   return _autoDropdown;
 }
-function hideAutoDropdown(){ var d = getAutoDropdown(); d.style.display = "none"; d.innerHTML = ""; d._pickCb = null; }
+function hideAutoDropdown(){ _ddHover = false; var d = getAutoDropdown(); d.style.display = "none"; d.innerHTML = ""; d._pickCb = null; }
 
 function autoTextInput(value, onChange, placeholder, width, suggestFn, onSelectCb){
   var wrap = el("div", "position:relative;" + (width ? "width:" + width + "px;" : "flex:1;min-width:80px;"));
@@ -829,15 +833,19 @@ function autoTextInput(value, onChange, placeholder, width, suggestFn, onSelectC
     showDropdown(e.target.value);
   };
   inp.onblur = function(){
-    /* Wait long enough for the click/tap on the global dropdown to fire.
-       On iOS Safari, click fires ~300ms after touchstart. */
-    setTimeout(function(){
-      if(_picked) return; /* selection already handled by pickCb */
-      var dd = getAutoDropdown();
-      if(dd.style.display !== "none") hideAutoDropdown();
-      if(onSelectCb) onSelectCb(inp.value);
-      render();
-    }, 500);
+    /* Delay so click/tap on global dropdown can fire first.
+       Keep retrying if pointer is still over dropdown (user is choosing). */
+    var attempts = 0;
+    (function waitForPick(){
+      setTimeout(function(){
+        if(_picked) return;
+        if(_ddHover && attempts < 20){ attempts++; waitForPick(); return; }
+        var dd = getAutoDropdown();
+        if(dd.style.display !== "none") hideAutoDropdown();
+        if(onSelectCb) onSelectCb(inp.value);
+        render();
+      }, 250);
+    })();
   };
 
   wrap.appendChild(inp);
