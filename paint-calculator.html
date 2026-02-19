@@ -772,10 +772,20 @@ function autoTextInput(value, onChange, placeholder, width, suggestFn, onSelectC
   inp.spellcheck = false;
 
   var dropdown = el("div", "display:none;position:absolute;top:100%;left:0;right:0;background:#2e2e2e;border:1px solid #555;border-radius:0 0 4px 4px;max-height:150px;overflow-y:auto;z-index:999;");
+  var selecting = false; // flag to prevent blur from killing dropdown mid-tap
+
+  function doSelect(val){
+    selecting = true;
+    inp.value = val;
+    onChange(val);
+    if(onSelectCb) onSelectCb(val);
+    saveState();
+    dropdown.style.display = "none";
+    setTimeout(function(){ selecting = false; render(); }, 50);
+  }
 
   function buildOptions(filter){
     dropdown.innerHTML = "";
-    // Get fresh suggestions each time (reflects latest edits)
     var suggestions = suggestFn();
     var count = 0;
     var fLc = (filter || "").toLowerCase();
@@ -786,14 +796,9 @@ function autoTextInput(value, onChange, placeholder, width, suggestFn, onSelectC
       (function(val){
         var opt = el("div", "padding:8px 10px;font-size:12px;color:#e8e4de;cursor:pointer;border-bottom:1px solid #3a3a3a;");
         opt.textContent = val;
-        opt.onmousedown = function(e){
-          e.preventDefault();
-          inp.value = val;
-          onChange(val);
-          if(onSelectCb) onSelectCb(val);
-          saveState();
-          dropdown.style.display = "none";
-        };
+        // Use touchstart for iOS (fires before blur) + mousedown for desktop
+        opt.ontouchstart = function(e){ e.preventDefault(); doSelect(val); };
+        opt.onmousedown = function(e){ e.preventDefault(); doSelect(val); };
         dropdown.appendChild(opt);
       })(s);
       count++;
@@ -809,6 +814,7 @@ function autoTextInput(value, onChange, placeholder, width, suggestFn, onSelectC
     buildOptions(e.target.value);
   };
   inp.onblur = function(){
+    if(selecting) return; // dropdown tap in progress, don't interfere
     if(onSelectCb) onSelectCb(inp.value);
     setTimeout(function(){ dropdown.style.display = "none"; render(); }, 200);
   };
