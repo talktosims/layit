@@ -761,6 +761,17 @@ function getJobProductPrice(job, productName){
   return "";
 }
 
+/* Global dropdown overlay — lives outside #app so it survives render() */
+var _autoDropdown = null;
+function getAutoDropdown(){
+  if(!_autoDropdown){
+    _autoDropdown = el("div", "display:none;position:fixed;background:#2e2e2e;border:1px solid #555;border-radius:0 0 4px 4px;max-height:150px;overflow-y:auto;z-index:9999;");
+    document.body.appendChild(_autoDropdown);
+  }
+  return _autoDropdown;
+}
+function hideAutoDropdown(){ var d = getAutoDropdown(); d.style.display = "none"; d.innerHTML = ""; d._pickCb = null; }
+
 function autoTextInput(value, onChange, placeholder, width, suggestFn, onSelectCb){
   var wrap = el("div", "position:relative;" + (width ? "width:" + width + "px;" : "flex:1;min-width:80px;"));
   var inp = el("input", "background:#2e2e2e;color:#e8e4de;border:1px solid #3a3a3a;border-radius:4px;padding:6px 8px;outline:none;font-size:11px;width:100%;font-family:inherit;box-sizing:border-box;text-overflow:ellipsis;");
@@ -771,20 +782,11 @@ function autoTextInput(value, onChange, placeholder, width, suggestFn, onSelectC
   inp.autocorrect = "off";
   inp.spellcheck = false;
 
-  var dropdown = el("div", "display:none;position:absolute;top:100%;left:0;right:0;background:#2e2e2e;border:1px solid #555;border-radius:0 0 4px 4px;max-height:150px;overflow-y:auto;z-index:999;");
   var _picked = false;
 
-  function pickValue(val){
-    _picked = true;
-    inp.value = val;
-    onChange(val);
-    if(onSelectCb) onSelectCb(val);
-    saveState();
-    dropdown.style.display = "none";
-  }
-
-  function buildOptions(filter){
-    dropdown.innerHTML = "";
+  function showDropdown(filter){
+    var dd = getAutoDropdown();
+    dd.innerHTML = "";
     var suggestions = suggestFn();
     var count = 0;
     var fLc = (filter || "").toLowerCase();
@@ -795,32 +797,50 @@ function autoTextInput(value, onChange, placeholder, width, suggestFn, onSelectC
       (function(val){
         var opt = el("div", "padding:12px 14px;font-size:13px;color:#e8e4de;cursor:pointer;border-bottom:1px solid #3a3a3a;-webkit-tap-highlight-color:rgba(212,168,67,0.3);user-select:none;-webkit-user-select:none;");
         opt.textContent = val;
-        opt.onmousedown = function(e){ e.preventDefault(); };
-        opt.onclick = function(e){ e.preventDefault(); e.stopPropagation(); pickValue(val); };
-        dropdown.appendChild(opt);
+        dd.appendChild(opt);
       })(s);
       count++;
       if(count >= 8) break;
     }
-    dropdown.style.display = count > 0 ? "block" : "none";
+    if(count > 0){
+      var rect = inp.getBoundingClientRect();
+      dd.style.left = rect.left + "px";
+      dd.style.top = rect.bottom + "px";
+      dd.style.width = rect.width + "px";
+      dd.style.display = "block";
+      dd._pickCb = function(val){
+        _picked = true;
+        onChange(val);
+        if(onSelectCb) onSelectCb(val);
+        saveState();
+        hideAutoDropdown();
+        render();
+      };
+    } else {
+      dd.style.display = "none";
+    }
   }
 
-  inp.onfocus = function(){ _picked = false; buildOptions(inp.value); };
+  inp.onfocus = function(){ _picked = false; showDropdown(inp.value); };
   inp.oninput = function(e){
     _picked = false;
     onChange(e.target.value);
     saveState();
-    buildOptions(e.target.value);
+    showDropdown(e.target.value);
   };
   inp.onblur = function(){
-    dropdown.style.display = "none";
-    if(!_picked && onSelectCb) onSelectCb(inp.value);
-    _picked = false;
-    render();
+    /* Wait long enough for the click/tap on the global dropdown to fire.
+       On iOS Safari, click fires ~300ms after touchstart. */
+    setTimeout(function(){
+      if(_picked) return; /* selection already handled by pickCb */
+      var dd = getAutoDropdown();
+      if(dd.style.display !== "none") hideAutoDropdown();
+      if(onSelectCb) onSelectCb(inp.value);
+      render();
+    }, 500);
   };
 
   wrap.appendChild(inp);
-  wrap.appendChild(dropdown);
   return wrap;
 }
 
@@ -2098,6 +2118,21 @@ loadState();
     }
   }
 })();
+
+// Global handler: tapping a dropdown option picks it; tapping elsewhere dismisses it
+document.addEventListener("click", function(e){
+  var dd = _autoDropdown;
+  if(!dd || dd.style.display === "none") return;
+  // Check if tap was on a dropdown option
+  var t = e.target;
+  if(dd.contains(t)){
+    var val = t.textContent;
+    if(dd._pickCb) dd._pickCb(val);
+  } else {
+    hideAutoDropdown();
+    render();
+  }
+}, true);
 
 // Auto-open import panel if ?importdata=1 in URL
 if(window.location.search.indexOf("importdata=1") !== -1){
