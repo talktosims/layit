@@ -1706,7 +1706,7 @@ function render(){
     var poHdr = el("div", "display:flex;align-items:center;justify-content:space-between;cursor:pointer;");
     poHdr.appendChild(el("div", "font-size:11px;color:#b07acc;font-weight:600;letter-spacing:1px;", "PAINT ORDER"));
     var totalGal = 0;
-    for(var pi2 = 0; pi2 < po.length; pi2++) totalGal += po[pi2].pg + po[pi2].tg;
+    for(var pk = 0; pk < po.length; pk++) totalGal += po[pk].pg + po[pk].tg;
     var poSummary = el("div", "display:flex;align-items:center;gap:8px;");
     poSummary.appendChild(span(po.length + " product" + (po.length !== 1 ? "s" : "") + " · " + c1(totalGal) + " gal", "#8a8580", "font-size:10px;"));
     poSummary.appendChild(span(STATE.showPaintOrder ? "▼" : "▶", "#b07acc", "font-size:10px;"));
