@@ -772,19 +772,15 @@ function autoTextInput(value, onChange, placeholder, width, suggestFn, onSelectC
   inp.spellcheck = false;
 
   var dropdown = el("div", "display:none;position:absolute;top:100%;left:0;right:0;background:#2e2e2e;border:1px solid #555;border-radius:0 0 4px 4px;max-height:150px;overflow-y:auto;z-index:999;");
-  var _blurTimer = null;
-
-  function cancelBlur(){ if(_blurTimer){ clearTimeout(_blurTimer); _blurTimer = null; } }
+  var _picked = false;
 
   function pickValue(val){
-    cancelBlur();
+    _picked = true;
     inp.value = val;
     onChange(val);
     if(onSelectCb) onSelectCb(val);
     saveState();
     dropdown.style.display = "none";
-    // Defer render so iOS can finish its touch cycle
-    setTimeout(render, 60);
   }
 
   function buildOptions(filter){
@@ -799,13 +795,8 @@ function autoTextInput(value, onChange, placeholder, width, suggestFn, onSelectC
       (function(val){
         var opt = el("div", "padding:12px 14px;font-size:13px;color:#e8e4de;cursor:pointer;border-bottom:1px solid #3a3a3a;-webkit-tap-highlight-color:rgba(212,168,67,0.3);user-select:none;-webkit-user-select:none;");
         opt.textContent = val;
-        // Multiple event handlers to guarantee at least one fires on iOS
-        opt.addEventListener("touchend", function(e){
-          e.preventDefault(); e.stopPropagation(); pickValue(val);
-        });
-        opt.addEventListener("mouseup", function(e){
-          e.preventDefault(); e.stopPropagation(); pickValue(val);
-        });
+        opt.onmousedown = function(e){ e.preventDefault(); };
+        opt.onclick = function(e){ e.preventDefault(); e.stopPropagation(); pickValue(val); };
         dropdown.appendChild(opt);
       })(s);
       count++;
@@ -814,20 +805,18 @@ function autoTextInput(value, onChange, placeholder, width, suggestFn, onSelectC
     dropdown.style.display = count > 0 ? "block" : "none";
   }
 
-  inp.onfocus = function(){ buildOptions(inp.value); };
+  inp.onfocus = function(){ _picked = false; buildOptions(inp.value); };
   inp.oninput = function(e){
+    _picked = false;
     onChange(e.target.value);
     saveState();
     buildOptions(e.target.value);
   };
   inp.onblur = function(){
-    // Delay so touchend/mouseup on dropdown can fire and cancel this
-    _blurTimer = setTimeout(function(){
-      _blurTimer = null;
-      if(onSelectCb) onSelectCb(inp.value);
-      dropdown.style.display = "none";
-      render();
-    }, 400);
+    dropdown.style.display = "none";
+    if(!_picked && onSelectCb) onSelectCb(inp.value);
+    _picked = false;
+    render();
   };
 
   wrap.appendChild(inp);
