@@ -744,6 +744,28 @@ function getJobSuggestions(job, field){
   return list;
 }
 
+function removeJobSuggestion(job, field, value){
+  // Remove a product or color from all rooms in this job
+  var lc = (value || "").trim().toLowerCase();
+  if(!lc) return;
+  function clr(rm, key){ if(rm[key] && rm[key].trim().toLowerCase() === lc) rm[key] = ""; }
+  for(var i = 0; i < job.rooms.length; i++){
+    var rm = job.rooms[i];
+    if(field === "color"){
+      clr(rm, "wallColor"); clr(rm, "ceilingColor"); clr(rm, "trimColor");
+    } else {
+      clr(rm, "wallProduct"); clr(rm, "ceilingProduct"); clr(rm, "trimProduct");
+      clr(rm, "wallPrimerProduct"); clr(rm, "ceilingPrimerProduct"); clr(rm, "trimPrimerProduct");
+    }
+    var surfs = (rm.surfaces || []).concat(rm.extras || []);
+    for(var j = 0; j < surfs.length; j++){
+      if(field === "color") clr(surfs[j], "color");
+      else clr(surfs[j], "product");
+    }
+  }
+  saveState();
+}
+
 function getJobProductPrice(job, productName){
   // Look up the most recent $/gal for a product name across all rooms in the job
   if(!productName || !productName.trim()) return "";
@@ -776,7 +798,7 @@ function getAutoDropdown(){
 }
 function hideAutoDropdown(){ var d = getAutoDropdown(); d.style.display = "none"; d.innerHTML = ""; d._pickCb = null; }
 
-function autoTextInput(value, onChange, placeholder, width, suggestFn, onSelectCb){
+function autoTextInput(value, onChange, placeholder, width, suggestFn, onSelectCb, deleteFn){
   var wrap = el("div", "position:relative;" + (width ? "width:" + width + "px;" : "flex:1;min-width:80px;"));
   var inp = el("input", "background:#2e2e2e;color:#e8e4de;border:1px solid #3a3a3a;border-radius:4px;padding:6px 8px;outline:none;font-size:11px;width:100%;font-family:inherit;box-sizing:border-box;text-overflow:ellipsis;");
   inp.type = "text";
@@ -799,8 +821,15 @@ function autoTextInput(value, onChange, placeholder, width, suggestFn, onSelectC
       if(s.toLowerCase() === fLc) continue;
       if(fLc && s.toLowerCase().indexOf(fLc) < 0) continue;
       (function(val){
-        var opt = el("div", "padding:12px 14px;font-size:13px;color:#e8e4de;cursor:pointer;border-bottom:1px solid #3a3a3a;-webkit-tap-highlight-color:rgba(212,168,67,0.3);user-select:none;-webkit-user-select:none;");
-        opt.textContent = val;
+        var opt = el("div", "display:flex;align-items:center;justify-content:space-between;padding:8px 10px;font-size:13px;color:#e8e4de;cursor:pointer;border-bottom:1px solid #3a3a3a;-webkit-tap-highlight-color:rgba(212,168,67,0.3);user-select:none;-webkit-user-select:none;");
+        var label = el("span", "flex:1;padding:4px;", val);
+        label.setAttribute("data-val", val);
+        opt.appendChild(label);
+        if(deleteFn){
+          var delBtn = el("span", "color:#8a8580;font-size:16px;padding:4px 8px;cursor:pointer;flex-shrink:0;", "×");
+          delBtn.setAttribute("data-del", val);
+          opt.appendChild(delBtn);
+        }
         dd.appendChild(opt);
       })(s);
       count++;
@@ -820,6 +849,10 @@ function autoTextInput(value, onChange, placeholder, width, suggestFn, onSelectC
         hideAutoDropdown();
         render();
       };
+      dd._deleteCb = deleteFn ? function(val){
+        deleteFn(val);
+        showDropdown(inp.value);
+      } : null;
     } else {
       dd.style.display = "none";
     }
@@ -1916,17 +1949,17 @@ function render(){
       wc.appendChild(el("div", "font-size:11px;color:#5a9e6f;font-weight:600;letter-spacing:1px;margin-bottom:8px;", "WALLS"));
       var wColorRow = flexRow([], 6, "margin-bottom:6px;");
       wColorRow.appendChild(span("Color", "#8a8580", "font-size:10px;min-width:48px;"));
-      wColorRow.appendChild(autoTextInput(ar.wallColor, function(v){ ar.wallColor = v; }, "e.g. Navy Blue", null, function(){ return getJobSuggestions(job, "color"); }));
+      wColorRow.appendChild(autoTextInput(ar.wallColor, function(v){ ar.wallColor = v; }, "e.g. Navy Blue", null, function(){ return getJobSuggestions(job, "color"); }, null, function(v){ removeJobSuggestion(job, "color", v); }));
       wc.appendChild(wColorRow);
       var wPrimRow = flexRow([], 6, "margin-bottom:6px;");
       wPrimRow.appendChild(span("Primer", "#b07acc", "font-size:10px;min-width:48px;font-weight:600;"));
-      wPrimRow.appendChild(autoTextInput(ar.wallPrimerProduct, function(v){ ar.wallPrimerProduct = v; }, "e.g. Kilz Original", null, function(){ return getJobSuggestions(job, "product"); }, function(v){ if(v && v.trim() && !pi2(ar.quickPrimerCoats)){ ar.quickPrimerCoats = 1; } var p = getJobProductPrice(job, v); if(p){ ar.wallPrimerPricePerGal = p; } saveState(); }));
+      wPrimRow.appendChild(autoTextInput(ar.wallPrimerProduct, function(v){ ar.wallPrimerProduct = v; }, "e.g. Kilz Original", null, function(){ return getJobSuggestions(job, "product"); }, function(v){ if(!v || !v.trim()){ ar.wallPrimerPricePerGal = ""; ar.quickPrimerCoats = 0; } else { if(!pi2(ar.quickPrimerCoats)) ar.quickPrimerCoats = 1; var p = getJobProductPrice(job, v); if(p) ar.wallPrimerPricePerGal = p; } saveState(); }, function(v){ removeJobSuggestion(job, "product", v); }));
       wPrimRow.appendChild(span("$/gal", "#8a8580", "font-size:10px;"));
       wPrimRow.appendChild(numInput(ar.wallPrimerPricePerGal, function(v){ ar.wallPrimerPricePerGal = v; }, 55));
       wc.appendChild(wPrimRow);
       var wProdRow = flexRow([], 6, "margin-bottom:6px;");
       wProdRow.appendChild(span("Product", "#5a9e6f", "font-size:10px;min-width:48px;font-weight:600;"));
-      wProdRow.appendChild(autoTextInput(ar.wallProduct, function(v){ ar.wallProduct = v; }, "e.g. Duration Semi-Gloss", null, function(){ return getJobSuggestions(job, "product"); }, function(v){ var p = getJobProductPrice(job, v); if(p){ ar.wallPricePerGal = p; } saveState(); }));
+      wProdRow.appendChild(autoTextInput(ar.wallProduct, function(v){ ar.wallProduct = v; }, "e.g. Duration Semi-Gloss", null, function(){ return getJobSuggestions(job, "product"); }, function(v){ if(!v || !v.trim()){ ar.wallPricePerGal = ""; } else { var p = getJobProductPrice(job, v); if(p) ar.wallPricePerGal = p; } saveState(); }, function(v){ removeJobSuggestion(job, "product", v); }));
       wProdRow.appendChild(span("$/gal", "#8a8580", "font-size:10px;"));
       wProdRow.appendChild(numInput(ar.wallPricePerGal, function(v){ ar.wallPricePerGal = v; }, 55));
       wc.appendChild(wProdRow);
@@ -1954,17 +1987,17 @@ function render(){
       if(ar.includeCeiling){
         var cColorRow = flexRow([], 6, "margin-bottom:6px;");
         cColorRow.appendChild(span("Color", "#8a8580", "font-size:10px;min-width:48px;"));
-        cColorRow.appendChild(autoTextInput(ar.ceilingColor, function(v){ ar.ceilingColor = v; }, "e.g. Ceiling White", null, function(){ return getJobSuggestions(job, "color"); }));
+        cColorRow.appendChild(autoTextInput(ar.ceilingColor, function(v){ ar.ceilingColor = v; }, "e.g. Ceiling White", null, function(){ return getJobSuggestions(job, "color"); }, null, function(v){ removeJobSuggestion(job, "color", v); }));
         cc.appendChild(cColorRow);
         var cPrimRow = flexRow([], 6, "margin-bottom:6px;");
         cPrimRow.appendChild(span("Primer", "#b07acc", "font-size:10px;min-width:48px;font-weight:600;"));
-        cPrimRow.appendChild(autoTextInput(ar.ceilingPrimerProduct, function(v){ ar.ceilingPrimerProduct = v; }, "e.g. Kilz Original", null, function(){ return getJobSuggestions(job, "product"); }, function(v){ if(v && v.trim() && !pi2(ar.ceilingPrimerCoats)){ ar.ceilingPrimerCoats = 1; } var p = getJobProductPrice(job, v); if(p){ ar.ceilingPrimerPricePerGal = p; } saveState(); }));
+        cPrimRow.appendChild(autoTextInput(ar.ceilingPrimerProduct, function(v){ ar.ceilingPrimerProduct = v; }, "e.g. Kilz Original", null, function(){ return getJobSuggestions(job, "product"); }, function(v){ if(!v || !v.trim()){ ar.ceilingPrimerPricePerGal = ""; ar.ceilingPrimerCoats = 0; } else { if(!pi2(ar.ceilingPrimerCoats)) ar.ceilingPrimerCoats = 1; var p = getJobProductPrice(job, v); if(p) ar.ceilingPrimerPricePerGal = p; } saveState(); }, function(v){ removeJobSuggestion(job, "product", v); }));
         cPrimRow.appendChild(span("$/gal", "#8a8580", "font-size:10px;"));
         cPrimRow.appendChild(numInput(ar.ceilingPrimerPricePerGal, function(v){ ar.ceilingPrimerPricePerGal = v; }, 55));
         cc.appendChild(cPrimRow);
         var cProdRow = flexRow([], 6, "margin-bottom:6px;");
         cProdRow.appendChild(span("Product", "#5a9e6f", "font-size:10px;min-width:48px;font-weight:600;"));
-        cProdRow.appendChild(autoTextInput(ar.ceilingProduct, function(v){ ar.ceilingProduct = v; }, "e.g. Flat Ceiling Paint", null, function(){ return getJobSuggestions(job, "product"); }, function(v){ var p = getJobProductPrice(job, v); if(p){ ar.ceilingPricePerGal = p; } saveState(); }));
+        cProdRow.appendChild(autoTextInput(ar.ceilingProduct, function(v){ ar.ceilingProduct = v; }, "e.g. Flat Ceiling Paint", null, function(){ return getJobSuggestions(job, "product"); }, function(v){ if(!v || !v.trim()){ ar.ceilingPricePerGal = ""; } else { var p = getJobProductPrice(job, v); if(p) ar.ceilingPricePerGal = p; } saveState(); }, function(v){ removeJobSuggestion(job, "product", v); }));
         cProdRow.appendChild(span("$/gal", "#8a8580", "font-size:10px;"));
         cProdRow.appendChild(numInput(ar.ceilingPricePerGal, function(v){ ar.ceilingPricePerGal = v; }, 55));
         cc.appendChild(cProdRow);
@@ -1989,17 +2022,17 @@ function render(){
       tc2.appendChild(el("div", "font-size:11px;color:#d4a843;font-weight:600;letter-spacing:1px;margin-bottom:8px;", "TRIM & FRAMES"));
       var tColorRow = flexRow([], 6, "margin-bottom:6px;");
       tColorRow.appendChild(span("Color", "#8a8580", "font-size:10px;min-width:48px;"));
-      tColorRow.appendChild(autoTextInput(ar.trimColor, function(v){ ar.trimColor = v; }, "e.g. SW Extra White", null, function(){ return getJobSuggestions(job, "color"); }));
+      tColorRow.appendChild(autoTextInput(ar.trimColor, function(v){ ar.trimColor = v; }, "e.g. SW Extra White", null, function(){ return getJobSuggestions(job, "color"); }, null, function(v){ removeJobSuggestion(job, "color", v); }));
       tc2.appendChild(tColorRow);
       var tPrimRow = flexRow([], 6, "margin-bottom:6px;");
       tPrimRow.appendChild(span("Primer", "#b07acc", "font-size:10px;min-width:48px;font-weight:600;"));
-      tPrimRow.appendChild(autoTextInput(ar.trimPrimerProduct, function(v){ ar.trimPrimerProduct = v; }, "e.g. BIN Shellac Primer", null, function(){ return getJobSuggestions(job, "product"); }, function(v){ if(v && v.trim() && !pi2(ar.baseboardPrimerCoats)){ ar.baseboardPrimerCoats = 1; } var p = getJobProductPrice(job, v); if(p){ ar.trimPrimerPricePerGal = p; } saveState(); }));
+      tPrimRow.appendChild(autoTextInput(ar.trimPrimerProduct, function(v){ ar.trimPrimerProduct = v; }, "e.g. BIN Shellac Primer", null, function(){ return getJobSuggestions(job, "product"); }, function(v){ if(!v || !v.trim()){ ar.trimPrimerPricePerGal = ""; ar.baseboardPrimerCoats = 0; } else { if(!pi2(ar.baseboardPrimerCoats)) ar.baseboardPrimerCoats = 1; var p = getJobProductPrice(job, v); if(p) ar.trimPrimerPricePerGal = p; } saveState(); }, function(v){ removeJobSuggestion(job, "product", v); }));
       tPrimRow.appendChild(span("$/gal", "#8a8580", "font-size:10px;"));
       tPrimRow.appendChild(numInput(ar.trimPrimerPricePerGal, function(v){ ar.trimPrimerPricePerGal = v; }, 55));
       tc2.appendChild(tPrimRow);
       var tProdRow = flexRow([], 6, "margin-bottom:10px;");
       tProdRow.appendChild(span("Product", "#5a9e6f", "font-size:10px;min-width:48px;font-weight:600;"));
-      tProdRow.appendChild(autoTextInput(ar.trimProduct, function(v){ ar.trimProduct = v; }, "e.g. ProClassic Semi-Gloss", null, function(){ return getJobSuggestions(job, "product"); }, function(v){ var p = getJobProductPrice(job, v); if(p){ ar.trimPricePerGal = p; } saveState(); }));
+      tProdRow.appendChild(autoTextInput(ar.trimProduct, function(v){ ar.trimProduct = v; }, "e.g. ProClassic Semi-Gloss", null, function(){ return getJobSuggestions(job, "product"); }, function(v){ if(!v || !v.trim()){ ar.trimPricePerGal = ""; } else { var p = getJobProductPrice(job, v); if(p) ar.trimPricePerGal = p; } saveState(); }, function(v){ removeJobSuggestion(job, "product", v); }));
       tProdRow.appendChild(span("$/gal", "#8a8580", "font-size:10px;"));
       tProdRow.appendChild(numInput(ar.trimPricePerGal, function(v){ ar.trimPricePerGal = v; }, 55));
       tc2.appendChild(tProdRow);
@@ -2120,13 +2153,20 @@ loadState();
   }
 })();
 
-// Global handler: tapping a dropdown option picks it
+// Global handler: tapping a dropdown option picks it, × deletes it
 document.addEventListener("click", function(e){
   var dd = _autoDropdown;
   if(!dd || dd.style.display === "none") return;
   if(dd.contains(e.target)){
-    var val = e.target.textContent;
-    if(dd._pickCb) dd._pickCb(val);
+    var t = e.target;
+    // Check if × delete button was clicked
+    if(t.getAttribute("data-del")){
+      if(dd._deleteCb) dd._deleteCb(t.getAttribute("data-del"));
+      return;
+    }
+    // Otherwise pick the value — get it from data-val or parent's data-val
+    var val = t.getAttribute("data-val") || (t.parentElement && t.parentElement.getAttribute("data-val"));
+    if(val && dd._pickCb) dd._pickCb(val);
   }
   /* Don't hide/render on clicks elsewhere — the input's onblur handles that */
 }, true);
