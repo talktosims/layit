@@ -1842,7 +1842,7 @@ function render(){
       wPrimRow.appendChild(numInput(ar.wallPrimerPricePerGal, function(v){ ar.wallPrimerPricePerGal = v; }, 55));
       wc.appendChild(wPrimRow);
       var wProdRow = flexRow([], 6, "margin-bottom:6px;");
-      wProdRow.appendChild(span("Topcoat", "#5a9e6f", "font-size:10px;min-width:48px;font-weight:600;"));
+      wProdRow.appendChild(span("Product", "#5a9e6f", "font-size:10px;min-width:48px;font-weight:600;"));
       wProdRow.appendChild(autoTextInput(ar.wallProduct, function(v){ ar.wallProduct = v; }, "e.g. Duration Semi-Gloss", null, function(){ return getJobSuggestions(job, "product"); }));
       wProdRow.appendChild(span("$/gal", "#8a8580", "font-size:10px;"));
       wProdRow.appendChild(numInput(ar.wallPricePerGal, function(v){ ar.wallPricePerGal = v; }, 55));
@@ -1880,7 +1880,7 @@ function render(){
         cPrimRow.appendChild(numInput(ar.ceilingPrimerPricePerGal, function(v){ ar.ceilingPrimerPricePerGal = v; }, 55));
         cc.appendChild(cPrimRow);
         var cProdRow = flexRow([], 6, "margin-bottom:6px;");
-        cProdRow.appendChild(span("Topcoat", "#5a9e6f", "font-size:10px;min-width:48px;font-weight:600;"));
+        cProdRow.appendChild(span("Product", "#5a9e6f", "font-size:10px;min-width:48px;font-weight:600;"));
         cProdRow.appendChild(autoTextInput(ar.ceilingProduct, function(v){ ar.ceilingProduct = v; }, "e.g. Flat Ceiling Paint", null, function(){ return getJobSuggestions(job, "product"); }));
         cProdRow.appendChild(span("$/gal", "#8a8580", "font-size:10px;"));
         cProdRow.appendChild(numInput(ar.ceilingPricePerGal, function(v){ ar.ceilingPricePerGal = v; }, 55));
@@ -1915,7 +1915,7 @@ function render(){
       tPrimRow.appendChild(numInput(ar.trimPrimerPricePerGal, function(v){ ar.trimPrimerPricePerGal = v; }, 55));
       tc2.appendChild(tPrimRow);
       var tProdRow = flexRow([], 6, "margin-bottom:10px;");
-      tProdRow.appendChild(span("Topcoat", "#5a9e6f", "font-size:10px;min-width:48px;font-weight:600;"));
+      tProdRow.appendChild(span("Product", "#5a9e6f", "font-size:10px;min-width:48px;font-weight:600;"));
       tProdRow.appendChild(autoTextInput(ar.trimProduct, function(v){ ar.trimProduct = v; }, "e.g. ProClassic Semi-Gloss", null, function(){ return getJobSuggestions(job, "product"); }));
       tProdRow.appendChild(span("$/gal", "#8a8580", "font-size:10px;"));
       tProdRow.appendChild(numInput(ar.trimPricePerGal, function(v){ ar.trimPricePerGal = v; }, 55));
