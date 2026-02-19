@@ -722,7 +722,24 @@ function getJobSuggestions(job, field){
   return list;
 }
 
-function autoTextInput(value, onChange, placeholder, width, suggestFn){
+function getJobProductPrice(job, productName){
+  // Look up the most recent $/gal for a product name across all rooms in the job
+  if(!productName || !productName.trim()) return "";
+  var pLc = productName.trim().toLowerCase();
+  // Check rooms in reverse order (most recent first)
+  for(var i = job.rooms.length - 1; i >= 0; i--){
+    var rm = job.rooms[i];
+    if((rm.wallPrimerProduct||"").trim().toLowerCase() === pLc && rm.wallPrimerPricePerGal) return rm.wallPrimerPricePerGal;
+    if((rm.wallProduct||"").trim().toLowerCase() === pLc && rm.wallPricePerGal) return rm.wallPricePerGal;
+    if((rm.ceilingPrimerProduct||"").trim().toLowerCase() === pLc && rm.ceilingPrimerPricePerGal) return rm.ceilingPrimerPricePerGal;
+    if((rm.ceilingProduct||"").trim().toLowerCase() === pLc && rm.ceilingPricePerGal) return rm.ceilingPricePerGal;
+    if((rm.trimPrimerProduct||"").trim().toLowerCase() === pLc && rm.trimPrimerPricePerGal) return rm.trimPrimerPricePerGal;
+    if((rm.trimProduct||"").trim().toLowerCase() === pLc && rm.trimPricePerGal) return rm.trimPricePerGal;
+  }
+  return "";
+}
+
+function autoTextInput(value, onChange, placeholder, width, suggestFn, onSelectCb){
   var wrap = el("div", "position:relative;" + (width ? "width:" + width + "px;" : "flex:1;min-width:80px;"));
   var inp = el("input", "background:#2e2e2e;color:#e8e4de;border:1px solid #3a3a3a;border-radius:4px;padding:6px 8px;outline:none;font-size:11px;width:100%;font-family:inherit;box-sizing:border-box;text-overflow:ellipsis;");
   inp.type = "text";
@@ -751,6 +768,7 @@ function autoTextInput(value, onChange, placeholder, width, suggestFn){
           e.preventDefault();
           inp.value = val;
           onChange(val);
+          if(onSelectCb) onSelectCb(val);
           saveState();
           dropdown.style.display = "none";
         };
@@ -769,6 +787,7 @@ function autoTextInput(value, onChange, placeholder, width, suggestFn){
     buildOptions(e.target.value);
   };
   inp.onblur = function(){
+    if(onSelectCb) onSelectCb(inp.value);
     setTimeout(function(){ dropdown.style.display = "none"; render(); }, 200);
   };
 
@@ -1837,13 +1856,13 @@ function render(){
       wc.appendChild(wColorRow);
       var wPrimRow = flexRow([], 6, "margin-bottom:6px;");
       wPrimRow.appendChild(span("Primer", "#b07acc", "font-size:10px;min-width:48px;font-weight:600;"));
-      wPrimRow.appendChild(autoTextInput(ar.wallPrimerProduct, function(v){ ar.wallPrimerProduct = v; }, "e.g. Kilz Original", null, function(){ return getJobSuggestions(job, "product"); }));
+      wPrimRow.appendChild(autoTextInput(ar.wallPrimerProduct, function(v){ ar.wallPrimerProduct = v; }, "e.g. Kilz Original", null, function(){ return getJobSuggestions(job, "product"); }, function(v){ if(!ar.wallPrimerPricePerGal){ var p = getJobProductPrice(job, v); if(p){ ar.wallPrimerPricePerGal = p; saveState(); } } }));
       wPrimRow.appendChild(span("$/gal", "#8a8580", "font-size:10px;"));
       wPrimRow.appendChild(numInput(ar.wallPrimerPricePerGal, function(v){ ar.wallPrimerPricePerGal = v; }, 55));
       wc.appendChild(wPrimRow);
       var wProdRow = flexRow([], 6, "margin-bottom:6px;");
       wProdRow.appendChild(span("Product", "#5a9e6f", "font-size:10px;min-width:48px;font-weight:600;"));
-      wProdRow.appendChild(autoTextInput(ar.wallProduct, function(v){ ar.wallProduct = v; }, "e.g. Duration Semi-Gloss", null, function(){ return getJobSuggestions(job, "product"); }));
+      wProdRow.appendChild(autoTextInput(ar.wallProduct, function(v){ ar.wallProduct = v; }, "e.g. Duration Semi-Gloss", null, function(){ return getJobSuggestions(job, "product"); }, function(v){ if(!ar.wallPricePerGal){ var p = getJobProductPrice(job, v); if(p){ ar.wallPricePerGal = p; saveState(); } } }));
       wProdRow.appendChild(span("$/gal", "#8a8580", "font-size:10px;"));
       wProdRow.appendChild(numInput(ar.wallPricePerGal, function(v){ ar.wallPricePerGal = v; }, 55));
       wc.appendChild(wProdRow);
@@ -1875,13 +1894,13 @@ function render(){
         cc.appendChild(cColorRow);
         var cPrimRow = flexRow([], 6, "margin-bottom:6px;");
         cPrimRow.appendChild(span("Primer", "#b07acc", "font-size:10px;min-width:48px;font-weight:600;"));
-        cPrimRow.appendChild(autoTextInput(ar.ceilingPrimerProduct, function(v){ ar.ceilingPrimerProduct = v; }, "e.g. Kilz Original", null, function(){ return getJobSuggestions(job, "product"); }));
+        cPrimRow.appendChild(autoTextInput(ar.ceilingPrimerProduct, function(v){ ar.ceilingPrimerProduct = v; }, "e.g. Kilz Original", null, function(){ return getJobSuggestions(job, "product"); }, function(v){ if(!ar.ceilingPrimerPricePerGal){ var p = getJobProductPrice(job, v); if(p){ ar.ceilingPrimerPricePerGal = p; saveState(); } } }));
         cPrimRow.appendChild(span("$/gal", "#8a8580", "font-size:10px;"));
         cPrimRow.appendChild(numInput(ar.ceilingPrimerPricePerGal, function(v){ ar.ceilingPrimerPricePerGal = v; }, 55));
         cc.appendChild(cPrimRow);
         var cProdRow = flexRow([], 6, "margin-bottom:6px;");
         cProdRow.appendChild(span("Product", "#5a9e6f", "font-size:10px;min-width:48px;font-weight:600;"));
-        cProdRow.appendChild(autoTextInput(ar.ceilingProduct, function(v){ ar.ceilingProduct = v; }, "e.g. Flat Ceiling Paint", null, function(){ return getJobSuggestions(job, "product"); }));
+        cProdRow.appendChild(autoTextInput(ar.ceilingProduct, function(v){ ar.ceilingProduct = v; }, "e.g. Flat Ceiling Paint", null, function(){ return getJobSuggestions(job, "product"); }, function(v){ if(!ar.ceilingPricePerGal){ var p = getJobProductPrice(job, v); if(p){ ar.ceilingPricePerGal = p; saveState(); } } }));
         cProdRow.appendChild(span("$/gal", "#8a8580", "font-size:10px;"));
         cProdRow.appendChild(numInput(ar.ceilingPricePerGal, function(v){ ar.ceilingPricePerGal = v; }, 55));
         cc.appendChild(cProdRow);
@@ -1910,13 +1929,13 @@ function render(){
       tc2.appendChild(tColorRow);
       var tPrimRow = flexRow([], 6, "margin-bottom:6px;");
       tPrimRow.appendChild(span("Primer", "#b07acc", "font-size:10px;min-width:48px;font-weight:600;"));
-      tPrimRow.appendChild(autoTextInput(ar.trimPrimerProduct, function(v){ ar.trimPrimerProduct = v; }, "e.g. BIN Shellac Primer", null, function(){ return getJobSuggestions(job, "product"); }));
+      tPrimRow.appendChild(autoTextInput(ar.trimPrimerProduct, function(v){ ar.trimPrimerProduct = v; }, "e.g. BIN Shellac Primer", null, function(){ return getJobSuggestions(job, "product"); }, function(v){ if(!ar.trimPrimerPricePerGal){ var p = getJobProductPrice(job, v); if(p){ ar.trimPrimerPricePerGal = p; saveState(); } } }));
       tPrimRow.appendChild(span("$/gal", "#8a8580", "font-size:10px;"));
       tPrimRow.appendChild(numInput(ar.trimPrimerPricePerGal, function(v){ ar.trimPrimerPricePerGal = v; }, 55));
       tc2.appendChild(tPrimRow);
       var tProdRow = flexRow([], 6, "margin-bottom:10px;");
       tProdRow.appendChild(span("Product", "#5a9e6f", "font-size:10px;min-width:48px;font-weight:600;"));
-      tProdRow.appendChild(autoTextInput(ar.trimProduct, function(v){ ar.trimProduct = v; }, "e.g. ProClassic Semi-Gloss", null, function(){ return getJobSuggestions(job, "product"); }));
+      tProdRow.appendChild(autoTextInput(ar.trimProduct, function(v){ ar.trimProduct = v; }, "e.g. ProClassic Semi-Gloss", null, function(){ return getJobSuggestions(job, "product"); }, function(v){ if(!ar.trimPricePerGal){ var p = getJobProductPrice(job, v); if(p){ ar.trimPricePerGal = p; saveState(); } } }));
       tProdRow.appendChild(span("$/gal", "#8a8580", "font-size:10px;"));
       tProdRow.appendChild(numInput(ar.trimPricePerGal, function(v){ ar.trimPricePerGal = v; }, 55));
       tc2.appendChild(tProdRow);
