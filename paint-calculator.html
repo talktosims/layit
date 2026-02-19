@@ -250,10 +250,28 @@ function calcSurface(s){
   if(info.u === "fixed"){
     var q = pi2(s.qty) || 1;
     var price = 0;
-    if(s.type === "door_face") price = (s.doorSides === "both" ? 100 : 50) * q;
-    else if(s.type === "door_frame") price = 200 * q;
-    else if(s.type === "window_frame") price = 125 * q;
-    return {sqft:0, lf:0, gal:0, pg:0, tg:0, price:price};
+    var pg = 0, tg = 0;
+    if(s.type === "door_face"){
+      var sides = s.doorSides === "both" ? 2 : 1;
+      price = (s.doorSides === "both" ? 100 : 50) * q;
+      // 21 sf per side per door, divided by coverage rate, per coat
+      var dfSf = 21 * sides * q;
+      pg = (pc > 0) ? (dfSf * pc) / COV.primerSqft : 0;
+      tg = (tc > 0) ? (dfSf * tc) / COV.sqft : 0;
+    } else if(s.type === "door_frame"){
+      price = 200 * q;
+      // ~30 lf equivalent per frame
+      var dfLf = 30 * q;
+      pg = (pc > 0) ? (dfLf * pc) / COV.primerLinear : 0;
+      tg = (tc > 0) ? (dfLf * tc) / COV.linear : 0;
+    } else if(s.type === "window_frame"){
+      price = 125 * q;
+      // ~20 lf equivalent per frame
+      var wfLf = 20 * q;
+      pg = (pc > 0) ? (wfLf * pc) / COV.primerLinear : 0;
+      tg = (tc > 0) ? (wfLf * tc) / COV.linear : 0;
+    }
+    return {sqft:0, lf:0, gal:pg+tg, pg:pg, tg:tg, price:price};
   }
 
   if(info.u === "linear"){
@@ -301,9 +319,9 @@ function calcRoomTotal(rm){
       r = calcSurface(extras[i]);
       out.sqft += r.sqft; out.billable += r.sqft; out.lf += r.lf;
       out.gal += r.gal; out.pg += r.pg; out.tg += r.tg; out.price += r.price;
-      // Trim extras (trim, door_frame) go into trim category
+      // Trim extras go into trim category
       var et = extras[i].type;
-      if(et === "trim" || et === "baseboard" || et === "door_frame"){
+      if(et === "trim" || et === "baseboard" || et === "door_frame" || et === "door_face" || et === "window_frame"){
         out.trimPG += r.pg; out.trimTG += r.tg;
       }
     }
@@ -315,7 +333,7 @@ function calcRoomTotal(rm){
       var st = rm.surfaces[i].type;
       if(st === "wall"){ out.wallPG += r.pg; out.wallTG += r.tg; }
       else if(st === "ceiling"){ out.ceilPG += r.pg; out.ceilTG += r.tg; }
-      else if(st === "trim" || st === "baseboard" || st === "door_frame"){ out.trimPG += r.pg; out.trimTG += r.tg; }
+      else if(st === "trim" || st === "baseboard" || st === "door_frame" || st === "door_face" || st === "window_frame"){ out.trimPG += r.pg; out.trimTG += r.tg; }
     }
   }
   return out;
@@ -403,7 +421,7 @@ function calcJobPaintOrder(job){
       for(var j = 0; j < extras.length; j++){
         var sr = calcSurface(extras[j]);
         var et = extras[j].type;
-        if(et === "trim" || et === "baseboard" || et === "door_frame"){
+        if(et === "trim" || et === "baseboard" || et === "door_frame" || et === "door_face" || et === "window_frame"){
           trimPG += sr.pg; trimTG += sr.tg;
         }
       }
@@ -423,7 +441,7 @@ function calcJobPaintOrder(job){
         } else if(st === "ceiling"){
           if(sr2.pg > 0) addEntry("Ceiling", s.color, pp || "Primer", sr2.pg, 0, rn);
           if(sr2.tg > 0) addEntry("Ceiling", s.color, tp || "Topcoat", 0, sr2.tg, rn);
-        } else if(st === "trim" || st === "baseboard" || st === "door_frame"){
+        } else if(st === "trim" || st === "baseboard" || st === "door_frame" || st === "door_face" || st === "window_frame"){
           if(sr2.pg > 0) addEntry("Trim/Frames", s.color, pp || "Primer", sr2.pg, 0, rn);
           if(sr2.tg > 0) addEntry("Trim/Frames", s.color, tp || "Topcoat", 0, sr2.tg, rn);
         }
@@ -488,7 +506,7 @@ function calcJobMaterialsDetail(job){
       for(var j = 0; j < extras.length; j++){
         var sr = calcSurface(extras[j]);
         var et = extras[j].type;
-        if(et === "trim" || et === "baseboard" || et === "door_frame"){ trimPG += sr.pg; trimTG += sr.tg; }
+        if(et === "trim" || et === "baseboard" || et === "door_frame" || et === "door_face" || et === "window_frame"){ trimPG += sr.pg; trimTG += sr.tg; }
       }
       if(trimPG > 0) addEntry("Trim/Frames", rm.trimColor, rm.trimPrimerProduct || "Primer", trimPG, 0, rn, tpp);
       if(trimTG > 0) addEntry("Trim/Frames", rm.trimColor, rm.trimProduct || "Topcoat", 0, trimTG, rn, tp);
@@ -505,7 +523,7 @@ function calcJobMaterialsDetail(job){
         } else if(st === "ceiling"){
           if(sr2.pg > 0) addEntry("Ceiling", s.color, sPrimerProd || "Primer", sr2.pg, 0, rn, sPP);
           if(sr2.tg > 0) addEntry("Ceiling", s.color, sTopProd || "Topcoat", 0, sr2.tg, rn, sTP);
-        } else if(st === "trim" || st === "baseboard" || st === "door_frame"){
+        } else if(st === "trim" || st === "baseboard" || st === "door_frame" || st === "door_face" || st === "window_frame"){
           if(sr2.pg > 0) addEntry("Trim/Frames", s.color, sPrimerProd || "Primer", sr2.pg, 0, rn, sPP);
           if(sr2.tg > 0) addEntry("Trim/Frames", s.color, sTopProd || "Topcoat", 0, sr2.tg, rn, sTP);
         }
@@ -923,14 +941,29 @@ function renderSurfCard(surf, types, isExtra){
     }
     wrapper.appendChild(fr);
 
-    var bott = el("div", "margin-top:10px;padding-top:8px;border-top:1px solid #3a3a3a;display:flex;justify-content:space-between;font-size:11px;");
+    // Coat counts for paint consumption
+    var fCoatRow = flexRow([], 8, "margin-top:6px;");
+    fCoatRow.appendChild(span("Primer", "#b07acc", "font-size:10px;"));
+    fCoatRow.appendChild(numInput(surf.primerCoats, function(v){ surf.primerCoats = v; }, 38));
+    fCoatRow.appendChild(span("Topcoat", "#5a9e6f", "font-size:10px;"));
+    fCoatRow.appendChild(numInput(surf.topCoats, function(v){ surf.topCoats = v; }, 38));
+    wrapper.appendChild(fCoatRow);
+
+    var bott = el("div", "margin-top:10px;padding-top:8px;border-top:1px solid #3a3a3a;font-size:11px;");
+    var descRow = el("div", "display:flex;justify-content:space-between;margin-bottom:4px;");
     var desc = surf.type === "door_face"
       ? (surf.qty || 1) + "× " + (surf.doorSides === "both" ? "$100" : "$50")
       : surf.type === "door_frame"
       ? (surf.qty || 1) + "× $200"
       : (surf.qty || 1) + "× $125";
-    bott.appendChild(span(desc, "#8a8580"));
-    bott.appendChild(span("$" + sr.price, "#d4a843", "font-weight:600;"));
+    descRow.appendChild(span(desc, "#8a8580"));
+    descRow.appendChild(span("$" + sr.price, "#d4a843", "font-weight:600;"));
+    bott.appendChild(descRow);
+    if(sr.pg > 0 || sr.tg > 0){
+      var galRow2 = el("div", "display:flex;justify-content:flex-end;");
+      galRow2.appendChild(galSpan(sr.pg, sr.tg));
+      bott.appendChild(galRow2);
+    }
     wrapper.appendChild(bott);
 
   } else if(isLinear){
