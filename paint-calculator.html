@@ -235,7 +235,7 @@ function makeJob(o){
     id:uid(), name:"New Job", rooms:[makeRoom()],
     activeRoomId:null, pricePerSqftPerCoat:1,
     enamelRate:ENAMEL_RATE, priceOverride:"",
-    materialsDeduction:"", builderSuppliesPaint:false,
+    materialsDeduction:"", builderSuppliesPaint:false, builderSuppliesConsumables:false,
     consumables:[],
     hoursWorked:""
   };
@@ -731,6 +731,7 @@ function migrateJobs(jobs){
       // Migrate: if they had a materials deduction, they were using builder-supplied paint
       jobs[j].builderSuppliesPaint = pf(jobs[j].materialsDeduction) > 0;
     }
+    if(jobs[j].builderSuppliesConsumables === undefined) jobs[j].builderSuppliesConsumables = false;
     if(jobs[j].consumables === undefined) jobs[j].consumables = [];
     var mCons = jobs[j].consumables;
     for(var mc = 0; mc < mCons.length; mc++){ if(mCons[mc].qty === undefined) mCons[mc].qty = 1; }
@@ -1735,13 +1736,13 @@ function renderInvoice(job, body, rate, er){
   if(job.builderSuppliesPaint && hasAnyPrice && matGrandTotal > 0){
     inv.appendChild(invRow("Paint Materials Deduction (builder supplied)", "−$" + matGrandTotal.toFixed(2)));
   }
-
-  var grandTotal;
-  if(job.builderSuppliesPaint){
-    grandTotal = laborPrice + conTotal - (hasAnyPrice ? matGrandTotal : 0);
-  } else {
-    grandTotal = laborPrice + conTotal;
+  if(job.builderSuppliesConsumables && conTotal > 0){
+    inv.appendChild(invRow("Consumables Deduction (builder supplied)", "−$" + conTotal.toFixed(2)));
   }
+
+  var paintDeductInv = (job.builderSuppliesPaint && hasAnyPrice) ? matGrandTotal : 0;
+  var consDeductInv = job.builderSuppliesConsumables ? conTotal : 0;
+  var grandTotal = laborPrice + conTotal - paintDeductInv - consDeductInv;
   var gtRow = el("div", "display:flex;justify-content:space-between;padding:12px 0;border-top:3px double #1a1a1a;margin-top:8px;");
   gtRow.appendChild(el("div", "font-size:14px;font-weight:700;color:#1a1a1a;letter-spacing:.5px;", "TOTAL"));
   gtRow.appendChild(el("div", "font-size:20px;font-weight:700;color:#1a1a1a;", "$" + grandTotal.toFixed(2)));
@@ -1896,6 +1897,7 @@ function renderInvoice(job, body, rate, er){
       text += "Labor: $" + laborPrice.toFixed(2) + "\n";
       if(conTotal > 0) text += "Consumables: $" + conTotal.toFixed(2) + "\n";
       if(job.builderSuppliesPaint && hasAnyPrice && matGrandTotal > 0) text += "Paint Materials Deduction (builder supplied): −$" + matGrandTotal.toFixed(2) + "\n";
+      if(job.builderSuppliesConsumables && conTotal > 0) text += "Consumables Deduction (builder supplied): −$" + conTotal.toFixed(2) + "\n";
       text += "\nTOTAL: $" + grandTotal.toFixed(2);
       navigator.share({ title: job.name + " — Invoice", text: text }).catch(function(){});
     }, "background:#2e2e2e;border:1px solid #3a3a3a;border-radius:4px;color:#e8e4de;font-size:12px;padding:10px 20px;cursor:pointer;font-weight:600;"));
@@ -2126,7 +2128,9 @@ function render(){
   var laborPrice = hasOvr ? pf(job.priceOverride) : autoTotal;
   var matCost = calcJobMaterialsCost(job);
   var consTot = calcConsumablesTotal(job);
-  var totalPrice = job.builderSuppliesPaint ? (laborPrice + consTot - matCost) : (laborPrice + consTot);
+  var paintDeduct = job.builderSuppliesPaint ? matCost : 0;
+  var consDeduct = job.builderSuppliesConsumables ? consTot : 0;
+  var totalPrice = laborPrice + consTot - paintDeduct - consDeduct;
   var fb = calcJobFixed(job);
 
   var tc = card([]);
@@ -2164,9 +2168,23 @@ function render(){
   bspSec.appendChild(bspRow);
   if(job.builderSuppliesPaint && matCost > 0){
     bspSec.appendChild(el("div", "font-size:10px;color:#8a8580;margin-top:4px;",
-      "Paint deduction: −$" + matCost.toFixed(0) + " (Labor $" + laborPrice.toFixed(0) + " − Paint $" + matCost.toFixed(0) + " = $" + (laborPrice - matCost + consTot).toFixed(0) + ")"));
+      "Paint deduction: −$" + matCost.toFixed(0)));
   }
   priceSec.appendChild(bspSec);
+
+  /* Builder Supplies Consumables toggle */
+  var bscSec = el("div", "margin-bottom:8px;");
+  var bscRow = el("div", "display:flex;align-items:center;justify-content:space-between;");
+  bscRow.appendChild(span("Builder Supplies Consumables", "#e8954a", "font-size:10px;font-weight:600;"));
+  bscRow.appendChild(toggleBtn(job.builderSuppliesConsumables ? "Yes" : "No", job.builderSuppliesConsumables, function(){
+    job.builderSuppliesConsumables = !job.builderSuppliesConsumables; saveState(); render();
+  }, "flex:0;padding:4px 12px;"));
+  bscSec.appendChild(bscRow);
+  if(job.builderSuppliesConsumables && consTot > 0){
+    bscSec.appendChild(el("div", "font-size:10px;color:#8a8580;margin-top:4px;",
+      "Consumables deduction: −$" + consTot.toFixed(0)));
+  }
+  priceSec.appendChild(bscSec);
 
   /* Consumables / Extra Materials */
   var conItems = job.consumables || [];
