@@ -233,7 +233,7 @@ function makeRoom(o){
 function makeJob(o){
   var j = {
     id:uid(), name:"New Job", rooms:[makeRoom()],
-    activeRoomId:null, pricePerSqftPerCoat:1,
+    activeRoomId:null, pricePerSqftPerCoat:1, primerPricePerSqftPerCoat:1,
     enamelRate:ENAMEL_RATE, priceOverride:"",
     materialsDeduction:"", builderSuppliesPaint:false, builderSuppliesConsumables:false,
     consumables:[],
@@ -451,11 +451,12 @@ function calcRoomTotal(rm){
   return out;
 }
 
-function calcRoomPrice(rm, rate, enamelRate){
+function calcRoomPrice(rm, rate, primerRate, enamelRate){
   var rt = calcRoomTotal(rm);
-  var coats;
+  var primerCoats, topcoatCoats;
   if(rm.mode === "quick"){
-    coats = pi2(rm.quickPrimerCoats) + pi2(rm.quickTopCoats);
+    primerCoats = pi2(rm.quickPrimerCoats);
+    topcoatCoats = pi2(rm.quickTopCoats);
   } else {
     var sqftSurfs = [];
     for(var i = 0; i < rm.surfaces.length; i++){
@@ -463,22 +464,30 @@ function calcRoomPrice(rm, rate, enamelRate){
       if(inf && inf.u === "sqft") sqftSurfs.push(rm.surfaces[i]);
     }
     if(sqftSurfs.length > 0){
-      var total = 0;
+      var totalP = 0, totalT = 0;
       for(var j = 0; j < sqftSurfs.length; j++){
-        total += pi2(sqftSurfs[j].primerCoats) + pi2(sqftSurfs[j].topCoats);
+        totalP += pi2(sqftSurfs[j].primerCoats);
+        totalT += pi2(sqftSurfs[j].topCoats);
       }
-      coats = total / sqftSurfs.length;
+      primerCoats = totalP / sqftSurfs.length;
+      topcoatCoats = totalT / sqftSurfs.length;
     } else {
-      coats = 0;
+      primerCoats = 0;
+      topcoatCoats = 0;
     }
   }
-  var sfLabor = rt.billable * coats * rate;
+  var primerLabor = rt.billable * primerCoats * (primerRate || rate);
+  var topcoatLabor = rt.billable * topcoatCoats * rate;
+  var sfLabor = primerLabor + topcoatLabor;
   var enLabor = rt.lf * (enamelRate || ENAMEL_RATE);
+  var coats = primerCoats + topcoatCoats;
   return {
-    sfLabor:sfLabor, enLabor:enLabor, fixed:rt.price,
+    sfLabor:sfLabor, primerLabor:primerLabor, topcoatLabor:topcoatLabor,
+    enLabor:enLabor, fixed:rt.price,
     total: sfLabor + enLabor + rt.price,
     sqft:rt.sqft, billable:rt.billable, lf:rt.lf,
-    gal:rt.gal, pg:rt.pg, tg:rt.tg, coats:coats
+    gal:rt.gal, pg:rt.pg, tg:rt.tg,
+    coats:coats, primerCoats:primerCoats, topcoatCoats:topcoatCoats
   };
 }
 
@@ -733,6 +742,7 @@ function migrateJobs(jobs){
       jobs[j].builderSuppliesPaint = pf(jobs[j].materialsDeduction) > 0;
     }
     if(jobs[j].builderSuppliesConsumables === undefined) jobs[j].builderSuppliesConsumables = false;
+    if(jobs[j].primerPricePerSqftPerCoat === undefined) jobs[j].primerPricePerSqftPerCoat = pf(jobs[j].pricePerSqftPerCoat) || 1;
     if(jobs[j].consumables === undefined) jobs[j].consumables = [];
     var mCons = jobs[j].consumables;
     for(var mc = 0; mc < mCons.length; mc++){ if(mCons[mc].qty === undefined) mCons[mc].qty = 1; }
@@ -1443,7 +1453,7 @@ function renderSurfCard(surf, types, isExtra, rm){
 }
 
 /* ── Invoice Renderer ── */
-function renderInvoice(job, body, rate, er){
+function renderInvoice(job, body, rate, primerRate, er){
   // Back button
   var backBtn = btn("← Back", function(){ STATE.view = "rooms"; render(); },
     "background:#2e2e2e;border:1px solid #3a3a3a;border-radius:4px;color:#d4a843;font-size:12px;padding:8px 16px;cursor:pointer;margin-bottom:12px;");
@@ -1483,7 +1493,7 @@ function renderInvoice(job, body, rate, er){
   for(var ri = 0; ri < job.rooms.length; ri++){
     var rm = job.rooms[ri];
     var rn = titleCase(rm.name || ("Room " + (ri + 1)));
-    var rp = calcRoomPrice(rm, rate, er);
+    var rp = calcRoomPrice(rm, rate, primerRate, er);
     var rrt = calcRoomTotal(rm);
     var rmMat = calcRoomMaterialsCost(rm);
 
@@ -1574,7 +1584,8 @@ function renderInvoice(job, body, rate, er){
 
       // Room labor breakdown
       roomBox.appendChild(subHead("Room Labor"));
-      if(rp.sfLabor > 0) roomBox.appendChild(invRow("Walls & ceiling labor (" + rp.billable.toFixed(0) + " sf × " + rp.coats + " coats × $" + rate + "/sf)", "$" + rp.sfLabor.toFixed(2), false, true));
+      if(rp.primerLabor > 0) roomBox.appendChild(invRow("Primer labor (" + rp.billable.toFixed(0) + " sf × " + rp.primerCoats + " coat" + (rp.primerCoats !== 1 ? "s" : "") + " × $" + primerRate + "/sf)", "$" + rp.primerLabor.toFixed(2), false, true));
+      if(rp.topcoatLabor > 0) roomBox.appendChild(invRow("Topcoat labor (" + rp.billable.toFixed(0) + " sf × " + rp.topcoatCoats + " coat" + (rp.topcoatCoats !== 1 ? "s" : "") + " × $" + rate + "/sf)", "$" + rp.topcoatLabor.toFixed(2), false, true));
       if(rp.enLabor > 0) roomBox.appendChild(invRow("Enamel labor (" + rp.lf.toFixed(0) + " lf × $" + er + ")", "$" + rp.enLabor.toFixed(2), false, true));
       if(rp.fixed > 0) roomBox.appendChild(invRow("Fixed items", "$" + rp.fixed.toFixed(2), false, true));
       if(rmMat.total > 0) roomBox.appendChild(invRow("Materials cost", "$" + rmMat.total.toFixed(2), false, true));
@@ -1606,7 +1617,8 @@ function renderInvoice(job, body, rate, er){
       }
       // Room labor
       roomBox.appendChild(subHead("Room Labor"));
-      if(rp.sfLabor > 0) roomBox.appendChild(invRow("Walls & ceiling labor (" + rp.billable.toFixed(0) + " sf × " + rp.coats + " coats × $" + rate + "/sf)", "$" + rp.sfLabor.toFixed(2), false, true));
+      if(rp.primerLabor > 0) roomBox.appendChild(invRow("Primer labor (" + rp.billable.toFixed(0) + " sf × " + rp.primerCoats + " coat" + (rp.primerCoats !== 1 ? "s" : "") + " × $" + primerRate + "/sf)", "$" + rp.primerLabor.toFixed(2), false, true));
+      if(rp.topcoatLabor > 0) roomBox.appendChild(invRow("Topcoat labor (" + rp.billable.toFixed(0) + " sf × " + rp.topcoatCoats + " coat" + (rp.topcoatCoats !== 1 ? "s" : "") + " × $" + rate + "/sf)", "$" + rp.topcoatLabor.toFixed(2), false, true));
       if(rp.enLabor > 0) roomBox.appendChild(invRow("Enamel labor (" + rp.lf.toFixed(0) + " lf × $" + er + ")", "$" + rp.enLabor.toFixed(2), false, true));
       if(rp.fixed > 0) roomBox.appendChild(invRow("Fixed items", "$" + rp.fixed.toFixed(2), false, true));
       if(rmMat.total > 0) roomBox.appendChild(invRow("Materials cost", "$" + rmMat.total.toFixed(2), false, true));
@@ -1709,9 +1721,9 @@ function renderInvoice(job, body, rate, er){
   // ── LABOR SECTION ──
   inv.appendChild(secHead("LABOR", 20));
 
-  var rps = job.rooms.map(function(rm){ return calcRoomPrice(rm, rate, er); });
-  var sfTotal = 0, enTotal = 0, fxTotal = 0;
-  for(var rli = 0; rli < rps.length; rli++){ sfTotal += rps[rli].sfLabor; enTotal += rps[rli].enLabor; fxTotal += rps[rli].fixed; }
+  var rps = job.rooms.map(function(rm){ return calcRoomPrice(rm, rate, primerRate, er); });
+  var sfTotal = 0, enTotal = 0, fxTotal = 0, primerTotal = 0, topcoatTotal = 0;
+  for(var rli = 0; rli < rps.length; rli++){ sfTotal += rps[rli].sfLabor; primerTotal += rps[rli].primerLabor; topcoatTotal += rps[rli].topcoatLabor; enTotal += rps[rli].enLabor; fxTotal += rps[rli].fixed; }
   var autoTotal = sfTotal + enTotal + fxTotal;
   var hasOvr = job.priceOverride != null && job.priceOverride !== "";
   var laborPrice = hasOvr ? pf(job.priceOverride) : autoTotal;
@@ -1727,7 +1739,8 @@ function renderInvoice(job, body, rate, er){
     inv.appendChild(el("div", "font-size:10px;color:#888;margin-top:4px;", "Auto-calculated: $" + autoTotal.toFixed(2) + " → Override applied"));
   } else {
     // Category breakdown
-    if(sfTotal > 0) inv.appendChild(invRow("Walls & ceiling ($" + rate + "/sf/coat)", "$" + sfTotal.toFixed(2), false, true));
+    if(primerTotal > 0) inv.appendChild(invRow("Primer ($" + primerRate + "/sf/coat)", "$" + primerTotal.toFixed(2), false, true));
+    if(topcoatTotal > 0) inv.appendChild(invRow("Topcoat ($" + rate + "/sf/coat)", "$" + topcoatTotal.toFixed(2), false, true));
     if(enTotal > 0) inv.appendChild(invRow("Enamel / trim ($" + er + "/lf)", "$" + enTotal.toFixed(2), false, true));
     if(fxTotal > 0){
       var fb = calcJobFixed(job);
@@ -1868,7 +1881,7 @@ function renderInvoice(job, body, rate, er){
       text += "\n═══ ROOM DETAIL ═══\n";
       for(var si = 0; si < job.rooms.length; si++){
         var srm = job.rooms[si];
-        var srp = calcRoomPrice(srm, rate, er);
+        var srp = calcRoomPrice(srm, rate, primerRate, er);
         var srrt = calcRoomTotal(srm);
         text += "\n── " + titleCase(srm.name || "Room " + (si+1)) + " ── $" + srp.total.toFixed(2) + "\n";
         if(srm.mode === "quick"){
@@ -1882,6 +1895,9 @@ function renderInvoice(job, body, rate, er){
           if(sq.bbFt > 0) text += "Baseboard: " + sq.bbFt.toFixed(1) + " lf\n";
         }
         text += "Totals: " + srp.billable.toFixed(0) + " sf · " + srp.lf.toFixed(0) + " lf · " + c1(srp.pg) + " gal P · " + c1(srp.tg) + " gal T\n";
+        if(srp.primerLabor > 0) text += "Primer labor: $" + srp.primerLabor.toFixed(2) + " ($" + primerRate + "/sf)\n";
+        if(srp.topcoatLabor > 0) text += "Topcoat labor: $" + srp.topcoatLabor.toFixed(2) + " ($" + rate + "/sf)\n";
+        if(srp.enLabor > 0) text += "Enamel labor: $" + srp.enLabor.toFixed(2) + " ($" + er + "/lf)\n";
       }
       // Paint order
       text += "\n═══ PAINT ORDER ═══\n";
@@ -1904,7 +1920,9 @@ function renderInvoice(job, body, rate, er){
         text += "Consumables Subtotal: $" + conTotal.toFixed(2) + "\n";
       }
       text += "\n═══ SUMMARY ═══\n";
-      text += "Labor: $" + laborPrice.toFixed(2) + "\n";
+      text += "Labor: $" + laborPrice.toFixed(2);
+      if(primerTotal > 0 && topcoatTotal > 0) text += " (Primer $" + primerTotal.toFixed(2) + " + Topcoat $" + topcoatTotal.toFixed(2) + ")";
+      text += "\n";
       if(conTotal > 0) text += "Consumables: $" + conTotal.toFixed(2) + "\n";
       if(job.builderSuppliesPaint && hasAnyPrice && matGrandTotal > 0) text += "Paint Materials Deduction (builder supplied): −$" + matGrandTotal.toFixed(2) + "\n";
       if(job.builderSuppliesConsumables && conTotal > 0) text += "Consumables Deduction (builder supplied): −$" + conTotal.toFixed(2) + "\n";
@@ -1923,6 +1941,7 @@ function render(){
   if(!job) return;
   var ar = getActiveRoom();
   var rate = pf(job.pricePerSqftPerCoat) || 1;
+  var primerRate = pf(job.primerPricePerSqftPerCoat) || rate;
   var er = pf(job.enamelRate) || ENAMEL_RATE;
 
   /* Header */
@@ -2104,7 +2123,7 @@ function render(){
   /* Invoice View */
   if(STATE.view === "invoice"){
     body.className = "invoice-view";
-    renderInvoice(job, body, rate, er);
+    renderInvoice(job, body, rate, primerRate, er);
     app.appendChild(body);
     return;
   }
@@ -2130,9 +2149,9 @@ function render(){
     var rt = calcRoomTotal(job.rooms[i]);
     jt.billable += rt.billable; jt.lf += rt.lf; jt.pg += rt.pg; jt.tg += rt.tg;
   }
-  var rps = job.rooms.map(function(rm){ return calcRoomPrice(rm, rate, er); });
-  var sfTotal = 0, enTotal = 0, fxTotal = 0;
-  for(i = 0; i < rps.length; i++){ sfTotal += rps[i].sfLabor; enTotal += rps[i].enLabor; fxTotal += rps[i].fixed; }
+  var rps = job.rooms.map(function(rm){ return calcRoomPrice(rm, rate, primerRate, er); });
+  var sfTotal = 0, enTotal = 0, fxTotal = 0, primerTotal = 0, topcoatTotal = 0;
+  for(i = 0; i < rps.length; i++){ sfTotal += rps[i].sfLabor; primerTotal += rps[i].primerLabor; topcoatTotal += rps[i].topcoatLabor; enTotal += rps[i].enLabor; fxTotal += rps[i].fixed; }
   var autoTotal = sfTotal + enTotal + fxTotal;
   var hasOvr = job.priceOverride != null && job.priceOverride !== "";
   var laborPrice = hasOvr ? pf(job.priceOverride) : autoTotal;
@@ -2160,7 +2179,8 @@ function render(){
   priceSec.appendChild(priceRow);
 
   var breakdown = el("div", "font-size:10px;color:#8a8580;margin-bottom:8px;");
-  breakdown.appendChild(row("Walls/Ceiling", "$" + sfTotal.toFixed(0)));
+  if(primerTotal > 0) breakdown.appendChild(row("Primer ($" + primerRate + "/sf)", "$" + primerTotal.toFixed(0)));
+  if(topcoatTotal > 0) breakdown.appendChild(row("Topcoat ($" + rate + "/sf)", "$" + topcoatTotal.toFixed(0)));
   if(enTotal > 0) breakdown.appendChild(row("Enamel (" + jt.lf.toFixed(0) + "lf×$" + er + ")", "$" + enTotal.toFixed(0)));
   if(fb.df.q > 0) breakdown.appendChild(row("Door faces (" + fb.df.q + ")", "$" + fb.df.p));
   if(fb.dr.q > 0) breakdown.appendChild(row("Door frames (" + fb.dr.q + ")", "$" + fb.dr.p));
@@ -2253,19 +2273,23 @@ function render(){
   }
   priceSec.appendChild(hrsSec);
 
-  var rateRow = flexRow([], 8, "font-size:10px;border-top:1px solid #3a3a3a;padding-top:8px;");
-  rateRow.appendChild(span("$/sf/coat", "#8a8580", "font-size:10px;"));
-  rateRow.appendChild(numInput(job.pricePerSqftPerCoat, function(v){ job.pricePerSqftPerCoat = v; }, 50));
-  rateRow.appendChild(span("$/lf", "#8a8580", "font-size:10px;"));
-  rateRow.appendChild(numInput(job.enamelRate, function(v){ job.enamelRate = v; }, 50));
-  rateRow.appendChild(span("Override", "#8a8580", "font-size:10px;"));
+  var rateRow1 = flexRow([], 8, "font-size:10px;border-top:1px solid #3a3a3a;padding-top:8px;");
+  rateRow1.appendChild(span("Topcoat $/sf", "#8a8580", "font-size:10px;"));
+  rateRow1.appendChild(numInput(job.pricePerSqftPerCoat, function(v){ job.pricePerSqftPerCoat = v; }, 50));
+  rateRow1.appendChild(span("Primer $/sf", "#b07acc", "font-size:10px;"));
+  rateRow1.appendChild(numInput(job.primerPricePerSqftPerCoat, function(v){ job.primerPricePerSqftPerCoat = v; }, 50));
+  rateRow1.appendChild(span("$/lf", "#8a8580", "font-size:10px;"));
+  rateRow1.appendChild(numInput(job.enamelRate, function(v){ job.enamelRate = v; }, 50));
+  priceSec.appendChild(rateRow1);
+  var rateRow2 = flexRow([], 8, "font-size:10px;margin-top:4px;");
+  rateRow2.appendChild(span("Override", "#8a8580", "font-size:10px;"));
   var ovrInp = numInput(job.priceOverride, function(v){ job.priceOverride = v; }, 70);
   ovrInp.placeholder = "auto";
-  rateRow.appendChild(ovrInp);
+  rateRow2.appendChild(ovrInp);
   if(hasOvr){
-    rateRow.appendChild(btn("Reset", function(){ job.priceOverride = ""; saveState(); render(); }, "background:none;border:none;color:#d4a843;font-size:9px;cursor:pointer;"));
+    rateRow2.appendChild(btn("Reset", function(){ job.priceOverride = ""; saveState(); render(); }, "background:none;border:none;color:#d4a843;font-size:9px;cursor:pointer;"));
   }
-  priceSec.appendChild(rateRow);
+  priceSec.appendChild(rateRow2);
   tc.appendChild(priceSec);
   body.appendChild(tc);
 
@@ -2343,7 +2367,7 @@ function render(){
 
     for(i = 0; i < job.rooms.length; i++){
       (function(rm){
-        var rp = calcRoomPrice(rm, rate, er);
+        var rp = calcRoomPrice(rm, rate, primerRate, er);
         var roomRow = el("div", "display:flex;align-items:center;justify-content:space-between;padding:10px 14px;cursor:pointer;border-radius:5px;margin-bottom:4px;");
         roomRow.onclick = function(){ job.activeRoomId = rm.id; STATE.view = "edit"; render(); };
 
@@ -2408,7 +2432,7 @@ function render(){
     body.appendChild(scRow);
 
     /* Room stats */
-    var rp = calcRoomPrice(ar, rate, er);
+    var rp = calcRoomPrice(ar, rate, primerRate, er);
     var rrt = calcRoomTotal(ar);
     var rsc = el("div", "background:#2e2e2e;border:1px solid #3a3a3a;border-radius:6px;padding:10px 14px;margin-bottom:14px;");
     var rss = el("div", "display:flex;justify-content:space-around;text-align:center;flex-wrap:wrap;gap:4px;margin-bottom:8px;");
@@ -2465,8 +2489,10 @@ function render(){
     var rsBot = el("div", "border-top:1px solid #3a3a3a;padding-top:8px;display:flex;align-items:center;justify-content:space-between;");
     var rsL = el("div", "");
     rsL.appendChild(el("div", "font-size:16px;font-weight:700;color:#d4a843;", "$" + rp.total.toFixed(0)));
-    var detStr = "SF:$" + rp.sfLabor.toFixed(0);
-    if(rp.enLabor > 0) detStr += " +Enamel:$" + rp.enLabor.toFixed(0);
+    var detStr = "";
+    if(rp.primerLabor > 0) detStr += "Primer:$" + rp.primerLabor.toFixed(0);
+    if(rp.topcoatLabor > 0) detStr += (detStr ? " +" : "") + "Topcoat:$" + rp.topcoatLabor.toFixed(0);
+    if(rp.enLabor > 0) detStr += (detStr ? " +" : "") + "Enamel:$" + rp.enLabor.toFixed(0);
     if(rp.fixed > 0) detStr += " +Fixed:$" + rp.fixed;
     rsL.appendChild(el("div", "font-size:9px;color:#8a8580;", detStr));
     rsBot.appendChild(rsL);
