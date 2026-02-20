@@ -448,7 +448,7 @@ function calcRoomPrice(rm, rate, enamelRate){
     sfLabor:sfLabor, enLabor:enLabor, fixed:rt.price,
     total: sfLabor + enLabor + rt.price,
     sqft:rt.sqft, billable:rt.billable, lf:rt.lf,
-    gal:rt.gal, pg:rt.pg, tg:rt.tg
+    gal:rt.gal, pg:rt.pg, tg:rt.tg, coats:coats
   };
 }
 
@@ -1521,7 +1521,7 @@ function renderInvoice(job, body, rate, er){
 
       // Room labor breakdown
       roomBox.appendChild(subHead("Room Labor"));
-      if(rp.sfLabor > 0) roomBox.appendChild(invRow("Walls & ceiling labor", "$" + rp.sfLabor.toFixed(2), false, true));
+      if(rp.sfLabor > 0) roomBox.appendChild(invRow("Walls & ceiling labor (" + rp.billable.toFixed(0) + " sf × " + rp.coats + " coats × $" + rate + "/sf)", "$" + rp.sfLabor.toFixed(2), false, true));
       if(rp.enLabor > 0) roomBox.appendChild(invRow("Enamel labor (" + rp.lf.toFixed(0) + " lf × $" + er + ")", "$" + rp.enLabor.toFixed(2), false, true));
       if(rp.fixed > 0) roomBox.appendChild(invRow("Fixed items", "$" + rp.fixed.toFixed(2), false, true));
       if(rmMat.total > 0) roomBox.appendChild(invRow("Materials cost", "$" + rmMat.total.toFixed(2), false, true));
@@ -1553,8 +1553,8 @@ function renderInvoice(job, body, rate, er){
       }
       // Room labor
       roomBox.appendChild(subHead("Room Labor"));
-      if(rp.sfLabor > 0) roomBox.appendChild(invRow("Walls & ceiling labor", "$" + rp.sfLabor.toFixed(2), false, true));
-      if(rp.enLabor > 0) roomBox.appendChild(invRow("Enamel labor", "$" + rp.enLabor.toFixed(2), false, true));
+      if(rp.sfLabor > 0) roomBox.appendChild(invRow("Walls & ceiling labor (" + rp.billable.toFixed(0) + " sf × " + rp.coats + " coats × $" + rate + "/sf)", "$" + rp.sfLabor.toFixed(2), false, true));
+      if(rp.enLabor > 0) roomBox.appendChild(invRow("Enamel labor (" + rp.lf.toFixed(0) + " lf × $" + er + ")", "$" + rp.enLabor.toFixed(2), false, true));
       if(rp.fixed > 0) roomBox.appendChild(invRow("Fixed items", "$" + rp.fixed.toFixed(2), false, true));
       if(rmMat.total > 0) roomBox.appendChild(invRow("Materials cost", "$" + rmMat.total.toFixed(2), false, true));
       var rmSum2 = el("div", "display:flex;justify-content:space-between;padding:6px 0;border-top:1px solid #ddd;margin-top:6px;font-size:12px;font-weight:600;");
@@ -1662,8 +1662,8 @@ function renderInvoice(job, body, rate, er){
     inv.appendChild(el("div", "font-size:10px;color:#888;margin-top:4px;", "Auto-calculated: $" + autoTotal.toFixed(2) + " → Override applied"));
   } else {
     // Category breakdown
-    if(sfTotal > 0) inv.appendChild(invRow("Walls & ceiling (sqft)", "$" + sfTotal.toFixed(2), false, true));
-    if(enTotal > 0) inv.appendChild(invRow("Enamel / trim (linear ft)", "$" + enTotal.toFixed(2), false, true));
+    if(sfTotal > 0) inv.appendChild(invRow("Walls & ceiling ($" + rate + "/sf/coat)", "$" + sfTotal.toFixed(2), false, true));
+    if(enTotal > 0) inv.appendChild(invRow("Enamel / trim ($" + er + "/lf)", "$" + enTotal.toFixed(2), false, true));
     if(fxTotal > 0){
       var fb = calcJobFixed(job);
       if(fb.df.q > 0) inv.appendChild(invRow("Door faces (" + fb.df.q + ")", "$" + fb.df.p, false, true));
