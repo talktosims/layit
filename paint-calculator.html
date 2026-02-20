@@ -39,6 +39,15 @@ input[type=number]{-moz-appearance:textfield}
 /* ── Constants ── */
 var COV = {sqft:350, linear:150, primerSqft:300, primerLinear:130};
 var ENAMEL_RATE = 4;
+var SURFACE_CONDITIONS = [
+  {v:"bare", l:"Bare / New drywall", mult:0.85},
+  {v:"color_change", l:"Dark \u2192 Light color change", mult:1.0},
+  {v:"primed", l:"Primed / Previously painted", mult:1.3}
+];
+function surfaceMultiplier(cond){
+  for(var i=0;i<SURFACE_CONDITIONS.length;i++) if(SURFACE_CONDITIONS[i].v===cond) return SURFACE_CONDITIONS[i].mult;
+  return 1.0;
+}
 
 /* ── Product Database with real coverage rates from manufacturer TDS ── */
 var PRODUCTS = [
@@ -211,6 +220,7 @@ function makeRoom(o){
     includeCeiling:true, includeBaseboard:true,
     baseboardPrimerCoats:0, baseboardTopCoats:2,
     baseboardOverride:"",
+    surfaceCondition:"primed",
     wallColor:"", wallProduct:"", wallPricePerGal:"", wallCoverage:"", wallPrimerProduct:"", wallPrimerPricePerGal:"", wallPrimerCoverage:"",
     ceilingColor:"", ceilingProduct:"", ceilingPricePerGal:"", ceilingCoverage:"", ceilingPrimerProduct:"", ceilingPrimerPricePerGal:"", ceilingPrimerCoverage:"",
     trimColor:"", trimProduct:"", trimPricePerGal:"", trimCoverage:"", trimPrimerProduct:"", trimPrimerPricePerGal:"", trimPrimerCoverage:"",
@@ -274,11 +284,12 @@ function calcQuickRoom(rm){
   var paintableWall = Math.max(0, grossWall - openingSqft);
   var paintable = paintableWall + ceil;
 
-  // Per-product coverage (fall back to global COV defaults)
-  var wpc = pf(rm.wallPrimerCoverage) || COV.primerSqft;
-  var wtc2 = pf(rm.wallCoverage) || COV.sqft;
-  var cpCov = pf(rm.ceilingPrimerCoverage) || COV.primerSqft;
-  var ctCov = pf(rm.ceilingCoverage) || COV.sqft;
+  // Per-product coverage (fall back to global COV defaults), adjusted for surface condition
+  var sm = surfaceMultiplier(rm.surfaceCondition);
+  var wpc = (pf(rm.wallPrimerCoverage) || COV.primerSqft) * sm;
+  var wtc2 = (pf(rm.wallCoverage) || COV.sqft) * sm;
+  var cpCov = (pf(rm.ceilingPrimerCoverage) || COV.primerSqft) * sm;
+  var ctCov = (pf(rm.ceilingCoverage) || COV.sqft) * sm;
 
   // Separate wall vs ceiling gallons
   var wallPrimerGal = (pc > 0 && paintableWall > 0) ? (paintableWall * pc) / wpc : 0;
@@ -297,8 +308,8 @@ function calcQuickRoom(rm){
   var bbFt = incBB ? (bbOvr !== "" ? pf(bbOvr) : autoBB) : 0;
   var bbPC = pi2(rm.baseboardPrimerCoats);
   var bbTC = pi2(rm.baseboardTopCoats) || (rm.baseboardTopCoats === undefined ? 2 : 0);
-  var tpCov = pf(rm.trimPrimerCoverage) || COV.primerLinear;
-  var ttCov = pf(rm.trimCoverage) || COV.linear;
+  var tpCov = (pf(rm.trimPrimerCoverage) || COV.primerLinear) * sm;
+  var ttCov = (pf(rm.trimCoverage) || COV.linear) * sm;
   var bbPG = (bbFt > 0 && bbPC > 0) ? (bbFt * bbPC) / tpCov : 0;
   var bbTG = (bbFt > 0 && bbTC > 0) ? (bbFt * bbTC) / ttCov : 0;
 
@@ -374,12 +385,13 @@ function calcSurface(s, covOverrides){
 }
 
 function roomCov(rm, surfType){
-  // Build coverage overrides for calcSurface based on surface type
-  if(surfType === "wall") return {sqft:pf(rm.wallCoverage)||undefined, primerSqft:pf(rm.wallPrimerCoverage)||undefined};
-  if(surfType === "ceiling") return {sqft:pf(rm.ceilingCoverage)||undefined, primerSqft:pf(rm.ceilingPrimerCoverage)||undefined};
+  // Build coverage overrides for calcSurface, adjusted for surface condition
+  var sm = surfaceMultiplier(rm.surfaceCondition);
+  if(surfType === "wall") return {sqft:(pf(rm.wallCoverage)||COV.sqft)*sm, primerSqft:(pf(rm.wallPrimerCoverage)||COV.primerSqft)*sm};
+  if(surfType === "ceiling") return {sqft:(pf(rm.ceilingCoverage)||COV.sqft)*sm, primerSqft:(pf(rm.ceilingPrimerCoverage)||COV.primerSqft)*sm};
   // trim, baseboard, door_frame, door_face, window_frame all use trim coverage
-  return {linear:pf(rm.trimCoverage)||undefined, primerLinear:pf(rm.trimPrimerCoverage)||undefined,
-          sqft:pf(rm.trimCoverage)||undefined, primerSqft:pf(rm.trimPrimerCoverage)||undefined};
+  return {linear:(pf(rm.trimCoverage)||COV.linear)*sm, primerLinear:(pf(rm.trimPrimerCoverage)||COV.primerLinear)*sm,
+          sqft:(pf(rm.trimCoverage)||COV.linear)*sm, primerSqft:(pf(rm.trimPrimerCoverage)||COV.primerLinear)*sm};
 }
 
 function calcRoomTotal(rm){
@@ -688,6 +700,7 @@ function migrateRoom(rm){
   if(rm.ceilingPrimerPricePerGal === undefined) rm.ceilingPrimerPricePerGal = "";
   if(rm.trimPrimerProduct === undefined) rm.trimPrimerProduct = "";
   if(rm.trimPrimerPricePerGal === undefined) rm.trimPrimerPricePerGal = "";
+  if(rm.surfaceCondition === undefined) rm.surfaceCondition = "primed";
   // Zero out primer coats when no primer product is specified
   if(!rm.wallPrimerProduct && pi2(rm.quickPrimerCoats) > 0) rm.quickPrimerCoats = 0;
   if(!rm.ceilingPrimerProduct && pi2(rm.ceilingPrimerCoats) > 0) rm.ceilingPrimerCoats = 0;
@@ -2315,6 +2328,20 @@ function render(){
     modeRow.appendChild(toggleBtn("Quick (L×W×H)", ar.mode === "quick", function(){ ar.mode = "quick"; saveState(); render(); }, "flex:1;"));
     modeRow.appendChild(toggleBtn("Custom", ar.mode === "custom", function(){ ar.mode = "custom"; saveState(); render(); }, "flex:1;"));
     body.appendChild(modeRow);
+
+    /* Surface condition selector */
+    var scRow = flexRow([], 6, "margin-bottom:14px;");
+    scRow.appendChild(span("Surface", "#8a8580", "font-size:10px;font-weight:600;min-width:50px;"));
+    var condSel = el("select", "flex:1;background:#2e2e2e;color:#e8e4de;border:1px solid #3a3a3a;border-radius:4px;padding:7px 8px;font-size:11px;font-family:inherit;");
+    for(var sci = 0; sci < SURFACE_CONDITIONS.length; sci++){
+      var scOpt = el("option", "", SURFACE_CONDITIONS[sci].l);
+      scOpt.value = SURFACE_CONDITIONS[sci].v;
+      if(SURFACE_CONDITIONS[sci].v === ar.surfaceCondition) scOpt.selected = true;
+      condSel.appendChild(scOpt);
+    }
+    condSel.onchange = function(e){ ar.surfaceCondition = e.target.value; saveState(); render(); };
+    scRow.appendChild(condSel);
+    body.appendChild(scRow);
 
     /* Room stats */
     var rp = calcRoomPrice(ar, rate, er);
