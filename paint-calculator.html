@@ -814,13 +814,11 @@ function initFirebase(){
     return;
   }
   var config = {
-    apiKey: "PASTE_YOUR_API_KEY",
-    authDomain: "PASTE_YOUR_PROJECT.firebaseapp.com",
-    databaseURL: "https://PASTE_YOUR_PROJECT-default-rtdb.firebaseio.com",
-    projectId: "PASTE_YOUR_PROJECT"
+    apiKey: "AIzaSyD9zQQgRApSqfeBougnIUVEAYupp8i-bgY",
+    authDomain: "paint-calc-sync.firebaseapp.com",
+    databaseURL: "https://paint-calc-sync-default-rtdb.firebaseio.com",
+    projectId: "paint-calc-sync"
   };
-  // Don't init if placeholder config
-  if(config.apiKey === "PASTE_YOUR_API_KEY") return;
   try {
     firebase.initializeApp(config);
   } catch(e){
