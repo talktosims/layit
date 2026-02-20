@@ -188,7 +188,7 @@ function makeSurface(o){
     widthIn:"", heightIn:"", directSqft:"", linearFt:"",
     subtractWindows:0, subtractDoors:0,
     primerCoats:0, topCoats:2, label:"", qty:1, doorSides:"both",
-    color:"", product:""
+    color:"", product:"", priceOverride:""
   };
   if(o) for(var k in o) s[k] = o[k];
   return s;
@@ -323,21 +323,22 @@ function calcSurface(s, covOverrides){
     var q = pi2(s.qty) || 1;
     var price = 0;
     var pg = 0, tg = 0;
+    var ovr = pf(s.priceOverride);
     if(s.type === "door_face"){
       var sides = s.doorSides === "both" ? 2 : 1;
-      price = (s.doorSides === "both" ? 100 : 50) * q;
+      price = ovr > 0 ? ovr * q : (s.doorSides === "both" ? 100 : 50) * q;
       // 21 sf per side per door, divided by coverage rate, per coat
       var dfSf = 21 * sides * q;
       pg = (pc > 0) ? (dfSf * pc) / covPrimerSqft : 0;
       tg = (tc > 0) ? (dfSf * tc) / covSqft : 0;
     } else if(s.type === "door_frame"){
-      price = 100 * q;
+      price = ovr > 0 ? ovr * q : 100 * q;
       // ~15 lf equivalent per frame (single side)
       var dfLf = 15 * q;
       pg = (pc > 0) ? (dfLf * pc) / covPrimerLinear : 0;
       tg = (tc > 0) ? (dfLf * tc) / covLinear : 0;
     } else if(s.type === "window_frame"){
-      price = 125 * q;
+      price = ovr > 0 ? ovr * q : 125 * q;
       // ~20 lf equivalent per frame
       var wfLf = 20 * q;
       pg = (pc > 0) ? (wfLf * pc) / covPrimerLinear : 0;
@@ -685,6 +686,7 @@ function migrateRoom(rm){
   for(var i = 0; i < surfs.length; i++){
     if(surfs[i].color === undefined) surfs[i].color = "";
     if(surfs[i].product === undefined) surfs[i].product = "";
+    if(surfs[i].priceOverride === undefined) surfs[i].priceOverride = "";
   }
 }
 
@@ -1303,12 +1305,27 @@ function renderSurfCard(surf, types, isExtra, rm){
     wrapper.appendChild(fCoatRow);
 
     var bott = el("div", "margin-top:10px;padding-top:8px;border-top:1px solid #3a3a3a;font-size:11px;");
+    // Price override input
+    var defaultPrice = surf.type === "door_face" ? (surf.doorSides === "both" ? 100 : 50) : surf.type === "door_frame" ? 100 : 125;
+    var hasOverride = pf(surf.priceOverride) > 0;
+    var priceRow = el("div", "display:flex;align-items:center;gap:6px;margin-bottom:6px;");
+    priceRow.appendChild(span("$/each", "#8a8580", "font-size:9px;width:38px;"));
+    var prOvrInp = el("input", "background:#2e2e2e;color:#e8e4de;border:1px solid " + (hasOverride ? "#d4a843" : "#3a3a3a") + ";border-radius:4px;padding:5px 8px;font-size:12px;width:70px;font-family:inherit;outline:none;text-align:center;");
+    prOvrInp.type = "number"; prOvrInp.inputMode = "decimal";
+    prOvrInp.placeholder = "$" + defaultPrice;
+    prOvrInp.value = surf.priceOverride;
+    prOvrInp.oninput = function(e){ surf.priceOverride = e.target.value; saveState(); render(); };
+    priceRow.appendChild(prOvrInp);
+    if(hasOverride){
+      priceRow.appendChild(span("(default $" + defaultPrice + ")", "#8a8580", "font-size:9px;"));
+      var clrBtn = btn("×", function(){ surf.priceOverride = ""; saveState(); render(); },
+        "background:none;border:none;color:#cc5555;font-size:14px;cursor:pointer;padding:0 4px;");
+      priceRow.appendChild(clrBtn);
+    }
+    bott.appendChild(priceRow);
     var descRow = el("div", "display:flex;justify-content:space-between;margin-bottom:4px;");
-    var desc = surf.type === "door_face"
-      ? (surf.qty || 1) + "× " + (surf.doorSides === "both" ? "$100" : "$50")
-      : surf.type === "door_frame"
-      ? (surf.qty || 1) + "× $100"
-      : (surf.qty || 1) + "× $125";
+    var unitPrice = hasOverride ? pf(surf.priceOverride) : defaultPrice;
+    var desc = (surf.qty || 1) + "× $" + unitPrice;
     descRow.appendChild(span(desc, "#8a8580"));
     descRow.appendChild(span("$" + sr.price, "#d4a843", "font-weight:600;"));
     bott.appendChild(descRow);
