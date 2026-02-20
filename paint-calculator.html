@@ -56,6 +56,14 @@ var PRODUCTS = [
   {name:"BM Scuff-X Eggshell", coverage:375},
   {name:"BM Scuff-X Matte", coverage:400},
   {name:"BM Scuff-X Satin", coverage:375},
+  {name:"BM ben Eggshell", coverage:425},
+  {name:"BM ben Matte", coverage:425},
+  {name:"BM ben Semi-Gloss", coverage:425},
+  {name:"BM ben Satin", coverage:425},
+  {name:"BEN Eggshell", coverage:425},
+  {name:"BEN Matte", coverage:425},
+  {name:"BEN Semi-Gloss", coverage:425},
+  {name:"BEN Satin", coverage:425},
   {name:"BM Fresh Start Acrylic Primer", coverage:425},
   // Sherwin-Williams
   {name:"SW Duration Interior Flat", coverage:375},
@@ -540,9 +548,10 @@ function calcJobPaintOrder(job){
 
 function calcRoomMaterialsCost(rm){
   var rt = calcRoomTotal(rm);
-  var wallCost = rt.wallPG * pf(rm.wallPrimerPricePerGal) + rt.wallTG * pf(rm.wallPricePerGal);
-  var ceilCost = rt.ceilPG * pf(rm.ceilingPrimerPricePerGal) + rt.ceilTG * pf(rm.ceilingPricePerGal);
-  var trimCost = rt.trimPG * pf(rm.trimPrimerPricePerGal) + rt.trimTG * pf(rm.trimPricePerGal);
+  var cg = Math.ceil; // round up to whole gallons purchased
+  var wallCost = cg(rt.wallPG) * pf(rm.wallPrimerPricePerGal) + cg(rt.wallTG) * pf(rm.wallPricePerGal);
+  var ceilCost = cg(rt.ceilPG) * pf(rm.ceilingPrimerPricePerGal) + cg(rt.ceilTG) * pf(rm.ceilingPricePerGal);
+  var trimCost = cg(rt.trimPG) * pf(rm.trimPrimerPricePerGal) + cg(rt.trimTG) * pf(rm.trimPricePerGal);
   return {wall:wallCost, ceil:ceilCost, trim:trimCost, total:wallCost + ceilCost + trimCost};
 }
 
@@ -639,8 +648,9 @@ function calcJobMaterialsDetail(job){
   for(var key in map){
     var m = map[key];
     m.totalGal = m.pg + m.tg;
+    m.purchaseGal = Math.ceil(m.totalGal); // round up to whole gallons purchased
     m.ppg = m.galWithPrice > 0 ? (m.costAccum / m.galWithPrice) : 0;
-    m.lineCost = m.galWithPrice > 0 ? m.costAccum : 0;
+    m.lineCost = (m.ppg > 0 && m.totalGal > 0) ? m.purchaseGal * m.ppg : 0;
     result.push(m);
   }
   result.sort(function(a,b){ return b.lineCost - a.lineCost || (b.totalGal - a.totalGal); });
@@ -1597,7 +1607,7 @@ function renderInvoice(job, body, rate, er){
       if(whereStr) itemDiv.appendChild(el("div", "font-size:10px;color:#888;margin-top:2px;", whereStr));
 
       var costRow = el("div", "display:flex;justify-content:space-between;align-items:center;margin-top:4px;");
-      var galStr = c1(md.totalGal) + " gal";
+      var galStr = md.purchaseGal + " gal";
       if(md.pg > 0 && md.tg > 0) galStr += " (" + c1(md.pg) + " primer + " + c1(md.tg) + " topcoat)";
       else if(md.pg > 0) galStr += " (primer)";
       else if(md.tg > 0) galStr += " (topcoat)";
@@ -1612,7 +1622,7 @@ function renderInvoice(job, body, rate, er){
       }
       itemDiv.appendChild(costRow);
       if(md.ppg > 0){
-        itemDiv.appendChild(el("div", "font-size:10px;color:#888;text-align:right;", c1(md.totalGal) + " gal × $" + md.ppg.toFixed(2) + "/gal"));
+        itemDiv.appendChild(el("div", "font-size:10px;color:#888;text-align:right;", md.purchaseGal + " gal × $" + md.ppg.toFixed(2) + "/gal"));
       }
 
       inv.appendChild(itemDiv);
@@ -1823,7 +1833,7 @@ function renderInvoice(job, body, rate, er){
       for(var spi = 0; spi < matDetail.length; spi++){
         var smd = matDetail[spi];
         var sname = (smd.color || "") + (smd.color && smd.product ? " — " : "") + (smd.product || "") || "(unspecified)";
-        text += sname + ": " + c1(smd.totalGal) + " gal";
+        text += sname + ": " + smd.purchaseGal + " gal";
         if(smd.ppg > 0) text += " · $" + smd.lineCost.toFixed(2);
         text += "\n";
       }
@@ -2193,10 +2203,10 @@ function render(){
     var poc = card([], "border-left:3px solid #b07acc;");
     var poHdr = el("div", "display:flex;align-items:center;justify-content:space-between;cursor:pointer;");
     poHdr.appendChild(el("div", "font-size:11px;color:#b07acc;font-weight:600;letter-spacing:1px;", "PAINT ORDER"));
-    var totalGal = 0, grandTotal = 0, hasPrice = false;
-    for(var pk = 0; pk < po.length; pk++){ totalGal += po[pk].totalGal; if(po[pk].lineCost > 0){ grandTotal += po[pk].lineCost; hasPrice = true; } }
+    var totalGal = 0, totalPurchaseGal = 0, grandTotal = 0, hasPrice = false;
+    for(var pk = 0; pk < po.length; pk++){ totalGal += po[pk].totalGal; totalPurchaseGal += po[pk].purchaseGal; if(po[pk].lineCost > 0){ grandTotal += po[pk].lineCost; hasPrice = true; } }
     var poSummary = el("div", "display:flex;align-items:center;gap:8px;");
-    var sumText = po.length + " product" + (po.length !== 1 ? "s" : "") + " · " + c1(totalGal) + " gal";
+    var sumText = po.length + " product" + (po.length !== 1 ? "s" : "") + " · " + totalPurchaseGal + " gal";
     if(hasPrice) sumText += " · ~$" + grandTotal.toFixed(2);
     poSummary.appendChild(span(sumText, "#8a8580", "font-size:10px;"));
     poSummary.appendChild(span(STATE.showPaintOrder ? "▼" : "▶", "#b07acc", "font-size:10px;"));
@@ -2212,7 +2222,7 @@ function render(){
         var line1 = el("div", "display:flex;justify-content:space-between;align-items:baseline;");
         var prodName = item.product || "(no product)";
         line1.appendChild(el("div", "font-size:13px;font-weight:600;color:#e8e4de;flex:1;margin-right:8px;", prodName));
-        line1.appendChild(el("div", "font-size:13px;color:#e8e4de;white-space:nowrap;font-weight:600;", c1(item.totalGal) + " gal"));
+        line1.appendChild(el("div", "font-size:13px;color:#e8e4de;white-space:nowrap;font-weight:600;", item.purchaseGal + " gal"));
         poRow.appendChild(line1);
         // Line 2: Color (left) — $/gal · Est total (right)
         var line2 = el("div", "display:flex;justify-content:space-between;align-items:baseline;margin-top:2px;");
