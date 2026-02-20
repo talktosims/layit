@@ -281,7 +281,9 @@ function calcQuickRoom(rm){
   }
   var totalDoors = Math.max(doorFrameCount, doorFaceCount);
   var openingSqft = winCount * 15 + totalDoors * 21;
-  var paintableWall = Math.max(0, grossWall - openingSqft);
+  // Deduct baseboard strip from wall area (3.5" tall strip along perimeter minus door openings)
+  var bbStripSqft = (rm.includeBaseboard !== false) ? Math.max(0, (2*l + 2*w - totalDoors * 36) / 12) * 3.5 / 12 : 0;
+  var paintableWall = Math.max(0, grossWall - openingSqft - bbStripSqft);
   var paintable = paintableWall + ceil;
 
   // Per-product coverage (fall back to global COV defaults), adjusted for surface condition
