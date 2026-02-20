@@ -795,10 +795,9 @@ function setupSync(passphrase){
         return;
       }
       var remoteJson = typeof remoteData === "string" ? remoteData : JSON.stringify(remoteData);
-      // Skip our own echo
+      // Skip our own echo — don't render (would steal input focus)
       if(remoteJson === _lastPushedJson){
         _syncStatus = "synced";
-        render();
         return;
       }
       // First connect with different data — ask user
