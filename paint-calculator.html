@@ -613,6 +613,27 @@ function calcJobMaterialsDetail(job){
       }
     }
   }
+  // Cross-entry price sharing: if an entry has no price but another entry
+  // with the same product does, use that product's average price-per-gallon
+  var productPrices = {};
+  for(var key in map){
+    var m = map[key];
+    if(m.galWithPrice > 0){
+      var pKey = (m.product || "").toLowerCase().trim();
+      if(pKey && !productPrices[pKey]) productPrices[pKey] = m.costAccum / m.galWithPrice;
+    }
+  }
+  for(var key in map){
+    var m = map[key];
+    if(m.galWithPrice === 0){
+      var pKey = (m.product || "").toLowerCase().trim();
+      if(pKey && productPrices[pKey]){
+        var gal = m.pg + m.tg;
+        m.costAccum = gal * productPrices[pKey];
+        m.galWithPrice = gal;
+      }
+    }
+  }
   var result = [];
   for(var key in map){
     var m = map[key];
