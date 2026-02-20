@@ -205,7 +205,7 @@ function makeSurface(o){
     widthIn:"", heightIn:"", directSqft:"", linearFt:"",
     subtractWindows:0, subtractDoors:0,
     primerCoats:0, topCoats:2, label:"", qty:1, doorSides:"both",
-    color:"", product:"", priceOverride:""
+    color:"", product:"", priceOverride:"", windowSqft:""
   };
   if(o) for(var k in o) s[k] = o[k];
   return s;
@@ -270,21 +270,25 @@ function calcQuickRoom(rm){
   var billable = grossWall + ceil;
 
   var ex = rm.extras || [];
-  var winCount = 0;
+  var winCount = 0, winSqft = 0, winCasingSqft = 0;
   var doorFrameCount = 0;
   var doorFaceCount = 0;
   for(var i = 0; i < ex.length; i++){
     var q = pi2(ex[i].qty) || 1;
-    if(ex[i].type === "window_frame") winCount += q;
+    if(ex[i].type === "window_frame"){
+      var wsf = pf(ex[i].windowSqft) || 15;
+      winSqft += wsf * q;
+      // Casing scales with window perimeter: default 15sf → 3.2 sf casing
+      winCasingSqft += 3.2 * Math.sqrt(wsf / 15) * q;
+      winCount += q;
+    }
     if(ex[i].type === "door_frame") doorFrameCount += q;
     if(ex[i].type === "door_face") doorFaceCount += q;
   }
   var totalDoors = Math.max(doorFrameCount, doorFaceCount);
-  var openingSqft = winCount * 15 + totalDoors * 21;
+  var openingSqft = winSqft + totalDoors * 21;
   // Deduct trim casing around openings (~2.75" wide casing covers wall surface)
-  // Door casing: two sides (84") + top (36") = 204" × 2.75" = ~3.9 sf per door
-  // Window casing: all four sides ~168" × 2.75" = ~3.2 sf per window
-  var casingDeduct = doorFrameCount * 3.9 + winCount * 3.2;
+  var casingDeduct = doorFrameCount * 3.9 + winCasingSqft;
   // Deduct baseboard strip from wall area (3.5" tall strip along perimeter minus door openings)
   var bbStripSqft = (rm.includeBaseboard !== false) ? Math.max(0, (2*l + 2*w - totalDoors * 36) / 12) * 3.5 / 12 : 0;
   var paintableWall = Math.max(0, grossWall - openingSqft - casingDeduct - bbStripSqft);
@@ -716,6 +720,7 @@ function migrateRoom(rm){
     if(surfs[i].color === undefined) surfs[i].color = "";
     if(surfs[i].product === undefined) surfs[i].product = "";
     if(surfs[i].priceOverride === undefined) surfs[i].priceOverride = "";
+    if(surfs[i].windowSqft === undefined) surfs[i].windowSqft = "";
   }
 }
 
@@ -1323,6 +1328,21 @@ function renderSurfCard(surf, types, isExtra, rm){
       fr.appendChild(toggleBtn("One $50", surf.doorSides === "one", function(){ surf.doorSides = "one"; saveState(); render(); }));
     }
     wrapper.appendChild(fr);
+
+    if(surf.type === "window_frame"){
+      var hasWinSz = pf(surf.windowSqft) > 0;
+      var szRow = flexRow([], 6, "margin-top:6px;");
+      szRow.appendChild(span("Size sf", "#5588bb", "font-size:9px;width:42px;"));
+      var szInp = el("input", "background:#2e2e2e;color:#e8e4de;border:1px solid " + (hasWinSz ? "#5588bb" : "#3a3a3a") + ";border-radius:4px;padding:5px 8px;font-size:12px;width:60px;font-family:inherit;outline:none;text-align:center;");
+      szInp.type = "number"; szInp.inputMode = "decimal";
+      szInp.placeholder = "15";
+      szInp.value = surf.windowSqft;
+      szInp.oninput = function(e){ surf.windowSqft = e.target.value; saveState(); };
+      szInp.onblur = function(){ render(); };
+      szRow.appendChild(szInp);
+      if(hasWinSz) szRow.appendChild(span("(default 15)", "#8a8580", "font-size:9px;"));
+      wrapper.appendChild(szRow);
+    }
 
     // Coat counts for paint consumption
     var fCoatRow = flexRow([], 8, "margin-top:6px;");
