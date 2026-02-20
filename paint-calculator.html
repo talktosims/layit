@@ -26,6 +26,9 @@ input[type=number]{-moz-appearance:textfield}
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 </head>
 <body>
 <div id="app" style="max-width:600px;margin:0 auto;min-height:100vh"></div>
@@ -623,8 +626,17 @@ function calcJobMaterialsDetail(job){
 }
 
 /* ── State ── */
-var STATE = { jobs: [makeJob()], activeJob: 0, view: "rooms", importMode: false, exportMode: false, exportData: "", showPaintOrder: false };
+var STATE = { jobs: [makeJob()], activeJob: 0, view: "rooms", importMode: false, exportMode: false, exportData: "", showPaintOrder: false, syncPanelOpen: false };
 var saveTimer = null;
+
+/* ── Cloud Sync State ── */
+var SYNC_PASSPHRASE_KEY = "paint-calc-sync-passphrase";
+var _firebaseReady = false;
+var _syncActive = false;
+var _syncRef = null;
+var _remoteUpdateInProgress = false;
+var _lastPushedJson = "";
+var _syncStatus = "off";
 
 function migrateRoom(rm){
   if(rm.ceilingPrimerCoats === undefined) rm.ceilingPrimerCoats = pi2(rm.quickPrimerCoats) || 1;
@@ -692,7 +704,142 @@ function saveState(){
   if(saveTimer) clearTimeout(saveTimer);
   saveTimer = setTimeout(function(){
     try { localStorage.setItem(SKEY, JSON.stringify(STATE.jobs)); } catch(e){}
+    pushToCloud();
   }, 500);
+}
+
+/* ── Cloud Sync Functions ── */
+function deriveSyncId(passphrase){
+  var encoder = new TextEncoder();
+  var data = encoder.encode(passphrase.trim().toLowerCase());
+  return crypto.subtle.digest("SHA-256", data).then(function(buf){
+    var arr = new Uint8Array(buf);
+    var hex = "";
+    for(var i = 0; i < arr.length; i++) hex += ("0" + arr[i].toString(16)).slice(-2);
+    return hex;
+  });
+}
+
+function pushToCloud(){
+  if(!_syncActive || !_syncRef || _remoteUpdateInProgress) return;
+  var json = JSON.stringify(STATE.jobs);
+  _lastPushedJson = json;
+  _syncRef.set(json).catch(function(err){
+    console.warn("Sync push failed:", err);
+    _syncStatus = "error";
+  });
+}
+
+function teardownSync(){
+  if(_syncRef){ _syncRef.off(); _syncRef = null; }
+  _syncActive = false;
+  _lastPushedJson = "";
+  _syncStatus = "off";
+}
+
+function disconnectSync(){
+  teardownSync();
+  localStorage.removeItem(SYNC_PASSPHRASE_KEY);
+  render();
+}
+
+function setupSync(passphrase){
+  if(!_firebaseReady) return;
+  teardownSync();
+  _syncStatus = "connecting";
+  render();
+  deriveSyncId(passphrase).then(function(syncId){
+    _syncRef = firebase.database().ref("sync/" + syncId + "/jobs");
+    _syncActive = true;
+    localStorage.setItem(SYNC_PASSPHRASE_KEY, passphrase);
+    _syncRef.on("value", function(snapshot){
+      var remoteData = snapshot.val();
+      // First connection — remote is empty, push our data up
+      if(remoteData === null){
+        pushToCloud();
+        _syncStatus = "synced";
+        render();
+        return;
+      }
+      var remoteJson = typeof remoteData === "string" ? remoteData : JSON.stringify(remoteData);
+      // Skip our own echo
+      if(remoteJson === _lastPushedJson){
+        _syncStatus = "synced";
+        render();
+        return;
+      }
+      // First connect with different data — ask user
+      if(_lastPushedJson === ""){
+        var localJson = JSON.stringify(STATE.jobs);
+        if(localJson !== remoteJson){
+          if(!confirm("Cloud has different data.\n\nOK = Load cloud data\nCancel = Overwrite cloud with this device")){
+            pushToCloud();
+            _syncStatus = "synced";
+            render();
+            return;
+          }
+        }
+      }
+      // Apply remote data
+      try {
+        var parsed = typeof remoteData === "string" ? JSON.parse(remoteData) : remoteData;
+        if(Array.isArray(parsed) && parsed.length > 0){
+          _remoteUpdateInProgress = true;
+          migrateJobs(parsed);
+          STATE.jobs = parsed;
+          if(STATE.activeJob >= STATE.jobs.length) STATE.activeJob = 0;
+          try { localStorage.setItem(SKEY, JSON.stringify(STATE.jobs)); } catch(e){}
+          _lastPushedJson = JSON.stringify(STATE.jobs);
+          _syncStatus = "synced";
+          render();
+          _remoteUpdateInProgress = false;
+        }
+      } catch(e){
+        console.warn("Sync parse error:", e);
+        _syncStatus = "error";
+        render();
+      }
+    }, function(err){
+      console.warn("Sync listener error:", err);
+      _syncStatus = "error";
+      _syncActive = false;
+      render();
+    });
+  });
+}
+
+function initFirebase(){
+  if(typeof firebase === "undefined" || !firebase.initializeApp){
+    _syncStatus = "error";
+    return;
+  }
+  var config = {
+    apiKey: "PASTE_YOUR_API_KEY",
+    authDomain: "PASTE_YOUR_PROJECT.firebaseapp.com",
+    databaseURL: "https://PASTE_YOUR_PROJECT-default-rtdb.firebaseio.com",
+    projectId: "PASTE_YOUR_PROJECT"
+  };
+  // Don't init if placeholder config
+  if(config.apiKey === "PASTE_YOUR_API_KEY") return;
+  try {
+    firebase.initializeApp(config);
+  } catch(e){
+    if(e.code !== "app/duplicate-app"){ _syncStatus = "error"; return; }
+  }
+  firebase.auth().signInAnonymously().then(function(){
+    _firebaseReady = true;
+    var saved = localStorage.getItem(SYNC_PASSPHRASE_KEY);
+    if(saved) setupSync(saved);
+  }).catch(function(err){
+    _syncStatus = "error";
+    console.warn("Firebase auth failed:", err.message);
+  });
+  firebase.database().ref(".info/connected").on("value", function(snap){
+    if(_syncActive){
+      _syncStatus = snap.val() ? "synced" : "offline";
+      render();
+    }
+  });
 }
 
 function exportData(){
@@ -748,6 +895,7 @@ function doImport(jsonStr){
     STATE.importMode = false;
     saveState();
     try { localStorage.setItem(SKEY, JSON.stringify(STATE.jobs)); } catch(e){}
+    pushToCloud();
     render();
     alert("Import successful! " + parsed.length + " job(s) loaded.");
   } catch(e){
@@ -1685,8 +1833,14 @@ function render(){
   hdrBtns.appendChild(btn("Reset", function(){
     if(!confirm("Clear all?")) return;
     try { localStorage.removeItem(SKEY); } catch(e){}
-    STATE.jobs = [makeJob()]; STATE.activeJob = 0; STATE.view = "rooms"; render();
+    STATE.jobs = [makeJob()]; STATE.activeJob = 0; STATE.view = "rooms";
+    pushToCloud();
+    render();
   }, "background:none;border:none;color:#8a8580;font-size:10px;"));
+  var syncColor = _syncStatus === "synced" ? "#5a9e6f" : _syncStatus === "connecting" ? "#d4a843" : _syncStatus === "error" || _syncStatus === "offline" ? "#cc5555" : "#8a8580";
+  hdrBtns.appendChild(btn(_syncActive ? "● Sync" : "Sync", function(){
+    STATE.syncPanelOpen = !STATE.syncPanelOpen; render();
+  }, "background:#2e2e2e;border:1px solid #3a3a3a;border-radius:4px;color:" + syncColor + ";font-size:10px;padding:4px 8px;cursor:pointer;"));
   hdr.appendChild(hdrBtns);
   app.appendChild(hdr);
 
@@ -1764,6 +1918,50 @@ function render(){
     }, "background:#2e2e2e;border:1px solid #3a3a3a;border-radius:4px;color:#8a8580;font-size:11px;padding:6px 16px;cursor:pointer;"));
     impPanel.appendChild(impBtns);
     app.appendChild(impPanel);
+  }
+
+  /* Sync Panel */
+  if(STATE.syncPanelOpen){
+    var syncPanel = el("div", "margin:8px 16px;padding:12px;background:#242424;border:1px solid " + (_syncActive ? "#5a9e6f" : "#3a3a3a") + ";border-radius:8px;");
+    syncPanel.appendChild(el("div", "font-size:11px;color:" + (_syncActive ? "#5a9e6f" : "#8a8580") + ";font-weight:600;margin-bottom:6px;",
+      "CLOUD SYNC" + (_syncActive ? " — " + _syncStatus.toUpperCase() : "")));
+    if(!_syncActive){
+      syncPanel.appendChild(el("div", "font-size:10px;color:#8a8580;margin-bottom:8px;", "Enter the same passphrase on all your devices to sync data automatically."));
+      var syncInp = el("input", "width:100%;background:#1a1a1a;color:#e8e4de;border:1px solid #3a3a3a;border-radius:4px;padding:8px;font-size:12px;font-family:inherit;outline:none;box-sizing:border-box;");
+      syncInp.type = "text"; syncInp.placeholder = "e.g. robbies-paint-app";
+      syncInp.autocomplete = "off"; syncInp.autocapitalize = "off"; syncInp.spellcheck = false;
+      syncPanel.appendChild(syncInp);
+      var syncBtns = el("div", "display:flex;gap:8px;margin-top:8px;");
+      syncBtns.appendChild(btn("Enable Sync", function(){
+        var phrase = syncInp.value.trim();
+        if(!phrase){ alert("Please enter a passphrase."); return; }
+        if(phrase.length < 4){ alert("Passphrase must be at least 4 characters."); return; }
+        if(_firebaseReady){ setupSync(phrase); }
+        else { alert("Cloud service not available. Check your connection and reload."); }
+      }, "background:#5a9e6f;border:none;border-radius:4px;color:#fff;font-size:11px;padding:6px 16px;cursor:pointer;font-weight:600;"));
+      syncBtns.appendChild(btn("Close", function(){ STATE.syncPanelOpen = false; render(); },
+        "background:#2e2e2e;border:1px solid #3a3a3a;border-radius:4px;color:#8a8580;font-size:11px;padding:6px 16px;cursor:pointer;"));
+      syncPanel.appendChild(syncBtns);
+      if(_syncStatus === "error"){
+        syncPanel.appendChild(el("div", "font-size:9px;color:#cc5555;margin-top:6px;", "Cloud service unavailable. App works offline — sync will activate when connection is restored."));
+      }
+    } else {
+      var statusColor = _syncStatus === "synced" ? "#5a9e6f" : _syncStatus === "offline" ? "#d4a843" : _syncStatus === "connecting" ? "#d4a843" : "#cc5555";
+      var statusText = _syncStatus === "synced" ? "Connected and syncing" : _syncStatus === "offline" ? "Offline — will sync when reconnected" : _syncStatus === "connecting" ? "Connecting..." : "Sync error";
+      syncPanel.appendChild(el("div", "font-size:10px;color:" + statusColor + ";margin-bottom:8px;", statusText));
+      var savedPhrase = localStorage.getItem(SYNC_PASSPHRASE_KEY) || "";
+      if(savedPhrase) syncPanel.appendChild(el("div", "font-size:9px;color:#8a8580;margin-bottom:8px;", "Passphrase: " + savedPhrase.charAt(0) + "***" + savedPhrase.charAt(savedPhrase.length - 1)));
+      var dBtns = el("div", "display:flex;gap:8px;");
+      dBtns.appendChild(btn("Force Push", function(){
+        if(confirm("Overwrite cloud data with this device's data?")) pushToCloud();
+      }, "background:#2e2e2e;border:1px solid #3a3a3a;border-radius:4px;color:#d4a843;font-size:10px;padding:5px 12px;cursor:pointer;"));
+      dBtns.appendChild(btn("Disconnect", disconnectSync,
+        "background:#2e2e2e;border:1px solid #3a3a3a;border-radius:4px;color:#cc5555;font-size:10px;padding:5px 12px;cursor:pointer;"));
+      dBtns.appendChild(btn("Close", function(){ STATE.syncPanelOpen = false; render(); },
+        "background:#2e2e2e;border:1px solid #3a3a3a;border-radius:4px;color:#8a8580;font-size:10px;padding:5px 12px;cursor:pointer;"));
+      syncPanel.appendChild(dBtns);
+    }
+    app.appendChild(syncPanel);
   }
 
   /* Unit Mode Toggle */
@@ -2369,6 +2567,7 @@ function render(){
 
 /* ── Init ── */
 loadState();
+initFirebase();
 
 // Check for data in URL hash (e.g. #data=BASE64ENCODED)
 (function(){
