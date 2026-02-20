@@ -281,9 +281,13 @@ function calcQuickRoom(rm){
   }
   var totalDoors = Math.max(doorFrameCount, doorFaceCount);
   var openingSqft = winCount * 15 + totalDoors * 21;
+  // Deduct trim casing around openings (~2.75" wide casing covers wall surface)
+  // Door casing: two sides (84") + top (36") = 204" × 2.75" = ~3.9 sf per door
+  // Window casing: all four sides ~168" × 2.75" = ~3.2 sf per window
+  var casingDeduct = doorFrameCount * 3.9 + winCount * 3.2;
   // Deduct baseboard strip from wall area (3.5" tall strip along perimeter minus door openings)
   var bbStripSqft = (rm.includeBaseboard !== false) ? Math.max(0, (2*l + 2*w - totalDoors * 36) / 12) * 3.5 / 12 : 0;
-  var paintableWall = Math.max(0, grossWall - openingSqft - bbStripSqft);
+  var paintableWall = Math.max(0, grossWall - openingSqft - casingDeduct - bbStripSqft);
   var paintable = paintableWall + ceil;
 
   // Per-product coverage (fall back to global COV defaults), adjusted for surface condition
