@@ -244,7 +244,7 @@ function makeJob(o){
 }
 
 function makeConsumable(o){
-  var c = { id:uid(), name:"", cost:"" };
+  var c = { id:uid(), name:"", cost:"", qty:1 };
   if(o) for(var k in o) c[k] = o[k];
   return c;
 }
@@ -252,7 +252,7 @@ function makeConsumable(o){
 function calcConsumablesTotal(job){
   var total = 0;
   var items = job.consumables || [];
-  for(var i = 0; i < items.length; i++) total += pf(items[i].cost);
+  for(var i = 0; i < items.length; i++) total += pf(items[i].cost) * (pi2(items[i].qty) || 1);
   return total;
 }
 
@@ -732,6 +732,8 @@ function migrateJobs(jobs){
       jobs[j].builderSuppliesPaint = pf(jobs[j].materialsDeduction) > 0;
     }
     if(jobs[j].consumables === undefined) jobs[j].consumables = [];
+    var mCons = jobs[j].consumables;
+    for(var mc = 0; mc < mCons.length; mc++){ if(mCons[mc].qty === undefined) mCons[mc].qty = 1; }
     if(jobs[j].hoursWorked === undefined) jobs[j].hoursWorked = "";
     var rooms = jobs[j].rooms || [];
     for(var r = 0; r < rooms.length; r++) migrateRoom(rooms[r]);
@@ -1680,8 +1682,11 @@ function renderInvoice(job, body, rate, er){
     inv.appendChild(secHead("CONSUMABLES & EXTRAS", 20));
     for(var ci2 = 0; ci2 < conItems.length; ci2++){
       var cItem = conItems[ci2];
-      if(pf(cItem.cost) > 0){
-        inv.appendChild(invRow(cItem.name || "(unnamed)", "$" + pf(cItem.cost).toFixed(2)));
+      var cQty = pi2(cItem.qty) || 1;
+      var cLineCost = pf(cItem.cost) * cQty;
+      if(cLineCost > 0){
+        var cLabel = (cItem.name || "(unnamed)") + (cQty > 1 ? " × " + cQty : "");
+        inv.appendChild(invRow(cLabel, "$" + cLineCost.toFixed(2)));
       }
     }
     var conSubRow = el("div", "display:flex;justify-content:space-between;padding:10px 0;border-top:2px solid #ddd;margin-top:4px;font-weight:700;");
@@ -1881,7 +1886,9 @@ function renderInvoice(job, body, rate, er){
       if(conTotal > 0){
         text += "\n═══ CONSUMABLES ═══\n";
         for(var sci = 0; sci < conItems.length; sci++){
-          if(pf(conItems[sci].cost) > 0) text += (conItems[sci].name || "(unnamed)") + ": $" + pf(conItems[sci].cost).toFixed(2) + "\n";
+          var scQty = pi2(conItems[sci].qty) || 1;
+          var scLine = pf(conItems[sci].cost) * scQty;
+          if(scLine > 0) text += (conItems[sci].name || "(unnamed)") + (scQty > 1 ? " × " + scQty : "") + ": $" + scLine.toFixed(2) + "\n";
         }
         text += "Consumables Subtotal: $" + conTotal.toFixed(2) + "\n";
       }
@@ -2171,15 +2178,18 @@ function render(){
   conSec.appendChild(conHdr);
   for(var ci = 0; ci < conItems.length; ci++){
     (function(item, idx){
-      var cRow = flexRow([], 6, "margin-bottom:4px;");
-      var nameInp = el("input", "flex:1;min-width:80px;background:#2e2e2e;color:#e8e4de;border:1px solid #3a3a3a;border-radius:4px;padding:6px 8px;outline:none;font-size:11px;font-family:inherit;box-sizing:border-box;");
-      nameInp.type = "text"; nameInp.placeholder = "e.g. Caulk, Tape, Sandpaper";
+      var cRow = flexRow([], 4, "margin-bottom:4px;");
+      var nameInp = el("input", "flex:1;min-width:60px;background:#2e2e2e;color:#e8e4de;border:1px solid #3a3a3a;border-radius:4px;padding:6px 8px;outline:none;font-size:11px;font-family:inherit;box-sizing:border-box;");
+      nameInp.type = "text"; nameInp.placeholder = "e.g. Caulk, Tape";
       nameInp.value = item.name || "";
       nameInp.oninput = function(e){ item.name = e.target.value; saveState(); };
       nameInp.onblur = function(){ render(); };
       cRow.appendChild(nameInp);
       cRow.appendChild(span("$", "#e8954a", "font-size:11px;"));
-      cRow.appendChild(numInput(item.cost, function(v){ item.cost = v; }, 65));
+      cRow.appendChild(numInput(item.cost, function(v){ item.cost = v; }, 55));
+      cRow.appendChild(pmBtn("−", function(){ item.qty = Math.max(1, (pi2(item.qty) || 1) - 1); saveState(); render(); }));
+      cRow.appendChild(span(String(pi2(item.qty) || 1), "#e8e4de", "font-weight:600;width:18px;text-align:center;font-size:11px;display:inline-block;"));
+      cRow.appendChild(pmBtn("+", function(){ item.qty = (pi2(item.qty) || 1) + 1; saveState(); render(); }));
       cRow.appendChild(btn("✕", function(){
         job.consumables.splice(idx, 1); saveState(); render();
       }, "background:none;border:none;color:#c75050;font-size:12px;padding:2px 4px;cursor:pointer;"));
