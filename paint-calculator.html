@@ -1324,7 +1324,8 @@ function renderSurfCard(surf, types, isExtra, rm){
     prOvrInp.type = "number"; prOvrInp.inputMode = "decimal";
     prOvrInp.placeholder = "$" + defaultPrice;
     prOvrInp.value = surf.priceOverride;
-    prOvrInp.oninput = function(e){ surf.priceOverride = e.target.value; saveState(); render(); };
+    prOvrInp.oninput = function(e){ surf.priceOverride = e.target.value; saveState(); };
+    prOvrInp.onblur = function(){ render(); };
     priceRow.appendChild(prOvrInp);
     if(hasOverride){
       priceRow.appendChild(span("(default $" + defaultPrice + ")", "#8a8580", "font-size:9px;"));
