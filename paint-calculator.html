@@ -1488,9 +1488,15 @@ function renderInvoice(job, body, rate, primerRate, er){
   inv.appendChild(el("div", "font-size:12px;color:#888;margin-bottom:20px;", job.rooms.length + " room" + (job.rooms.length !== 1 ? "s" : "")));
 
   // ── RATES SUMMARY ──
+  var jobHasPrimer = false;
+  for(var pri = 0; pri < job.rooms.length; pri++){
+    var prm = job.rooms[pri];
+    if(prm.mode === "quick"){ if(pi2(prm.quickPrimerCoats) > 0) jobHasPrimer = true; }
+    else { for(var psi = 0; psi < (prm.surfaces||[]).length; psi++){ if(pi2(prm.surfaces[psi].primerCoats) > 0) jobHasPrimer = true; } }
+  }
   inv.appendChild(secHead("RATES"));
   inv.appendChild(invRow("Topcoat labor", "$" + rate + " / sf / coat"));
-  if(primerRate !== rate) inv.appendChild(invRow("Primer labor", "$" + primerRate + " / sf / coat"));
+  if(jobHasPrimer) inv.appendChild(invRow("Primer labor", "$" + primerRate + " / sf / coat"));
   inv.appendChild(invRow("Enamel labor", "$" + er + " / lf"));
 
   // ── ROOM-BY-ROOM DETAIL ──
@@ -1886,7 +1892,7 @@ function renderInvoice(job, body, rate, primerRate, er){
       // Rates
       text += "\n═══ RATES ═══\n";
       text += "Topcoat: $" + rate + "/sf/coat\n";
-      if(primerRate !== rate) text += "Primer: $" + primerRate + "/sf/coat\n";
+      if(jobHasPrimer) text += "Primer: $" + primerRate + "/sf/coat\n";
       text += "Enamel: $" + er + "/lf\n";
       // Room detail
       text += "\n═══ ROOM DETAIL ═══\n";
