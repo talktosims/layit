@@ -490,9 +490,10 @@ function calcJobFixed(job){
     for(var i = 0; i < items.length; i++){
       var s = items[i];
       var q = pi2(s.qty) || 1;
-      if(s.type === "door_face"){ df.q += q; df.p += (s.doorSides === "both" ? 100 : 50) * q; }
-      else if(s.type === "door_frame"){ dr.q += q; dr.p += 100 * q; }
-      else if(s.type === "window_frame"){ wi.q += q; wi.p += 125 * q; }
+      var ovr = pf(s.priceOverride);
+      if(s.type === "door_face"){ df.q += q; df.p += (ovr > 0 ? ovr * q : (s.doorSides === "both" ? 100 : 50) * q); }
+      else if(s.type === "door_frame"){ dr.q += q; dr.p += (ovr > 0 ? ovr * q : 100 * q); }
+      else if(s.type === "window_frame"){ wi.q += q; wi.p += (ovr > 0 ? ovr * q : 125 * q); }
     }
   }
   for(var i = 0; i < job.rooms.length; i++){
@@ -1694,6 +1695,15 @@ function renderInvoice(job, body, rate, er){
     conSubRow.appendChild(el("div", "font-size:12px;color:#555;", "Consumables Subtotal"));
     conSubRow.appendChild(el("div", "font-size:14px;color:#1a1a1a;", "$" + conTotal.toFixed(2)));
     inv.appendChild(conSubRow);
+  }
+
+  // ── COMBINED MATERIALS TOTAL ──
+  var invMatTotal = (hasAnyPrice ? matGrandTotal : 0) + conTotal;
+  if(hasAnyPrice && conTotal > 0 && invMatTotal > 0){
+    var cmtRow = el("div", "display:flex;justify-content:space-between;padding:10px 0;border-top:3px double #bbb;margin-top:2px;font-weight:700;");
+    cmtRow.appendChild(el("div", "font-size:13px;color:#1a1a1a;", "Total Materials"));
+    cmtRow.appendChild(el("div", "font-size:15px;color:#1a1a1a;", "$" + invMatTotal.toFixed(2)));
+    inv.appendChild(cmtRow);
   }
 
   // ── LABOR SECTION ──
