@@ -7566,12 +7566,26 @@ function getTilesForExport(area) {
             // Check if tile intersects wall
             var wallPoly = getWallPolyInches();
             if (polyIntersects(verts, wallPoly)) {
+                // Determine if tile needs cutting (not fully inside wall or touches a void)
+                var allIn = true;
+                for (var vi = 0; vi < verts.length; vi++) {
+                    if (!inPoly(verts[vi], wallPoly)) { allIn = false; break; }
+                }
+                var touchesVoid = false;
+                if (C.voids && C.voids.length > 0) {
+                    for (var vdi = 0; vdi < C.voids.length; vdi++) {
+                        var v = C.voids[vdi];
+                        var voidPoly = [[v.x, v.y], [v.x + v.w, v.y], [v.x + v.w, v.y + v.h], [v.x, v.y + v.h]];
+                        if (polyIntersects(verts, voidPoly)) { touchesVoid = true; break; }
+                    }
+                }
                 tiles.push({
                     x: x,
                     y: y,
                     verts: verts,
                     row: row,
-                    col: col
+                    col: col,
+                    isCut: !allIn || touchesVoid
                 });
             }
         }
@@ -7668,7 +7682,7 @@ function exportLayItFormat(tiles, wallPts) {
         },
         voids: C.voids,
         tiles: tiles.map(function(t) {
-            return { x: t.x, y: t.y, verts: t.verts };
+            return { x: t.x, y: t.y, verts: t.verts, isCut: t.isCut || false };
         })
     };
     
