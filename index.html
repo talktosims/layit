@@ -779,7 +779,77 @@
         .wiz-progress-dot.filled { background:var(--success); }
         .wiz-progress-dot.current { background:var(--success); opacity:0.5; }
 
+        /* ── Barcode Scanner ── */
+        .scanner-overlay {
+            display:none; position:fixed; top:0; left:0; right:0; bottom:0;
+            background:#000; z-index:3000; flex-direction:column;
+        }
+        .scanner-overlay.active { display:flex; }
+        .scanner-video { width:100%; height:100%; object-fit:cover; }
+        .scanner-viewfinder {
+            position:absolute; top:50%; left:50%;
+            transform:translate(-50%, -50%);
+            width:280px; height:140px;
+            border:2px solid rgba(34,197,94,0.6);
+            border-radius:8px;
+            box-shadow:0 0 0 9999px rgba(0,0,0,0.5);
+        }
+        .scanner-viewfinder::before,
+        .scanner-viewfinder::after {
+            content:''; position:absolute;
+            width:30px; height:30px;
+            border-color:var(--success); border-style:solid;
+        }
+        .scanner-viewfinder::before {
+            top:-2px; left:-2px;
+            border-width:3px 0 0 3px; border-radius:4px 0 0 0;
+        }
+        .scanner-viewfinder::after {
+            bottom:-2px; right:-2px;
+            border-width:0 3px 3px 0; border-radius:0 0 4px 0;
+        }
+        .scanner-header {
+            position:absolute; top:0; left:0; right:0;
+            padding:16px; display:flex;
+            justify-content:space-between; align-items:center; z-index:1;
+        }
+        .scanner-footer {
+            position:absolute; bottom:0; left:0; right:0;
+            padding:20px 16px;
+            background:linear-gradient(transparent, rgba(0,0,0,0.9));
+            z-index:1;
+        }
+        .scanner-manual { display:flex; gap:8px; margin-top:12px; }
+        .scanner-manual input {
+            flex:1; padding:12px;
+            background:rgba(255,255,255,0.1);
+            border:1px solid rgba(255,255,255,0.2);
+            border-radius:8px; color:#fff; font-size:16px;
+        }
+        .scanner-flash {
+            position:absolute; inset:0;
+            background:rgba(34,197,94,0.3);
+            animation:flashFade 0.5s ease-out forwards;
+            pointer-events:none;
+        }
+        @keyframes flashFade { from{opacity:1} to{opacity:0} }
+        .scan-btn {
+            padding:8px 12px;
+            background:var(--bg-elevated);
+            border:1px solid var(--border-default);
+            border-radius:var(--radius-sm);
+            color:var(--text-primary);
+            cursor:pointer; font-size:16px; flex-shrink:0;
+        }
+        .scanner-status {
+            text-align:center; color:rgba(255,255,255,0.7);
+            font-size:13px; padding:8px 0;
+        }
+
     </style>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 </head>
 <body>
     <!-- Measurement Wizard Overlay -->
@@ -998,6 +1068,115 @@
         </div>
     </div>
 
+    <!-- Barcode Scanner Overlay -->
+    <div class="scanner-overlay" id="scannerOverlay">
+        <div class="scanner-header">
+            <span style="color:#fff;font-weight:700;font-size:16px;">Scan Tile Barcode</span>
+            <button class="scan-btn" onclick="closeBarcodeScanner()" style="font-size:20px;background:rgba(255,255,255,0.1);border-color:rgba(255,255,255,0.2);color:#fff;">✕</button>
+        </div>
+        <video class="scanner-video" id="scannerVideo" autoplay playsinline></video>
+        <div class="scanner-viewfinder" id="scannerViewfinder"></div>
+        <div class="scanner-footer">
+            <div class="scanner-status" id="scannerStatus">Point camera at barcode on tile box</div>
+            <div class="scanner-manual">
+                <input type="text" id="manualUPC" placeholder="Or type UPC manually" inputmode="numeric" pattern="[0-9]*">
+                <button class="btn-success" onclick="lookupManualUPC()" style="padding:12px 20px;white-space:nowrap;">Look Up</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Product Found Confirmation -->
+    <div class="modal-overlay" id="productFoundModal">
+        <div class="modal-box">
+            <h3 style="color:var(--success);">✅ Product Found!</h3>
+            <div id="productFoundDetails" style="text-align:left;line-height:1.6;margin:12px 0;"></div>
+            <div class="modal-buttons">
+                <button class="modal-cancel" onclick="closeProductFound(false)">Cancel</button>
+                <button class="btn-success" onclick="closeProductFound(true)" style="padding:12px 24px;">Apply</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Product Not Found — Crowdsource Form -->
+    <div class="modal-overlay" id="productNotFoundModal">
+        <div class="modal-box" style="max-width:400px;text-align:left;max-height:85vh;overflow-y:auto;">
+            <h3 style="color:var(--warning);">Product Not Found</h3>
+            <p style="font-size:13px;color:var(--text-muted);margin-bottom:12px;">
+                Barcode <b id="notFoundBarcode"></b> isn't in our database yet.<br>Help other installers by adding it!
+            </p>
+            <div class="field"><label>Product Name</label><input type="text" id="contribName" placeholder='e.g. 2" Hex Marble Mosaic'></div>
+            <div class="field"><label>Brand</label><input type="text" id="contribBrand" placeholder="e.g. Daltile"></div>
+            <div class="field"><label>Shape</label>
+                <select id="contribShape" onchange="document.getElementById('contribMosaicFields').style.display=(this.value==='mosaic')?'block':'none'">
+                    <option value="square">Square</option>
+                    <option value="rectangle">Rectangle</option>
+                    <option value="hexagon">Hexagon</option>
+                    <option value="herringbone">Herringbone</option>
+                    <option value="mosaic">Mosaic Sheet</option>
+                </select>
+            </div>
+            <div class="row">
+                <div class="field"><label>Nominal W (in)</label><input type="number" id="contribNomW" step="any"></div>
+                <div class="field"><label>Nominal H (in)</label><input type="number" id="contribNomH" step="any"></div>
+            </div>
+            <div class="field"><label>Grout Joint</label>
+                <select id="contribGrout">
+                    <option value="0.0625">1/16"</option>
+                    <option value="0.125" selected>1/8"</option>
+                    <option value="0.25">1/4"</option>
+                </select>
+            </div>
+            <div class="field">
+                <label>📸 Photo of Box Label <span style="font-weight:normal;color:var(--warning);">(required)</span></label>
+                <div style="display:flex;gap:8px;align-items:center;">
+                    <input type="file" id="contribPhoto" accept="image/*" capture="environment" onchange="previewLabelPhoto(this)" style="font-size:13px;flex:1;">
+                    <img id="contribPhotoPreview" style="display:none;width:60px;height:60px;object-fit:cover;border-radius:6px;border:1px solid var(--border-default);">
+                </div>
+            </div>
+            <div id="contribMosaicFields" style="display:none;">
+                <div class="field"><label>Sub-Tile Shape</label>
+                    <select id="contribSubShape">
+                        <option value="square">Square</option>
+                        <option value="hex">Hexagon</option>
+                        <option value="penny">Penny Round</option>
+                        <option value="fishscale">Fish Scale</option>
+                        <option value="linear">Linear Strip</option>
+                        <option value="diamond">Diamond</option>
+                        <option value="chevron">Chevron</option>
+                    </select>
+                </div>
+                <div class="row">
+                    <div class="field"><label>Sub W (in)</label><input type="number" id="contribSubW" step="any"></div>
+                    <div class="field"><label>Sub H (in)</label><input type="number" id="contribSubH" step="any"></div>
+                </div>
+                <div class="field"><label>Sub-Tile Grout</label>
+                    <select id="contribSubGr">
+                        <option value="0.03125">1/32"</option>
+                        <option value="0.0625" selected>1/16"</option>
+                        <option value="0.125">1/8"</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-buttons" style="margin-top:16px;">
+                <button class="modal-cancel" onclick="closeProductNotFound()">Cancel</button>
+                <button class="btn-success" onclick="submitProductContribution()" style="padding:12px 20px;">Submit & Apply</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Room Scan Preview Modal -->
+    <div class="modal-overlay" id="roomScanModal">
+        <div class="modal-box" style="max-width:400px;">
+            <h3 style="color:var(--success);">📱 Room Scan Imported</h3>
+            <canvas id="roomScanPreviewCanvas" width="360" height="250" style="width:100%;background:var(--bg-recessed);border-radius:var(--radius-sm);margin:12px 0;"></canvas>
+            <div id="roomScanInfo" style="text-align:left;font-size:13px;color:var(--text-secondary);line-height:1.6;margin-bottom:16px;"></div>
+            <div class="modal-buttons">
+                <button class="modal-cancel" onclick="closeRoomScanModal(false)">Cancel</button>
+                <button class="btn-success" onclick="closeRoomScanModal(true)" style="padding:12px 24px;">Apply</button>
+            </div>
+        </div>
+    </div>
+
     <div class="tabs" id="tabBar">
         <button class="tab active" data-tab="diagram"><span class="tab-icon">📐</span><span class="tab-label">Layout</span></button>
         <button class="tab" data-tab="wall"><span class="tab-icon">🧱</span><span class="tab-label">Wall</span></button>
@@ -1116,14 +1295,59 @@
                 Apply Rectangle
             </button>
         </div>
+
+        <!-- Room Scan Import -->
+        <div class="section">
+            <h3>📱 Import Room Scan</h3>
+            <p class="hint mb-3" style="text-align:left;">Import a room scan from Apple Measure app to auto-fill wall dimensions. Scan a room with LiDAR, export the .usdz file, then import it here.</p>
+            <button class="btn-secondary" onclick="document.getElementById('roomScanFile').click()" style="width:100%;">
+                📱 Import Room Scan (.usdz)
+            </button>
+            <input type="file" id="roomScanFile" accept=".usdz,.usda" style="display:none" onchange="handleRoomScanImport(event)">
+        </div>
     </div>
 
     <div id="tile" class="panel">
         <div class="section"><h3>Tile Settings</h3>
-            <div class="field"><label>Preset</label><select id="tilePreset" onchange="applyPreset()"><option value="custom">Custom (enter below)</option></select></div>
+            <div class="field"><label>Preset</label>
+                <div style="display:flex;gap:6px;">
+                    <select id="tilePreset" onchange="applyPreset()" style="flex:1;"><option value="custom">Custom (enter below)</option></select>
+                    <button class="scan-btn" onclick="openBarcodeScanner()" title="Scan tile barcode">📷</button>
+                </div>
+            </div>
             <div class="row">
-                <div class="field"><label>Shape</label><select id="tileShape" onchange="onShape()"><option value="hexagon">Hexagon</option><option value="square">Square</option><option value="rectangle">Rectangle</option><option value="herringbone" selected>Herringbone</option></select></div>
+                <div class="field"><label>Shape</label><select id="tileShape" onchange="onShape()"><option value="hexagon">Hexagon</option><option value="square">Square</option><option value="rectangle">Rectangle</option><option value="herringbone" selected>Herringbone</option><option value="mosaic">Mosaic Sheet</option></select></div>
                 <div class="field" id="orientDiv"><label>Orientation</label><select id="tileOrient"><option value="pointy">45° Right</option><option value="flat">45° Left</option></select></div>
+            </div>
+            <div id="mosaicFields" style="display:none;">
+                <div class="field">
+                    <label>Sub-Tile Shape</label>
+                    <select id="subShape">
+                        <option value="square">◻ Square</option>
+                        <option value="hex" selected>⬡ Hexagon</option>
+                        <option value="penny">● Penny Round</option>
+                        <option value="fishscale">🐟 Fish Scale</option>
+                        <option value="diamond">◆ Diamond</option>
+                        <option value="chevron">∧ Chevron</option>
+                        <option value="arabesque">❋ Arabesque</option>
+                        <option value="picket">⬬ Picket</option>
+                    </select>
+                </div>
+                <div class="row">
+                    <div class="field"><label>Sub-Tile Width (in)</label><input type="number" id="subW" value="2" step="any"></div>
+                    <div class="field"><label>Sub-Tile Height (in)</label><input type="number" id="subH" value="2.25" step="any"></div>
+                </div>
+                <div class="field">
+                    <label>Sub-Tile Grout</label>
+                    <select id="subGr">
+                        <option value="0.03125">1/32"</option>
+                        <option value="0.0625" selected>1/16"</option>
+                        <option value="0.125">1/8"</option>
+                    </select>
+                </div>
+                <div class="hint" style="margin-top:6px;">
+                    📐 Enter the individual tile size within the sheet. Sheet dimensions go in Width/Height above.
+                </div>
             </div>
             <div class="row" id="patternDiv" style="display:none;">
                 <div class="field"><label>Pattern</label><select id="tilePattern" onchange="updateTile()">
@@ -1242,9 +1466,12 @@
                 <div id="wallInputs">
                     <label>Distance from wall</label>
                     <div class="flex-row" style="margin:10px 0;">
-                        <input type="range" id="distanceSlider" min="3" max="15" value="6" step="0.5" 
+                        <input type="range" id="distanceSlider" min="3" max="15" value="6" step="0.5"
                                oninput="updateFromDistance()" style="flex:1;">
                         <span id="distanceValue" style="font-size:var(--text-xl);font-weight:bold;color:var(--text-primary);min-width:50px;">6 ft</span>
+                    </div>
+                    <div class="hint" style="font-size:12px;color:var(--text-muted);margin-top:-4px;">
+                        Recommended: 6-8 ft for the best balance of coverage and line sharpness
                     </div>
                 </div>
                 
@@ -1552,21 +1779,23 @@ function updateFloorCoverage() {
     calculateSegments();
 }
 
-// Update coverage display
+// Update coverage display with guardrail advisories
 function updateCoverageDisplay() {
     var container = document.getElementById('coverageResult');
     if (!container) return;
-    
+
     var coverage = segmentState.coverage;
     var quality;
-    
+    var effectiveDistance;
+
     if (segmentState.surface === 'wall') {
+        effectiveDistance = segmentState.distance;
         quality = getLineQuality(segmentState.distance);
     } else {
-        var beamDist = getFloorBeamDistance(segmentState.tripodHeight, segmentState.floorDistance);
-        quality = getLineQuality(beamDist);
+        effectiveDistance = getFloorBeamDistance(segmentState.tripodHeight, segmentState.floorDistance);
+        quality = getLineQuality(effectiveDistance);
     }
-    
+
     var html = '<div class="grid-2">';
 
     // Coverage box
@@ -1584,7 +1813,37 @@ function updateCoverageDisplay() {
     html += '</div>';
 
     html += '</div>';
-    
+
+    // ── Guardrail advisory ──
+    // Guide users toward the optimal 4-8ft range for best results
+    if (effectiveDistance > 10) {
+        // Hard warning — quality is significantly degraded
+        html += '<div style="margin-top:12px;padding:12px;background:#ff572220;border:1px solid #ff5722;border-radius:8px;">';
+        html += '<div style="font-weight:600;color:#ff5722;margin-bottom:4px;">⚠️ Too Far for Sharp Lines</div>';
+        html += '<div style="font-size:13px;color:var(--text-secondary);line-height:1.4;">';
+        html += 'At ' + effectiveDistance.toFixed(1) + 'ft the laser beam is wider than most grout lines, ';
+        html += 'so tile edges will look blurry. <strong>Move the laser to 6-8ft</strong> for crisp, ';
+        html += 'well-defined tile outlines. The laser works best with smaller segments — ';
+        html += 'it will walk you through each one.';
+        html += '</div></div>';
+    } else if (effectiveDistance > 8) {
+        // Soft suggestion — still works but not ideal
+        html += '<div style="margin-top:12px;padding:12px;background:#ff980020;border:1px solid #ff9800;border-radius:8px;">';
+        html += '<div style="font-weight:600;color:#ff9800;margin-bottom:4px;">💡 Tip: Move a Little Closer</div>';
+        html += '<div style="font-size:13px;color:var(--text-secondary);line-height:1.4;">';
+        html += 'The laser works at this distance, but grout lines may start to merge together. ';
+        html += 'For the sharpest lines, <strong>6-8ft is the sweet spot</strong>. ';
+        html += 'The laser will automatically divide your wall into segments and guide you through each one.';
+        html += '</div></div>';
+    } else if (effectiveDistance <= 4 && coverage < 40) {
+        // Very close — great quality but tiny coverage, reassure them
+        html += '<div style="margin-top:12px;padding:10px;background:#4CAF5020;border:1px solid #4CAF50;border-radius:8px;">';
+        html += '<div style="font-size:13px;color:var(--text-secondary);line-height:1.4;">';
+        html += '✓ <strong>Great line quality!</strong> Small coverage area means more segments, ';
+        html += 'but every line will be razor-sharp. The laser guides you segment by segment.';
+        html += '</div></div>';
+    }
+
     container.innerHTML = html;
 }
 
@@ -2935,6 +3194,412 @@ function applyQuickRectangle() {
 setTimeout(initPerimeterCanvas, 100);
 
 // ==================== END PERIMETER SYSTEM ====================
+
+// ==================== ROOM SCAN IMPORT SYSTEM ====================
+
+var _pendingRoomScan = null;
+
+/**
+ * Extract the first .usda file from a USDZ (ZIP archive) ArrayBuffer.
+ * USDZ spec uses ZIP store method (compression=0), so no decompression needed.
+ * Returns the .usda text content, or null if not found.
+ */
+function extractUSDAfromUSDZ(buffer) {
+    var view = new DataView(buffer);
+    var uint8 = new Uint8Array(buffer);
+    var decoder = new TextDecoder('utf-8');
+    var offset = 0;
+    var foundUsdc = false;
+
+    while (offset < buffer.byteLength - 30) {
+        // Check local file header signature: PK\x03\x04
+        if (view.getUint32(offset, true) !== 0x04034b50) break;
+
+        var compressionMethod = view.getUint16(offset + 8, true);
+        var compressedSize = view.getUint32(offset + 18, true);
+        var uncompressedSize = view.getUint32(offset + 22, true);
+        var filenameLen = view.getUint16(offset + 26, true);
+        var extraLen = view.getUint16(offset + 28, true);
+
+        var filename = decoder.decode(uint8.slice(offset + 30, offset + 30 + filenameLen));
+        var dataStart = offset + 30 + filenameLen + extraLen;
+        var dataSize = compressionMethod === 0 ? uncompressedSize : compressedSize;
+
+        if (filename.toLowerCase().endsWith('.usda')) {
+            if (compressionMethod !== 0) {
+                throw new Error('Compressed USDZ not supported');
+            }
+            return decoder.decode(uint8.slice(dataStart, dataStart + dataSize));
+        }
+
+        if (filename.toLowerCase().endsWith('.usdc')) foundUsdc = true;
+
+        offset = dataStart + dataSize;
+    }
+
+    if (foundUsdc) return null; // Binary only — caller will show error
+    return null;
+}
+
+/**
+ * Parse USDA text to extract wall geometry from RoomPlan exports.
+ * Looks for def Xform "Wall_N" blocks and extracts transform data.
+ *
+ * RoomPlan coordinate system: Y-up, X-Z is the floor plane, meters.
+ * Wall scale.x = wall length, scale.y = wall height.
+ * Rotation around Y axis = angle on the floor plane.
+ */
+function parseUSDA(text) {
+    var result = { walls: [], doors: [], windows: [] };
+    var xformRegex = /def Xform "(Wall|Door|Window|Opening)[\s_]*([\d]*)"/g;
+    var match;
+
+    while ((match = xformRegex.exec(text)) !== null) {
+        var type = match[1].toLowerCase();
+        var startIdx = match.index;
+
+        // Find opening brace
+        var braceStart = text.indexOf('{', startIdx);
+        if (braceStart === -1) continue;
+
+        // Find matching closing brace (handle nesting)
+        var depth = 1;
+        var pos = braceStart + 1;
+        while (pos < text.length && depth > 0) {
+            if (text[pos] === '{') depth++;
+            else if (text[pos] === '}') depth--;
+            pos++;
+        }
+        var block = text.substring(braceStart + 1, pos - 1);
+
+        var xform = parseXformBlock(block);
+        if (!xform) continue;
+
+        if (type === 'wall') result.walls.push(xform);
+        else if (type === 'door' || type === 'opening') result.doors.push(xform);
+        else if (type === 'window') result.windows.push(xform);
+    }
+
+    return result;
+}
+
+/**
+ * Parse transform data from a single Xform block.
+ * Handles both matrix4d and separate translate/rotate/scale forms.
+ * Returns { cx, cz, angle, length, height } or null.
+ */
+function parseXformBlock(block) {
+    // Try matrix4d first
+    var matMatch = block.match(/matrix4d\s+xformOp:transform\s*=\s*\(\s*\(([^)]+)\)\s*,\s*\(([^)]+)\)\s*,\s*\(([^)]+)\)\s*,\s*\(([^)]+)\)\s*\)/);
+    if (matMatch) {
+        var rows = [];
+        for (var i = 1; i <= 4; i++) {
+            rows.push(matMatch[i].split(',').map(function(v) { return parseFloat(v.trim()); }));
+        }
+        // Translation from row 3
+        var tx = rows[3][0], ty = rows[3][1], tz = rows[3][2];
+        // Scale: length of first two row vectors
+        var scaleX = Math.sqrt(rows[0][0]*rows[0][0] + rows[0][1]*rows[0][1] + rows[0][2]*rows[0][2]);
+        var scaleY = Math.sqrt(rows[1][0]*rows[1][0] + rows[1][1]*rows[1][1] + rows[1][2]*rows[1][2]);
+        // Floor plane angle from X-axis direction
+        var angle = Math.atan2(rows[0][2], rows[0][0]);
+        return { cx: tx, cz: tz, angle: angle, length: scaleX, height: scaleY };
+    }
+
+    // Fall back to separate translate/rotate/scale
+    var translate = parseUsdaVec3(block, 'xformOp:translate');
+    var scale = parseUsdaVec3(block, 'xformOp:scale');
+    if (!translate || !scale) return null;
+
+    var angle = 0;
+    // Check rotateY (most common for walls in RoomPlan)
+    var rotY = block.match(/(?:float|double)\s+xformOp:rotateY\s*=\s*([-\d.eE+]+)/);
+    if (rotY) {
+        angle = parseFloat(rotY[1]) * Math.PI / 180;
+    } else {
+        // Check rotateXYZ — Y component is floor-plane rotation
+        var rotXYZ = block.match(/(?:float3|double3)\s+xformOp:rotateXYZ\s*=\s*\(\s*([-\d.eE+]+)\s*,\s*([-\d.eE+]+)\s*,\s*([-\d.eE+]+)\s*\)/);
+        if (rotXYZ) angle = parseFloat(rotXYZ[2]) * Math.PI / 180;
+        else {
+            var rotZ = block.match(/(?:float|double)\s+xformOp:rotateZ\s*=\s*([-\d.eE+]+)/);
+            if (rotZ) angle = parseFloat(rotZ[1]) * Math.PI / 180;
+        }
+    }
+
+    return {
+        cx: translate[0],
+        cz: translate[2],
+        angle: angle,
+        length: Math.abs(scale[0]),
+        height: Math.abs(scale[1])
+    };
+}
+
+/** Parse a vec3 property like: double3 xformOp:translate = (1.5, 0.1, -2.3) */
+function parseUsdaVec3(block, opName) {
+    var escaped = opName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    var regex = new RegExp('(?:float3|double3)\\s+' + escaped + '\\s*=\\s*\\(\\s*([-\\d.eE+]+)\\s*,\\s*([-\\d.eE+]+)\\s*,\\s*([-\\d.eE+]+)\\s*\\)');
+    var m = block.match(regex);
+    if (!m) return null;
+    return [parseFloat(m[1]), parseFloat(m[2]), parseFloat(m[3])];
+}
+
+/**
+ * Convert parsed wall data to a closed polygon in inches.
+ * Each wall: center + angle + length (meters) → two endpoints → chain into polygon.
+ */
+function wallsToPolygon(walls) {
+    if (!walls || walls.length < 3) return null;
+
+    var M2IN = 39.3701;
+
+    // Convert each wall to a line segment
+    var segments = walls.map(function(w) {
+        var halfLen = w.length / 2;
+        var cosA = Math.cos(w.angle);
+        var sinA = Math.sin(w.angle);
+        return {
+            x1: (w.cx - halfLen * cosA) * M2IN,
+            y1: (w.cz - halfLen * sinA) * M2IN,
+            x2: (w.cx + halfLen * cosA) * M2IN,
+            y2: (w.cz + halfLen * sinA) * M2IN
+        };
+    });
+
+    // Chain segments into connected polygon via nearest-neighbor
+    var polygon = [];
+    var used = new Array(segments.length).fill(false);
+    used[0] = true;
+    polygon.push({ x: segments[0].x1, y: segments[0].y1 });
+    polygon.push({ x: segments[0].x2, y: segments[0].y2 });
+    var cur = { x: segments[0].x2, y: segments[0].y2 };
+
+    for (var iter = 1; iter < segments.length; iter++) {
+        var bestIdx = -1, bestDist = Infinity, bestFlip = false;
+
+        for (var j = 0; j < segments.length; j++) {
+            if (used[j]) continue;
+            var d1 = Math.hypot(cur.x - segments[j].x1, cur.y - segments[j].y1);
+            var d2 = Math.hypot(cur.x - segments[j].x2, cur.y - segments[j].y2);
+            if (d1 < bestDist) { bestDist = d1; bestIdx = j; bestFlip = false; }
+            if (d2 < bestDist) { bestDist = d2; bestIdx = j; bestFlip = true; }
+        }
+
+        if (bestIdx === -1) break;
+        used[bestIdx] = true;
+
+        if (bestFlip) {
+            polygon.push({ x: segments[bestIdx].x1, y: segments[bestIdx].y1 });
+            cur = { x: segments[bestIdx].x1, y: segments[bestIdx].y1 };
+        } else {
+            polygon.push({ x: segments[bestIdx].x2, y: segments[bestIdx].y2 });
+            cur = { x: segments[bestIdx].x2, y: segments[bestIdx].y2 };
+        }
+    }
+
+    // Calculate perimeter
+    var perimeter = 0;
+    for (var i = 0; i < polygon.length; i++) {
+        var next = polygon[(i + 1) % polygon.length];
+        perimeter += Math.hypot(next.x - polygon[i].x, next.y - polygon[i].y);
+    }
+
+    // Bounding box
+    var minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    polygon.forEach(function(p) {
+        if (p.x < minX) minX = p.x;
+        if (p.y < minY) minY = p.y;
+        if (p.x > maxX) maxX = p.x;
+        if (p.y > maxY) maxY = p.y;
+    });
+    var width = maxX - minX;
+    var height = maxY - minY;
+
+    // Normalize: origin at min corner, Y=0 at bottom (LayIt convention)
+    polygon.forEach(function(p) {
+        p.x = p.x - minX;
+        p.y = height - (p.y - minY);
+    });
+
+    // Ensure counter-clockwise winding (matching applyPerimeter convention)
+    var signedArea = 0;
+    for (var i = 0; i < polygon.length; i++) {
+        var j = (i + 1) % polygon.length;
+        signedArea += polygon[i].x * polygon[j].y;
+        signedArea -= polygon[j].x * polygon[i].y;
+    }
+    if (signedArea < 0) polygon.reverse();
+
+    return {
+        polygon: polygon,
+        perimeterInches: perimeter,
+        wallCount: walls.length,
+        widthInches: width,
+        heightInches: height
+    };
+}
+
+/** Main entry point: handle file input change */
+function handleRoomScanImport(event) {
+    var file = event.target.files[0];
+    if (!file) return;
+
+    var ext = file.name.toLowerCase().split('.').pop();
+
+    if (ext === 'usda') {
+        var reader = new FileReader();
+        reader.onload = function(e) {
+            try { processRoomScanUSDA(e.target.result); }
+            catch (err) { showToast('Error reading file: ' + err.message); }
+        };
+        reader.readAsText(file);
+    } else if (ext === 'usdz') {
+        var reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                var usda = extractUSDAfromUSDZ(e.target.result);
+                if (!usda) {
+                    showToast('No readable .usda found. Binary .usdc format is not supported.');
+                    return;
+                }
+                processRoomScanUSDA(usda);
+            } catch (err) { showToast('Error parsing USDZ: ' + err.message); }
+        };
+        reader.readAsArrayBuffer(file);
+    } else {
+        showToast('Unsupported format. Use .usdz or .usda files.');
+    }
+
+    event.target.value = '';
+}
+
+/** Process parsed USDA text: extract walls, convert to polygon, show preview */
+function processRoomScanUSDA(usdaText) {
+    var parsed = parseUSDA(usdaText);
+
+    if (!parsed.walls || parsed.walls.length < 3) {
+        showToast('Not enough walls found (' + (parsed.walls ? parsed.walls.length : 0) + ', need 3+)');
+        return;
+    }
+
+    var result = wallsToPolygon(parsed.walls);
+    if (!result || !result.polygon || result.polygon.length < 3) {
+        showToast('Could not form a closed room shape from walls');
+        return;
+    }
+
+    _pendingRoomScan = result;
+    showRoomScanPreview(result);
+}
+
+/** Draw parsed room polygon on preview canvas and show modal */
+function showRoomScanPreview(result) {
+    var modal = document.getElementById('roomScanModal');
+    var canvas = document.getElementById('roomScanPreviewCanvas');
+    var ctx = canvas.getContext('2d');
+    var poly = result.polygon;
+
+    // Info text
+    var perimFeet = Math.floor(result.perimeterInches / 12);
+    var perimRem = Math.round(result.perimeterInches % 12);
+    var wFt = (result.widthInches / 12).toFixed(1);
+    var hFt = (result.heightInches / 12).toFixed(1);
+
+    var info = document.getElementById('roomScanInfo');
+    info.innerHTML =
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">' +
+        '<div><b>Walls:</b> ' + result.wallCount + '</div>' +
+        '<div><b>Perimeter:</b> ' + perimFeet + "' " + perimRem + '"</div>' +
+        '<div><b>Width:</b> ' + wFt + ' ft</div>' +
+        '<div><b>Depth:</b> ' + hFt + ' ft</div>' +
+        '</div>';
+
+    // Draw polygon
+    var w = canvas.width, h = canvas.height;
+    ctx.clearRect(0, 0, w, h);
+
+    var pad = 30;
+    var scaleX = (w - 2 * pad) / result.widthInches;
+    var scaleY = (h - 2 * pad) / result.heightInches;
+    var scale = Math.min(scaleX, scaleY);
+
+    var drawW = result.widthInches * scale;
+    var drawH = result.heightInches * scale;
+    var offX = (w - drawW) / 2;
+    var offY = (h - drawH) / 2;
+
+    // Filled polygon
+    ctx.beginPath();
+    ctx.moveTo(offX + poly[0].x * scale, offY + (result.heightInches - poly[0].y) * scale);
+    for (var i = 1; i < poly.length; i++) {
+        ctx.lineTo(offX + poly[i].x * scale, offY + (result.heightInches - poly[i].y) * scale);
+    }
+    ctx.closePath();
+    ctx.fillStyle = 'rgba(34, 197, 94, 0.15)';
+    ctx.fill();
+    ctx.strokeStyle = '#22c55e';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // Corner dots
+    ctx.fillStyle = '#22c55e';
+    for (var i = 0; i < poly.length; i++) {
+        ctx.beginPath();
+        ctx.arc(offX + poly[i].x * scale, offY + (result.heightInches - poly[i].y) * scale, 4, 0, Math.PI * 2);
+        ctx.fill();
+    }
+
+    // Wall length labels
+    ctx.fillStyle = '#94a3b8';
+    ctx.font = '11px sans-serif';
+    ctx.textAlign = 'center';
+    for (var i = 0; i < poly.length; i++) {
+        var j = (i + 1) % poly.length;
+        var mx = (poly[i].x + poly[j].x) / 2;
+        var my = (poly[i].y + poly[j].y) / 2;
+        var len = Math.hypot(poly[j].x - poly[i].x, poly[j].y - poly[i].y);
+        var ft = Math.floor(len / 12);
+        var inR = Math.round(len % 12);
+        var label = ft + "'" + inR + '"';
+        ctx.fillText(label, offX + mx * scale, offY + (result.heightInches - my) * scale - 8);
+    }
+
+    modal.classList.add('active');
+}
+
+/** Handle modal close (Cancel or Apply) */
+function closeRoomScanModal(apply) {
+    document.getElementById('roomScanModal').classList.remove('active');
+    if (apply && _pendingRoomScan) {
+        applyRoomScanImport(_pendingRoomScan);
+    }
+    _pendingRoomScan = null;
+}
+
+/**
+ * Apply imported room scan polygon to the layout.
+ * Mirrors applyPerimeter() and applyQuickRectangle() output path.
+ */
+function applyRoomScanImport(result) {
+    clearPerimeter();
+
+    C.polygon = result.polygon;
+    C.wall.tW = result.widthInches;
+    C.wall.lH = result.heightInches;
+    C.wall.rV = 0;
+    C.wall.bV = 0;
+
+    markUnsaved();
+    calculateSegments();
+    draw();
+
+    var perimFeet = Math.floor(result.perimeterInches / 12);
+    var perimRem = Math.round(result.perimeterInches % 12);
+    showToast('Room scan applied! ' + result.wallCount + ' walls, ' + perimFeet + "'" + perimRem + '" perimeter', 3000);
+    showTab('diagram');
+}
+
+// ==================== END ROOM SCAN IMPORT SYSTEM ====================
 
 function setSection(sec) {
     projSection = sec;
@@ -4873,7 +5538,18 @@ var TILE_PRESETS = [
     // Herringbone
     {name:'2×8 Herringbone', shape:'herringbone', nomW:2, nomH:8, actW:1.875, actH:7.875, grout:0.125},
     {name:'3×6 Herringbone', shape:'herringbone', nomW:3, nomH:6, actW:2.875, actH:5.875, grout:0.125},
-    {name:'3×12 Herringbone', shape:'herringbone', nomW:3, nomH:12, actW:2.875, actH:11.875, grout:0.125}
+    {name:'3×12 Herringbone', shape:'herringbone', nomW:3, nomH:12, actW:2.875, actH:11.875, grout:0.125},
+    // Mosaic Sheets
+    {name:'1" Square Glass (12×12)', shape:'mosaic', nomW:12, nomH:12, actW:11.75, actH:11.75, grout:0.125,
+     subShape:'square', subW:0.9375, subH:0.9375, subGr:0.0625},
+    {name:'2" Hex Mosaic (11×12.5)', shape:'mosaic', nomW:11, nomH:12.5, actW:10.75, actH:12.25, grout:0.125,
+     subShape:'hex', subW:1.875, subH:2.125, subGr:0.0625},
+    {name:'1" Hex Mosaic (11×11)', shape:'mosaic', nomW:11, nomH:11, actW:10.75, actH:10.75, grout:0.125,
+     subShape:'hex', subW:0.9375, subH:1.0625, subGr:0.0625},
+    {name:'¾" Penny Round (12×12)', shape:'mosaic', nomW:12, nomH:12, actW:11.75, actH:11.75, grout:0.125,
+     subShape:'penny', subW:0.75, subH:0.75, subGr:0.0625},
+    {name:'2" Fish Scale (12×12)', shape:'mosaic', nomW:12, nomH:12, actW:11.75, actH:11.75, grout:0.125,
+     subShape:'fishscale', subW:2, subH:2.25, subGr:0.0625}
 ];
 
 var CUSTOM_PRESETS_KEY = 'layit-custom-presets';
@@ -4900,8 +5576,8 @@ function buildPresetDropdown() {
         if (!groups[p.shape]) groups[p.shape] = [];
         groups[p.shape].push({idx: 'b_' + i, name: p.name});
     }
-    var shapeOrder = ['hexagon','rectangle','square','herringbone'];
-    var shapeLabels = {hexagon:'Hexagon',rectangle:'Subway / Rectangle',square:'Square',herringbone:'Herringbone'};
+    var shapeOrder = ['hexagon','rectangle','square','herringbone','mosaic'];
+    var shapeLabels = {hexagon:'Hexagon',rectangle:'Subway / Rectangle',square:'Square',herringbone:'Herringbone',mosaic:'Mosaic Sheet'};
     for (var si = 0; si < shapeOrder.length; si++) {
         var shape = shapeOrder[si];
         if (!groups[shape]) continue;
@@ -4956,6 +5632,14 @@ function applyPreset() {
         // In actual mode, show the actual measured sizes
         document.getElementById('tileW').value = preset.actW;
         document.getElementById('tileH').value = preset.actH;
+    }
+    // Populate mosaic sub-tile fields if present
+    if (preset.shape === 'mosaic' && preset.subShape) {
+        document.getElementById('subShape').value = preset.subShape;
+        document.getElementById('subW').value = preset.subW;
+        document.getElementById('subH').value = preset.subH;
+        document.getElementById('subGr').value = preset.subGr;
+        document.getElementById('mosaicFields').style.display = 'block';
     }
     onNominalToggle();
     updateTile();
@@ -5037,16 +5721,416 @@ function saveCustomPreset() {
     if (!name) return;
 
     var customs = getCustomPresets();
-    customs.push({
+    var presetData = {
         name: name,
         shape: shape,
         nomW: nomW, nomH: nomH,
         actW: actW, actH: actH,
         grout: grout
-    });
+    };
+    // Save mosaic sub-tile fields if applicable
+    if (shape === 'mosaic') {
+        presetData.subShape = document.getElementById('subShape').value;
+        presetData.subW = parseFloat(document.getElementById('subW').value) || 1;
+        presetData.subH = parseFloat(document.getElementById('subH').value) || 1;
+        presetData.subGr = parseFloat(document.getElementById('subGr').value) || 0.0625;
+    }
+    customs.push(presetData);
     saveCustomPresets(customs);
     buildPresetDropdown();
     showToast('✅ Preset "' + name + '" saved!');
+}
+
+/* ── Barcode Scanner + Tile Database ── */
+var scannerStream = null;
+var barcodeDetector = null;
+var scannerInterval = null;
+var _pendingBarcode = null;
+var _pendingProduct = null;
+
+// Built-in starter database (placeholder UPCs — verify against real product boxes)
+var TILE_DB_LOCAL = {
+    // Daltile Hex Mosaics
+    '049156120300': {name:'2" Hex Marble Mosaic (12×12.5)', brand:'Daltile', shape:'mosaic', nomW:12, nomH:12.5, actW:11.75, actH:12.25, grout:0.125, subShape:'hex', subW:1.875, subH:2.125, subGr:0.0625},
+    '049156120317': {name:'1" Hex Porcelain Mosaic (11×11)', brand:'Daltile', shape:'mosaic', nomW:11, nomH:11, actW:10.75, actH:10.75, grout:0.125, subShape:'hex', subW:0.9375, subH:1.0625, subGr:0.0625},
+    // Daltile Standard Tiles
+    '049156181004': {name:'12×24 Glazed Porcelain', brand:'Daltile', shape:'rectangle', nomW:12, nomH:24, actW:11.75, actH:23.75, grout:0.125},
+    '049156062002': {name:'6×6 Matte Ceramic', brand:'Daltile', shape:'square', nomW:6, nomH:6, actW:5.875, actH:5.875, grout:0.125},
+    '049156044008': {name:'4×4 Glossy Ceramic', brand:'Daltile', shape:'square', nomW:4, nomH:4, actW:3.875, actH:3.875, grout:0.125},
+    // MSI
+    '843276011009': {name:'2" Hex Carrara Mosaic (12×12)', brand:'MSI', shape:'mosaic', nomW:12, nomH:12, actW:11.75, actH:11.75, grout:0.125, subShape:'hex', subW:1.875, subH:2.125, subGr:0.0625},
+    '843276024009': {name:'3×6 White Subway', brand:'MSI', shape:'rectangle', nomW:3, nomH:6, actW:2.875, actH:5.875, grout:0.125},
+    // American Olean
+    '011942333014': {name:'12×12 Glazed Ceramic', brand:'American Olean', shape:'square', nomW:12, nomH:12, actW:11.875, actH:11.875, grout:0.125},
+    // Marazzi
+    '081159012006': {name:'12×24 Porcelain Plank', brand:'Marazzi', shape:'rectangle', nomW:12, nomH:24, actW:11.75, actH:23.75, grout:0.125},
+    // Jeffrey Court Mosaics
+    '092076014003': {name:'1" Square Glass Mosaic (12×12)', brand:'Jeffrey Court', shape:'mosaic', nomW:12, nomH:12, actW:11.75, actH:11.75, grout:0.125, subShape:'square', subW:0.9375, subH:0.9375, subGr:0.0625},
+    '092076027003': {name:'Penny Round Porcelain (12×12)', brand:'Jeffrey Court', shape:'mosaic', nomW:12, nomH:12, actW:11.75, actH:11.75, grout:0.125, subShape:'penny', subW:0.75, subH:0.75, subGr:0.0625},
+    // Florida Tile
+    '041296550012': {name:'3×12 Subway', brand:'Florida Tile', shape:'rectangle', nomW:3, nomH:12, actW:2.875, actH:11.875, grout:0.125},
+    // Merola / Home Depot
+    '063346103001': {name:'2" Fish Scale Mosaic (12×12)', brand:'Merola', shape:'mosaic', nomW:12, nomH:12, actW:11.75, actH:11.75, grout:0.125, subShape:'fishscale', subW:2, subH:2.25, subGr:0.0625},
+    // Generic common sizes
+    '888888880001': {name:'24×24 Porcelain', brand:'Generic', shape:'square', nomW:24, nomH:24, actW:23.875, actH:23.875, grout:0.125},
+    '888888880002': {name:'2×8 Herringbone', brand:'Generic', shape:'herringbone', nomW:2, nomH:8, actW:1.875, actH:7.875, grout:0.125}
+};
+
+// Firebase Tile Database
+var _tileDbReady = false;
+var _tileDbRef = null;
+
+function initTileDb() {
+    if (typeof firebase === 'undefined' || !firebase.initializeApp) {
+        console.warn('Firebase SDK not loaded — barcode lookup offline only');
+        return;
+    }
+    try {
+        // Use same project as paint-calculator sync
+        if (!firebase.apps.length) {
+            firebase.initializeApp({
+                apiKey: "AIzaSyD9zQQgRApSqfeBougnIUVEAYupp8i-bgY",
+                authDomain: "paint-calc-sync.firebaseapp.com",
+                databaseURL: "https://paint-calc-sync-default-rtdb.firebaseio.com",
+                projectId: "paint-calc-sync"
+            });
+        }
+    } catch(e) {
+        if (e.code !== 'app/duplicate-app') { console.warn('Firebase init error:', e); return; }
+    }
+    firebase.auth().signInAnonymously().then(function() {
+        _tileDbReady = true;
+        _tileDbRef = firebase.database().ref('tiledb');
+    }).catch(function(err) {
+        console.warn('Firebase auth failed:', err.message);
+    });
+}
+
+function hasBarcodeSupport() {
+    return typeof BarcodeDetector !== 'undefined';
+}
+
+function openBarcodeScanner() {
+    var overlay = document.getElementById('scannerOverlay');
+    overlay.classList.add('active');
+    var statusEl = document.getElementById('scannerStatus');
+    var videoEl = document.getElementById('scannerVideo');
+    var vfEl = document.getElementById('scannerViewfinder');
+
+    if (!hasBarcodeSupport() || !navigator.mediaDevices) {
+        statusEl.textContent = 'Camera scanning not supported on this device — use manual entry below';
+        videoEl.style.display = 'none';
+        vfEl.style.display = 'none';
+        return;
+    }
+
+    videoEl.style.display = 'block';
+    vfEl.style.display = 'block';
+    statusEl.textContent = 'Starting camera...';
+
+    barcodeDetector = new BarcodeDetector({ formats: ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128'] });
+
+    navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } },
+        audio: false
+    }).then(function(stream) {
+        scannerStream = stream;
+        videoEl.srcObject = stream;
+        videoEl.play();
+        statusEl.textContent = 'Point camera at barcode on tile box';
+
+        scannerInterval = setInterval(function() {
+            if (!barcodeDetector || videoEl.readyState < 2) return;
+            barcodeDetector.detect(videoEl).then(function(barcodes) {
+                if (barcodes.length > 0) {
+                    onBarcodeDetected(barcodes[0].rawValue);
+                }
+            }).catch(function() {});
+        }, 250);
+    }).catch(function(err) {
+        console.warn('Camera error:', err);
+        statusEl.textContent = 'Camera access denied — use manual entry below';
+        videoEl.style.display = 'none';
+        vfEl.style.display = 'none';
+    });
+}
+
+function onBarcodeDetected(barcode) {
+    if (scannerInterval) { clearInterval(scannerInterval); scannerInterval = null; }
+
+    // Green flash
+    var flash = document.createElement('div');
+    flash.className = 'scanner-flash';
+    document.getElementById('scannerOverlay').appendChild(flash);
+    setTimeout(function() { flash.remove(); }, 500);
+
+    // Beep
+    try {
+        var actx = new (window.AudioContext || window.webkitAudioContext)();
+        var osc = actx.createOscillator();
+        var gain = actx.createGain();
+        osc.connect(gain); gain.connect(actx.destination);
+        osc.frequency.value = 1000; gain.gain.value = 0.3;
+        osc.start(); osc.stop(actx.currentTime + 0.15);
+    } catch(e) {}
+
+    document.getElementById('scannerStatus').textContent = 'Found: ' + barcode;
+    setTimeout(function() {
+        closeBarcodeScanner();
+        lookupBarcode(barcode);
+    }, 600);
+}
+
+function closeBarcodeScanner() {
+    if (scannerStream) {
+        scannerStream.getTracks().forEach(function(t) { t.stop(); });
+        scannerStream = null;
+    }
+    if (scannerInterval) { clearInterval(scannerInterval); scannerInterval = null; }
+    barcodeDetector = null;
+    document.getElementById('scannerOverlay').classList.remove('active');
+    document.getElementById('manualUPC').value = '';
+}
+
+function lookupManualUPC() {
+    var code = document.getElementById('manualUPC').value.trim();
+    if (!code) { showToast('Enter a UPC code'); return; }
+    closeBarcodeScanner();
+    lookupBarcode(code);
+}
+
+function lookupBarcode(barcode) {
+    barcode = String(barcode).trim();
+
+    // Step 1: Check local built-in database (instant, offline)
+    if (TILE_DB_LOCAL[barcode]) {
+        showProductFound(barcode, TILE_DB_LOCAL[barcode]);
+        return;
+    }
+
+    // Also try with leading zero stripped / added (UPC-A ↔ EAN-13)
+    var alt = barcode.length === 13 && barcode[0] === '0' ? barcode.slice(1) : '0' + barcode;
+    if (TILE_DB_LOCAL[alt]) {
+        showProductFound(alt, TILE_DB_LOCAL[alt]);
+        return;
+    }
+
+    // Step 2: Check Firebase cloud database
+    if (_tileDbReady && _tileDbRef) {
+        showToast('🔍 Looking up barcode...');
+        _tileDbRef.child(barcode).once('value').then(function(snap) {
+            var product = snap.val();
+            if (product) {
+                showProductFound(barcode, product);
+            } else {
+                showProductNotFound(barcode);
+            }
+        }).catch(function(err) {
+            showProductNotFound(barcode);
+        });
+    } else {
+        showProductNotFound(barcode);
+    }
+}
+
+// Sanitize text to prevent XSS from crowdsourced data
+function safeText(str) {
+    var div = document.createElement('div');
+    div.textContent = String(str || '');
+    return div.innerHTML;
+}
+
+function showProductFound(barcode, product) {
+    var el = document.getElementById('productFoundDetails');
+    el.textContent = ''; // Clear safely
+
+    var title = document.createElement('b');
+    title.textContent = (product.brand || '') + ' ' + (product.name || '');
+    el.appendChild(title);
+    el.appendChild(document.createElement('br'));
+
+    var shape = document.createElement('span');
+    shape.style.color = 'var(--text-muted)';
+    shape.textContent = product.shape + (product.shape === 'mosaic' && product.subShape ? ' (' + product.subShape + ')' : '');
+    el.appendChild(shape);
+    el.appendChild(document.createElement('br'));
+
+    var dims = document.createTextNode(
+        product.nomW + ' × ' + product.nomH + '" nominal'
+    );
+    el.appendChild(dims);
+    el.appendChild(document.createElement('br'));
+
+    var actW = product.actW || (product.nomW - product.grout);
+    var actH = product.actH || (product.nomH - product.grout);
+    el.appendChild(document.createTextNode(actW + ' × ' + actH + '" actual, ' + product.grout + '" grout'));
+
+    if (product.subShape) {
+        el.appendChild(document.createElement('br'));
+        el.appendChild(document.createTextNode('Sub-tile: ' + product.subShape + ' ' + product.subW + ' × ' + product.subH + '"'));
+    }
+
+    // Show photo if available
+    if (product.labelPhoto) {
+        el.appendChild(document.createElement('br'));
+        var img = document.createElement('img');
+        img.src = product.labelPhoto;
+        img.style.cssText = 'max-width:100%;border-radius:6px;margin-top:8px;';
+        el.appendChild(img);
+    }
+
+    document.getElementById('productFoundModal').classList.add('active');
+    _pendingProduct = product;
+}
+
+function closeProductFound(apply) {
+    document.getElementById('productFoundModal').classList.remove('active');
+    if (apply && _pendingProduct) {
+        applyScannedProduct(_pendingProduct);
+    }
+    _pendingProduct = null;
+}
+
+function applyScannedProduct(product) {
+    document.getElementById('tileShape').value = product.shape;
+    onShape();
+    document.getElementById('grout').value = product.grout || 0.125;
+
+    // Use nominal mode
+    document.getElementById('nominalMode').checked = true;
+    document.getElementById('tileW').value = product.nomW;
+    document.getElementById('tileH').value = product.nomH;
+
+    // Mosaic sub-tile fields
+    if (product.shape === 'mosaic' && product.subShape) {
+        document.getElementById('subShape').value = product.subShape;
+        document.getElementById('subW').value = product.subW;
+        document.getElementById('subH').value = product.subH;
+        document.getElementById('subGr').value = product.subGr || 0.0625;
+        document.getElementById('mosaicFields').style.display = 'block';
+    }
+
+    onNominalToggle();
+    updateTile();
+    showToast('✅ Applied: ' + (product.brand ? product.brand + ' ' : '') + product.name);
+}
+
+// Crowdsource — Photo preview + base64 encoding
+var _pendingLabelPhoto = null;
+
+function previewLabelPhoto(input) {
+    var preview = document.getElementById('contribPhotoPreview');
+    _pendingLabelPhoto = null;
+    if (!input.files || !input.files[0]) {
+        preview.style.display = 'none';
+        return;
+    }
+    var file = input.files[0];
+    // Compress to max 800px wide, JPEG quality 0.6 (~50-150KB)
+    var reader = new FileReader();
+    reader.onload = function(e) {
+        var img = new Image();
+        img.onload = function() {
+            var canvas = document.createElement('canvas');
+            var maxW = 800;
+            var scale = Math.min(1, maxW / img.width);
+            canvas.width = img.width * scale;
+            canvas.height = img.height * scale;
+            var ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+            _pendingLabelPhoto = canvas.toDataURL('image/jpeg', 0.6);
+            preview.src = _pendingLabelPhoto;
+            preview.style.display = 'block';
+        };
+        img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+}
+
+// Crowdsource — Product Not Found
+function showProductNotFound(barcode) {
+    _pendingBarcode = barcode;
+    document.getElementById('notFoundBarcode').textContent = barcode;
+    document.getElementById('contribName').value = '';
+    document.getElementById('contribBrand').value = '';
+    document.getElementById('contribShape').value = 'square';
+    document.getElementById('contribNomW').value = '';
+    document.getElementById('contribNomH').value = '';
+    document.getElementById('contribGrout').value = '0.125';
+    document.getElementById('contribMosaicFields').style.display = 'none';
+    // Reset photo
+    document.getElementById('contribPhoto').value = '';
+    document.getElementById('contribPhotoPreview').style.display = 'none';
+    _pendingLabelPhoto = null;
+    document.getElementById('productNotFoundModal').classList.add('active');
+}
+
+function closeProductNotFound() {
+    document.getElementById('productNotFoundModal').classList.remove('active');
+    _pendingBarcode = null;
+}
+
+function submitProductContribution() {
+    var name = document.getElementById('contribName').value.trim();
+    var brand = document.getElementById('contribBrand').value.trim();
+    var shape = document.getElementById('contribShape').value;
+    var nomW = parseFloat(document.getElementById('contribNomW').value);
+    var nomH = parseFloat(document.getElementById('contribNomH').value);
+    var grout = parseFloat(document.getElementById('contribGrout').value) || 0.125;
+
+    if (!name || !nomW || !nomH) {
+        showToast('⚠️ Enter product name and dimensions');
+        return;
+    }
+
+    if (!_pendingLabelPhoto) {
+        showToast('📸 Photo of box label is required');
+        return;
+    }
+
+    var actW = nomW - grout;
+    var actH = nomH - grout;
+
+    // Get Firebase anonymous UID for accountability
+    var uid = 'anonymous';
+    try { uid = firebase.auth().currentUser.uid || 'anonymous'; } catch(e) {}
+
+    var product = {
+        name: name, brand: brand, shape: shape,
+        nomW: nomW, nomH: nomH, actW: actW, actH: actH,
+        grout: grout,
+        contributorUid: uid, verified: false,
+        addedAt: Date.now()
+    };
+
+    if (shape === 'mosaic') {
+        product.subShape = document.getElementById('contribSubShape').value;
+        product.subW = parseFloat(document.getElementById('contribSubW').value) || 1;
+        product.subH = parseFloat(document.getElementById('contribSubH').value) || 1;
+        product.subGr = parseFloat(document.getElementById('contribSubGr').value) || 0.0625;
+    }
+
+    // Attach label photo if captured
+    if (_pendingLabelPhoto) {
+        product.labelPhoto = _pendingLabelPhoto;
+    }
+
+    // Submit to Firebase
+    if (_tileDbReady && _tileDbRef && _pendingBarcode) {
+        _tileDbRef.child(_pendingBarcode).set(product).then(function() {
+            showToast('🙏 Thanks! Product added to shared database');
+        }).catch(function(err) {
+            showToast('Applied locally — will sync when online');
+        });
+    } else {
+        showToast('Applied locally (offline)');
+    }
+
+    // Cache locally for immediate reuse
+    if (_pendingBarcode) TILE_DB_LOCAL[_pendingBarcode] = product;
+
+    closeProductNotFound();
+    applyScannedProduct(product);
 }
 
 function updateTile() {
@@ -5111,6 +6195,13 @@ function updateTile() {
     }
     C.tile.w = w;
     C.tile.h = h;
+    // Read mosaic sub-tile fields
+    if (C.tile.sh === 'mosaic') {
+        C.tile.subShape = document.getElementById('subShape').value;
+        C.tile.subW = parseFloat(document.getElementById('subW').value) || 1;
+        C.tile.subH = parseFloat(document.getElementById('subH').value) || 1;
+        C.tile.subGr = parseFloat(document.getElementById('subGr').value) || 0.0625;
+    }
     onNominalToggle(); // Update the readout
     markUnsaved();
     draw();
@@ -5119,10 +6210,15 @@ function updateTile() {
 
 function onShape() {
     var s = document.getElementById('tileShape').value;
-    // Hide orientation for square tiles, show for herringbone
-    document.getElementById('orientDiv').style.display = s === 'square' ? 'none' : 'block';
-    // Show pattern option only for square and rectangle (not hexagon or herringbone)
-    document.getElementById('patternDiv').style.display = (s === 'square' || s === 'rectangle') ? 'block' : 'none';
+    var wLabel = document.getElementById('tileWLabel');
+    var hLabel = document.getElementById('tileHLabel');
+    var nom = document.getElementById('nominalMode').checked;
+    // Hide orientation for square tiles, show for others
+    document.getElementById('orientDiv').style.display = (s === 'square') ? 'none' : 'block';
+    // Show pattern option for square, rectangle, and mosaic (brick bond for sheet grid)
+    document.getElementById('patternDiv').style.display = (s === 'square' || s === 'rectangle' || s === 'mosaic') ? 'block' : 'none';
+    // Show/hide mosaic sub-tile fields
+    document.getElementById('mosaicFields').style.display = (s === 'mosaic') ? 'block' : 'none';
     if (s === 'square') {
         document.getElementById('tileW').value = '';
         document.getElementById('tileH').value = '';
@@ -5135,8 +6231,34 @@ function onShape() {
         document.getElementById('tileH').value = '6';
     } else if (s === 'hexagon') {
         document.getElementById('tileOrient').innerHTML = '<option value="pointy">Vertical</option><option value="flat">Horizontal</option>';
+    } else if (s === 'mosaic') {
+        document.getElementById('tileOrient').innerHTML = '<option value="pointy">Vertical</option><option value="flat">Horizontal</option>';
+        // Update labels for sheet dimensions
+        if (!nom) {
+            wLabel.textContent = 'Sheet Width (in)';
+            hLabel.textContent = 'Sheet Height (in)';
+        } else {
+            wLabel.textContent = 'Nominal Sheet Width (in)';
+            hLabel.textContent = 'Nominal Sheet Height (in)';
+        }
+        // Set default sheet sizes if fields are empty or small
+        var curW = parseFloat(document.getElementById('tileW').value) || 0;
+        if (curW < 5) {
+            document.getElementById('tileW').value = '12';
+            document.getElementById('tileH').value = '12';
+        }
     } else {
         document.getElementById('tileOrient').innerHTML = '<option value="pointy">Vertical</option><option value="flat">Horizontal</option>';
+    }
+    // Restore labels when leaving mosaic
+    if (s !== 'mosaic') {
+        if (nom) {
+            wLabel.textContent = 'Nominal Width (in)';
+            hLabel.textContent = 'Nominal Height (in)';
+        } else {
+            wLabel.textContent = 'Actual Width (in)';
+            hLabel.textContent = 'Actual Height (in)';
+        }
     }
 }
 
@@ -5408,6 +6530,19 @@ function draw() {
         rowSp = th + groutPx;
         colSpInches = C.tile.w + g;
         rowSpInches = C.tile.h + g;
+    } else if (C.tile.sh === 'mosaic') {
+        // Mosaic sheets: grid based on sheet size
+        colSpInches = C.tile.w + g;
+        rowSpInches = C.tile.h + g;
+        // Hex sub-tiles: adjacent sheets interlock, reducing effective spacing
+        if (C.tile.subShape === 'hex') {
+            var interlockH = (C.tile.or === 'pointy') ? C.tile.subW / 2 : 0;
+            var interlockV = (C.tile.or === 'pointy') ? 0 : C.tile.subH / 2;
+            colSpInches = C.tile.w - interlockH + g;
+            rowSpInches = C.tile.h - interlockV + g;
+        }
+        colSp = colSpInches * s;
+        rowSp = rowSpInches * s;
     } else if (C.tile.sh === 'herringbone') {
         // Herringbone geometry - CORRECT FORMULA
         // colSp = lg × 0.5 × √2 (half long side diagonal)
@@ -5416,9 +6551,9 @@ function draw() {
         var lg = Math.max(tw, th);
         var smIn = Math.min(C.tile.w, C.tile.h);
         var lgIn = Math.max(C.tile.w, C.tile.h);
-        
+
         var sqrt2 = Math.SQRT2;
-        
+
         colSp = lg * 0.5 * sqrt2;
         rowSp = sm * sqrt2;
         colSpInches = lgIn * 0.5 * sqrt2;
@@ -5497,8 +6632,8 @@ function draw() {
                 }
             }
             
-            // Brick pattern offset for square/rectangle tiles
-            if (C.tile.sh === 'square' || C.tile.sh === 'rectangle') {
+            // Brick pattern offset for square/rectangle/mosaic tiles
+            if (C.tile.sh === 'square' || C.tile.sh === 'rectangle' || C.tile.sh === 'mosaic') {
                 var patternOffset = C.tile.pattern || 0;
                 if (patternOffset > 0 && ((row % 2 + 2) % 2) === 1) {
                     var offsetAmount = colSp * patternOffset;
@@ -5856,6 +6991,9 @@ function draw() {
 }
 
 function getVerts(x, y, tw, th, row, col) {
+    if (C.tile.sh === 'mosaic') {
+        return getMosaicSheetVerts(x, y, tw, th, false);
+    }
     if (C.tile.sh === 'hexagon') {
         if (C.tile.or === 'flat') {
             var w = th, h = tw;
@@ -5904,8 +7042,257 @@ function getVerts(x, y, tw, th, row, col) {
     return [[x-w/2,y-h/2],[x+w/2,y-h/2],[x+w/2,y+h/2],[x-w/2,y+h/2]];
 }
 
+function getMosaicSheetVerts(x, y, tw, th, forExport) {
+    if (C.tile.subShape === 'hex') {
+        return getHexMosaicBoundary(x, y, tw, th, forExport);
+    }
+    // All other sub-tile shapes: rectangular sheet boundary
+    return [[x-tw/2,y-th/2],[x+tw/2,y-th/2],[x+tw/2,y+th/2],[x-tw/2,y+th/2]];
+}
+
+// Compute hex mosaic sheet boundary polygon via exterior edge tracing
+function getHexMosaicBoundary(x, y, tw, th, forExport) {
+    var subW = C.tile.subW || 1;
+    var subH = C.tile.subH || 1;
+    var subGr = C.tile.subGr || 0.0625;
+    var orient = C.tile.or || 'pointy';
+
+    // Scale: forExport uses inches directly, otherwise convert to pixels
+    var scale = forExport ? 1 : (tw / (C.tile.w - C.tile.gr));
+
+    // Hex cell spacing
+    var cellW, cellH, colStep, rowStep;
+    if (orient === 'pointy') {
+        // Pointy-top hex: width = subW, height = subH
+        cellW = subW + subGr;
+        cellH = subH + subGr;
+        colStep = cellW;           // horizontal spacing between columns
+        rowStep = cellH * 0.75;    // vertical spacing — 3/4 of hex height for overlap
+    } else {
+        // Flat-top hex: width = subW, height = subH
+        cellW = subW + subGr;
+        cellH = subH + subGr;
+        colStep = cellW * 0.75;    // horizontal spacing — 3/4 of hex width for overlap
+        rowStep = cellH;           // vertical spacing between rows
+    }
+
+    // Determine sheet size in inches (without grout)
+    var sheetW = forExport ? tw : (C.tile.w - C.tile.gr);
+    var sheetH = forExport ? th : (C.tile.h - C.tile.gr);
+
+    // How many hex cells fit in the sheet
+    var nCols = Math.floor((sheetW + subGr) / colStep);
+    var nRows = Math.floor((sheetH + subGr) / rowStep);
+    if (nCols < 1) nCols = 1;
+    if (nRows < 1) nRows = 1;
+
+    // Build occupied cell set — key: "row,col"
+    var cells = {};
+    var cellList = [];
+    for (var r = 0; r < nRows; r++) {
+        for (var c = 0; c < nCols; c++) {
+            var key = r + ',' + c;
+            cells[key] = true;
+            cellList.push([r, c]);
+        }
+    }
+
+    // Hex vertex positions relative to center
+    // Pointy-top: vertex 0 at top, going clockwise
+    // Flat-top: vertex 0 at right, going clockwise
+    function hexVert(cx, cy, vi) {
+        var hw = subW / 2;
+        var hh = subH / 2;
+        if (orient === 'pointy') {
+            // 6 vertices: top, top-right, bottom-right, bottom, bottom-left, top-left
+            var verts = [
+                [cx,       cy - hh],      // 0: top
+                [cx + hw,  cy - hh/2],    // 1: top-right
+                [cx + hw,  cy + hh/2],    // 2: bottom-right
+                [cx,       cy + hh],      // 3: bottom
+                [cx - hw,  cy + hh/2],    // 4: bottom-left
+                [cx - hw,  cy - hh/2]     // 5: top-left
+            ];
+            return verts[vi];
+        } else {
+            // Flat-top: vertex 0 at right, going clockwise
+            var verts = [
+                [cx + hw,  cy],            // 0: right
+                [cx + hw/2, cy + hh],     // 1: bottom-right
+                [cx - hw/2, cy + hh],     // 2: bottom-left
+                [cx - hw,  cy],            // 3: left
+                [cx - hw/2, cy - hh],     // 4: top-left
+                [cx + hw/2, cy - hh]      // 5: top-right
+            ];
+            return verts[vi];
+        }
+    }
+
+    // Get hex center position for a grid cell (in inches, relative to sheet origin)
+    function cellCenter(r, c) {
+        var cx, cy;
+        if (orient === 'pointy') {
+            cx = c * colStep + subW / 2;
+            cy = r * rowStep + subH / 2;
+            // Odd rows offset right by half column
+            if (r % 2 === 1) cx += colStep / 2;
+        } else {
+            cx = c * colStep + subW / 2;
+            cy = r * rowStep + subH / 2;
+            // Odd columns offset down by half row
+            if (c % 2 === 1) cy += rowStep / 2;
+        }
+        return [cx, cy];
+    }
+
+    // Get neighbor cell (row, col) across edge index
+    // Edge index: for pointy-top, edge between vertices i and (i+1)%6
+    // Edge 0: top edge (between v0-v1), Edge 1: top-right (v1-v2), etc.
+    function neighborCell(r, c, edgeIdx) {
+        if (orient === 'pointy') {
+            var even = (r % 2 === 0);
+            // Pointy-top neighbor offsets by edge index
+            // Edge 0 (top-right): row-1, col+(even?0:1)
+            // Edge 1 (right): row, col+1
+            // Edge 2 (bottom-right): row+1, col+(even?0:1)
+            // Edge 3 (bottom-left): row+1, col+(even?-1:0)
+            // Edge 4 (left): row, col-1
+            // Edge 5 (top-left): row-1, col+(even?-1:0)
+            var offsets = even ?
+                [[-1, 0], [0, 1], [1, 0], [1, -1], [0, -1], [-1, -1]] :
+                [[-1, 1], [0, 1], [1, 1], [1, 0], [0, -1], [-1, 0]];
+            return [r + offsets[edgeIdx][0], c + offsets[edgeIdx][1]];
+        } else {
+            var even = (c % 2 === 0);
+            // Flat-top neighbor offsets by edge index
+            // Edge 0 (bottom-right): row+(even?0:1), col+1
+            // Edge 1 (bottom): row+1, col
+            // Edge 2 (bottom-left): row+(even?0:1), col-1
+            // Edge 3 (top-left): row+(even?-1:0), col-1
+            // Edge 4 (top): row-1, col
+            // Edge 5 (top-right): row+(even?-1:0), col+1
+            var offsets = even ?
+                [[0, 1], [1, 0], [0, -1], [-1, -1], [-1, 0], [-1, 1]] :
+                [[1, 1], [1, 0], [1, -1], [0, -1], [-1, 0], [0, 1]];
+            return [r + offsets[edgeIdx][0], c + offsets[edgeIdx][1]];
+        }
+    }
+
+    // Walk the exterior boundary clockwise
+    // Find the first exterior edge: top-left cell, find its first exterior edge
+    var startR = 0, startC = 0, startEdge = -1;
+
+    // Find first exterior edge on cell (0,0) — guaranteed to have exterior edges
+    for (var e = 0; e < 6; e++) {
+        var nb = neighborCell(startR, startC, e);
+        if (!cells[nb[0] + ',' + nb[1]]) {
+            startEdge = e;
+            break;
+        }
+    }
+
+    if (startEdge < 0) {
+        // Fallback: single hex or all neighbors present — just return rectangle
+        return [[x-tw/2,y-th/2],[x+tw/2,y-th/2],[x+tw/2,y+th/2],[x-tw/2,y+th/2]];
+    }
+
+    // Trace the boundary
+    var boundary = [];
+    var curR = startR, curC = startC, curEdge = startEdge;
+    var maxIter = nCols * nRows * 6 + 10; // Safety limit
+    var iter = 0;
+
+    do {
+        // Add the two vertices of this exterior edge
+        var cc = cellCenter(curR, curC);
+        var v1 = hexVert(cc[0], cc[1], curEdge);
+        var v2 = hexVert(cc[0], cc[1], (curEdge + 1) % 6);
+
+        // Only add v1 if it's not a duplicate of the last vertex
+        if (boundary.length === 0 ||
+            Math.abs(boundary[boundary.length-1][0] - v1[0]) > 0.001 ||
+            Math.abs(boundary[boundary.length-1][1] - v1[1]) > 0.001) {
+            boundary.push(v1);
+        }
+        boundary.push(v2);
+
+        // Move to next exterior edge:
+        // Try rotating clockwise (next edge on same cell)
+        var nextEdge = (curEdge + 1) % 6;
+        var nb = neighborCell(curR, curC, nextEdge);
+
+        if (cells[nb[0] + ',' + nb[1]]) {
+            // Neighbor exists across nextEdge — move to that neighbor
+            // The corresponding edge on the neighbor is (nextEdge + 3) % 6
+            // Then rotate clockwise from there
+            curR = nb[0];
+            curC = nb[1];
+            curEdge = ((nextEdge + 3) % 6 + 1) % 6;
+
+            // Keep rotating clockwise on the new cell until we find an exterior edge
+            for (var tries = 0; tries < 6; tries++) {
+                var nb2 = neighborCell(curR, curC, curEdge);
+                if (!cells[nb2[0] + ',' + nb2[1]]) {
+                    break; // Found exterior edge
+                }
+                // This edge has a neighbor, move to it and continue
+                var prevEdge = curEdge;
+                curR = nb2[0];
+                curC = nb2[1];
+                curEdge = ((prevEdge + 3) % 6 + 1) % 6;
+            }
+        } else {
+            // No neighbor across nextEdge — it's also exterior, stay on this cell
+            curEdge = nextEdge;
+        }
+
+        iter++;
+    } while ((curR !== startR || curC !== startC || curEdge !== startEdge) && iter < maxIter);
+
+    // Remove last vertex if it duplicates the first (closed polygon)
+    if (boundary.length > 2) {
+        var first = boundary[0], last = boundary[boundary.length - 1];
+        if (Math.abs(first[0] - last[0]) < 0.001 && Math.abs(first[1] - last[1]) < 0.001) {
+            boundary.pop();
+        }
+    }
+
+    // Center the boundary at (x, y) and scale
+    // Compute current centroid of the hex grid
+    var gridW = (nCols - 1) * colStep + subW;
+    var gridH = (nRows - 1) * rowStep + subH;
+    // Account for the row/col offset of the last row/col
+    if (orient === 'pointy' && nRows > 1) {
+        gridW += colStep / 2; // Offset rows extend the width
+    }
+    if (orient === 'flat' && nCols > 1) {
+        gridH += rowStep / 2;
+    }
+    var centerX = gridW / 2;
+    var centerY = gridH / 2;
+
+    // Translate to be centered at (x, y) and apply scale
+    var result = [];
+    for (var i = 0; i < boundary.length; i++) {
+        var bx = (boundary[i][0] - centerX) * scale + x;
+        var by = (boundary[i][1] - centerY) * scale + y;
+        result.push([bx, by]);
+    }
+
+    return result;
+}
+
 function drawTile(x, y, tw, th, g, row, col) {
     cx.beginPath();
+    if (C.tile.sh === 'mosaic') {
+        var mVerts = getMosaicSheetVerts(x, y, tw - g, th - g, false);
+        cx.moveTo(mVerts[0][0], mVerts[0][1]);
+        for (var mi = 1; mi < mVerts.length; mi++) {
+            cx.lineTo(mVerts[mi][0], mVerts[mi][1]);
+        }
+        cx.closePath();
+        return;
+    }
     if (C.tile.sh === 'hexagon') {
         if (C.tile.or === 'flat') {
             var w = th - g, h = tw - g;
@@ -6936,6 +8323,14 @@ function loadProject(id) {
 
     // Show/hide pattern option based on shape
     onShape();
+    // Restore mosaic sub-tile fields if applicable
+    if (C.tile.sh === 'mosaic' && C.tile.subShape) {
+        document.getElementById('subShape').value = C.tile.subShape;
+        document.getElementById('subW').value = C.tile.subW || 1;
+        document.getElementById('subH').value = C.tile.subH || 1;
+        document.getElementById('subGr').value = C.tile.subGr || 0.0625;
+        document.getElementById('mosaicFields').style.display = 'block';
+    }
 
     updateVoidList();
     unsavedChanges = false;
@@ -7471,9 +8866,17 @@ function applySyncState(state) {
         document.getElementById('zoom').value = Math.min(100, C.view.z);
         document.getElementById('zoomVal').textContent = C.view.z.toFixed(1) + 'x';
         onShape();
+        // Restore mosaic sub-tile fields if applicable
+        if (C.tile.sh === 'mosaic' && C.tile.subShape) {
+            document.getElementById('subShape').value = C.tile.subShape;
+            document.getElementById('subW').value = C.tile.subW || 1;
+            document.getElementById('subH').value = C.tile.subH || 1;
+            document.getElementById('subGr').value = C.tile.subGr || 0.0625;
+            document.getElementById('mosaicFields').style.display = 'block';
+        }
         updateVoidList();
     }
-    
+
     draw();
 }
 
@@ -7519,7 +8922,17 @@ function getTilesForExport(area) {
     
     var colSpInches, rowSpInches;
     
-    if (C.tile.sh === 'herringbone') {
+    if (C.tile.sh === 'mosaic') {
+        colSpInches = tw + g;
+        rowSpInches = th + g;
+        // Hex sub-tiles: adjacent sheets interlock
+        if (C.tile.subShape === 'hex') {
+            var interlockH = (C.tile.or === 'pointy') ? C.tile.subW / 2 : 0;
+            var interlockV = (C.tile.or === 'pointy') ? 0 : C.tile.subH / 2;
+            colSpInches = tw - interlockH + g;
+            rowSpInches = th - interlockV + g;
+        }
+    } else if (C.tile.sh === 'herringbone') {
         colSpInches = lg * 0.5 * sqrt2;
         rowSpInches = sm * sqrt2;
     } else if (C.tile.sh === 'hexagon') {
@@ -7534,16 +8947,16 @@ function getTilesForExport(area) {
         colSpInches = tw + g;
         rowSpInches = th + g;
     }
-    
+
     // Generate tile grid
     var oxInches = C.view.oxInches || 0;
     var oyInches = C.view.oyInches || 0;
-    
+
     for (var row = -50; row < 50; row++) {
         for (var col = -50; col < 50; col++) {
             var x = col * colSpInches + oxInches;
             var y = row * rowSpInches + oyInches;
-            
+
             // Apply offsets for different tile types
             if (C.tile.sh === 'hexagon') {
                 if (C.tile.or === 'pointy' && ((row % 2 + 2) % 2) === 1) {
@@ -7553,10 +8966,18 @@ function getTilesForExport(area) {
                     y += rowSpInches / 2;
                 }
             }
-            
+
             if (C.tile.sh === 'herringbone') {
                 if (((col % 2 + 2) % 2) === 1) {
                     y += rowSpInches / 2;
+                }
+            }
+
+            // Brick pattern offset for mosaic/square/rectangle
+            if (C.tile.sh === 'mosaic' || C.tile.sh === 'square' || C.tile.sh === 'rectangle') {
+                var patternOffset = C.tile.pattern || 0;
+                if (patternOffset > 0 && ((row % 2 + 2) % 2) === 1) {
+                    x += colSpInches * patternOffset;
                 }
             }
             
@@ -7566,12 +8987,26 @@ function getTilesForExport(area) {
             // Check if tile intersects wall
             var wallPoly = getWallPolyInches();
             if (polyIntersects(verts, wallPoly)) {
+                // Determine if tile needs cutting (not fully inside wall or touches a void)
+                var allIn = true;
+                for (var vi = 0; vi < verts.length; vi++) {
+                    if (!inPoly(verts[vi], wallPoly)) { allIn = false; break; }
+                }
+                var touchesVoid = false;
+                if (C.voids && C.voids.length > 0) {
+                    for (var vdi = 0; vdi < C.voids.length; vdi++) {
+                        var v = C.voids[vdi];
+                        var voidPoly = [[v.x, v.y], [v.x + v.w, v.y], [v.x + v.w, v.y + v.h], [v.x, v.y + v.h]];
+                        if (polyIntersects(verts, voidPoly)) { touchesVoid = true; break; }
+                    }
+                }
                 tiles.push({
                     x: x,
                     y: y,
                     verts: verts,
                     row: row,
-                    col: col
+                    col: col,
+                    isCut: !allIn || touchesVoid
                 });
             }
         }
@@ -7584,7 +9019,10 @@ function getTileVertsInches(x, y, tw, th, row, col) {
     var g = C.tile.gr;
     var w = tw - g;
     var h = th - g;
-    
+
+    if (C.tile.sh === 'mosaic') {
+        return getMosaicSheetVerts(x, y, w, h, true);
+    }
     if (C.tile.sh === 'herringbone') {
         var sm = Math.min(w, h);
         var lg = Math.max(w, h);
@@ -7660,15 +9098,19 @@ function exportLayItFormat(tiles, wallPts) {
             height: C.wall.lH,
             polygon: getWallPolyInches()
         },
-        tile: {
-            shape: C.tile.sh,
-            width: C.tile.w,
-            height: C.tile.h,
-            grout: C.tile.gr
-        },
+        tile: (function() {
+            var t = { shape: C.tile.sh, width: C.tile.w, height: C.tile.h, grout: C.tile.gr };
+            if (C.tile.sh === 'mosaic') {
+                t.subShape = C.tile.subShape;
+                t.subW = C.tile.subW;
+                t.subH = C.tile.subH;
+                t.subGr = C.tile.subGr;
+            }
+            return t;
+        })(),
         voids: C.voids,
         tiles: tiles.map(function(t) {
-            return { x: t.x, y: t.y, verts: t.verts };
+            return { x: t.x, y: t.y, verts: t.verts, isCut: t.isCut || false };
         })
     };
     
@@ -7889,6 +9331,59 @@ function startLaserCalibration() {
     // Would send calibration pattern to laser
 }
 
+// Handle advisory messages from the laser firmware
+// These are guardrail messages sent when distance or segment size pushes limits
+function handleLaserAdvisory(data) {
+    if (!data || data.type !== 'advisory') return;
+
+    var level = data.level || 'suggestion';
+    var category = data.category || '';
+    var message = data.message || '';
+
+    // Build user-facing notification
+    var icon = level === 'warning' ? '⚠️' : '💡';
+    var prefix = '';
+
+    if (category === 'distance') {
+        prefix = icon + ' Distance: ';
+    } else if (category === 'segment_size') {
+        if (data.tiles_simplified > 0) {
+            prefix = icon + ' ';
+            message = data.tiles_simplified + ' tiles simplified to stay bright. Try a smaller segment (36"×36") for full detail on every tile.';
+        } else {
+            prefix = '💡 ';
+        }
+    }
+
+    showToast(prefix + message);
+
+    // If tiles were simplified, show a persistent banner in the laser panel
+    if (data.tiles_simplified > 0) {
+        showSimplifiedTilesBanner(data.tiles_simplified, data.tiles_in_segment);
+    }
+}
+
+// Show a non-intrusive banner when the laser has simplified interior tiles
+function showSimplifiedTilesBanner(simplified, total) {
+    // Remove existing banner if any
+    var existing = document.getElementById('laserAdvisoryBanner');
+    if (existing) existing.remove();
+
+    var banner = document.createElement('div');
+    banner.id = 'laserAdvisoryBanner';
+    banner.style.cssText = 'margin:10px 0;padding:12px;background:#ff980018;border:1px solid #ff980060;border-radius:8px;font-size:13px;color:var(--text-secondary);line-height:1.4;';
+    banner.innerHTML = '<strong style="color:#ff9800;">💡 Smart Projection Active</strong><br>'
+        + simplified + ' of ' + total + ' interior tiles are showing corner markers instead of full outlines '
+        + 'to keep the projection bright and steady. Cut lines and edge tiles are always shown in full detail.'
+        + '<br><span style="font-size:12px;opacity:0.7;">Try a smaller segment for full outlines on every tile.</span>';
+
+    // Insert at top of laser status area if it exists
+    var statusEl = document.getElementById('laserStatus');
+    if (statusEl) {
+        statusEl.parentNode.insertBefore(banner, statusEl.nextSibling);
+    }
+}
+
 // ==================== END LASER FUNCTIONS ====================
 
 // ==================== AUTO-SAVE LAST SESSION ====================
@@ -7967,6 +9462,7 @@ draw = function() {
 // Initialize
 initTabs();
 buildPresetDropdown();
+initTileDb();
 generateAppIcon();
 
 // Try to restore last session first
