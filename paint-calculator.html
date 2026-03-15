@@ -701,6 +701,8 @@ var _syncRef = null;
 var _remoteUpdateInProgress = false;
 var _lastPushedJson = "";
 var _syncStatus = "off";
+var _scanRef = null;
+var _pendingScan = null;
 
 function migrateRoom(rm){
   if(rm.ceilingPrimerCoats === undefined) rm.ceilingPrimerCoats = pi2(rm.quickPrimerCoats) || 1;
@@ -803,9 +805,11 @@ function pushToCloud(){
 
 function teardownSync(){
   if(_syncRef){ _syncRef.off(); _syncRef = null; }
+  if(_scanRef){ _scanRef.off(); _scanRef = null; }
   _syncActive = false;
   _lastPushedJson = "";
   _syncStatus = "off";
+  _pendingScan = null;
 }
 
 function disconnectSync(){
@@ -813,6 +817,127 @@ function disconnectSync(){
   localStorage.removeItem(SYNC_PASSPHRASE_KEY);
   render();
 }
+
+/* ── LiDAR Scan Handler ── */
+function consumeScan(){
+  // Mark scan as consumed on Firebase so it doesn't re-trigger
+  if(_scanRef) _scanRef.update({consumed: true});
+  _pendingScan = null;
+}
+
+function acceptScan(scanData){
+  var job = getJob();
+  if(!job) return;
+
+  // Generate room name
+  var scanNum = 1;
+  for(var ri = 0; ri < job.rooms.length; ri++){
+    if(job.rooms[ri].name && job.rooms[ri].name.indexOf("Scanned") >= 0) scanNum++;
+  }
+  var roomName = scanNum === 1 ? "Scanned Room" : "Scanned Room " + scanNum;
+
+  if(scanData.isRectangular){
+    // Quick mode — simple rectangle
+    var rm = makeRoom({
+      name: roomName,
+      mode: "quick",
+      roomLength: String(Math.round(pf(scanData.roomLength))),
+      roomWidth: String(Math.round(pf(scanData.roomWidth))),
+      roomHeight: String(Math.round(pf(scanData.roomHeight))),
+      openingDoors: pi2(scanData.doorCount) || 0,
+      openingWindows: pi2(scanData.windowCount) || 0,
+      includeCeiling: true,
+      includeBaseboard: true,
+      quickPrimerCoats: 0,
+      quickTopCoats: 2,
+      ceilingPrimerCoats: 0,
+      ceilingTopCoats: 2,
+      baseboardPrimerCoats: 0,
+      baseboardTopCoats: 2,
+      surfaceCondition: "primed"
+    });
+    job.rooms.push(rm);
+    job.activeRoomId = rm.id;
+  } else {
+    // Custom mode — individual wall surfaces
+    var surfaces = [];
+    var segs = scanData.wallSegments || [];
+    for(var si = 0; si < segs.length; si++){
+      surfaces.push(makeSurface({
+        type: "wall",
+        inputMode: "dims",
+        widthIn: String(Math.round(pf(segs[si].length))),
+        heightIn: String(Math.round(pf(segs[si].height))),
+        primerCoats: 0,
+        topCoats: 2,
+        label: "Wall " + (si + 1)
+      }));
+    }
+    // Add ceiling surface
+    if(scanData.ceilingArea){
+      surfaces.push(makeSurface({
+        type: "ceiling",
+        inputMode: "direct",
+        directSqft: String(Math.round(pf(scanData.ceilingArea) / 144)),
+        primerCoats: 0,
+        topCoats: 2,
+        label: "Ceiling"
+      }));
+    }
+    // Add baseboard (total perimeter from wall segments)
+    var totalPerim = 0;
+    for(var pi3 = 0; pi3 < segs.length; pi3++) totalPerim += pf(segs[pi3].length);
+    var doorWidths = 0;
+    var dDims = scanData.doorDimensions || [];
+    for(var di = 0; di < dDims.length; di++) doorWidths += pf(dDims[di].width);
+    var bbFt = Math.max(0, (totalPerim - doorWidths) / 12);
+    if(bbFt > 0){
+      surfaces.push(makeSurface({
+        type: "baseboard",
+        linearFt: String(Math.round(bbFt)),
+        primerCoats: 0,
+        topCoats: 2,
+        label: "Baseboard"
+      }));
+    }
+    var rm = makeRoom({
+      name: roomName,
+      mode: "custom",
+      surfaces: surfaces,
+      extras: []
+    });
+    job.rooms.push(rm);
+    job.activeRoomId = rm.id;
+  }
+
+  consumeScan();
+  saveState();
+  render();
+}
+
+function dismissScan(){
+  consumeScan();
+  render();
+}
+
+function formatScanDims(scanData){
+  var l = Math.round(pf(scanData.roomLength));
+  var w = Math.round(pf(scanData.roomWidth));
+  var h = Math.round(pf(scanData.roomHeight));
+  function fmtIn(v){ var ft = Math.floor(v/12); var rem = v%12; return rem ? ft+"'"+rem+'"' : ft+"'"; }
+  var s = fmtIn(l) + " \u00D7 " + fmtIn(w) + " \u00D7 " + fmtIn(h) + " ceiling";
+  var parts = [];
+  if(scanData.doorCount) parts.push(scanData.doorCount + " door" + (scanData.doorCount > 1 ? "s" : ""));
+  if(scanData.windowCount) parts.push(scanData.windowCount + " window" + (scanData.windowCount > 1 ? "s" : ""));
+  if(parts.length) s += " \u2014 " + parts.join(", ");
+  return s;
+}
+
+// Native JS bridge: called by the native app after a LiDAR scan completes
+window.onLidarScan = function(scanData){
+  if(!scanData || !scanData.source) return;
+  acceptScan(scanData);
+};
 
 function setupSync(passphrase){
   if(!_firebaseReady) return;
@@ -873,6 +998,15 @@ function setupSync(passphrase){
       console.warn("Sync listener error:", err);
       _syncStatus = "error";
       _syncActive = false;
+      render();
+    });
+
+    // Listen for LiDAR room scans from companion app
+    _scanRef = firebase.database().ref("sync/" + syncId + "/paintScan");
+    _scanRef.on("value", function(snapshot){
+      var scanData = snapshot.val();
+      if(!scanData || scanData.consumed || !scanData.source) return;
+      _pendingScan = scanData;
       render();
     });
   });
@@ -2019,6 +2153,22 @@ function render(){
         navigator.share({ title: "Paint Calc Data", text: expTa.value }).catch(function(){});
       }, "background:#b8922e;border:none;border-radius:4px;color:#1a1a1a;font-size:11px;padding:6px 16px;cursor:pointer;font-weight:600;"));
     }
+    expBtns.appendChild(btn("Download File", function(){
+      try {
+        var compact = JSON.stringify(STATE.jobs, null, 2);
+        var blob = new Blob([compact], {type: "application/json"});
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement("a");
+        var d = new Date();
+        var ts = d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0");
+        a.href = url;
+        a.download = "paintcalc-jobs-" + ts + ".json";
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      } catch(e){ alert("Download error: " + e.message); }
+    }, "background:#5588bb;border:none;border-radius:4px;color:#fff;font-size:11px;padding:6px 16px;cursor:pointer;font-weight:600;"));
     expBtns.appendChild(btn("Select All & Copy", function(){
       expTa.select();
       expTa.setSelectionRange(0, 99999);
@@ -2053,6 +2203,18 @@ function render(){
     impBtns.appendChild(btn("Load Data", function(){
       doImport(impTa.value);
     }, "background:#5588bb;border:none;border-radius:4px;color:#fff;font-size:11px;padding:6px 16px;cursor:pointer;font-weight:600;"));
+    impBtns.appendChild(btn("Open File", function(){
+      var fi = document.createElement("input");
+      fi.type = "file";
+      fi.accept = ".json,application/json";
+      fi.onchange = function(){
+        if(!fi.files || !fi.files[0]) return;
+        var reader = new FileReader();
+        reader.onload = function(){ doImport(reader.result); };
+        reader.readAsText(fi.files[0]);
+      };
+      fi.click();
+    }, "background:#5a9e6f;border:none;border-radius:4px;color:#fff;font-size:11px;padding:6px 16px;cursor:pointer;font-weight:600;"));
     impBtns.appendChild(btn("Cancel", function(){
       STATE.importMode = false; render();
     }, "background:#2e2e2e;border:1px solid #3a3a3a;border-radius:4px;color:#8a8580;font-size:11px;padding:6px 16px;cursor:pointer;"));
@@ -2143,6 +2305,23 @@ function render(){
     renderInvoice(job, body, rate, primerRate, er);
     app.appendChild(body);
     return;
+  }
+
+  /* LiDAR Scan Banner */
+  if(_pendingScan){
+    var scanBanner = el("div", "margin-bottom:12px;padding:12px;background:#242424;border:1px solid #d4a843;border-radius:8px;");
+    var scanHdr = flexRow([], 8, "margin-bottom:8px;justify-content:space-between;align-items:center;");
+    scanHdr.appendChild(el("div", "font-size:11px;font-weight:600;color:#d4a843;", "LIDAR ROOM SCAN RECEIVED"));
+    scanHdr.appendChild(el("div", "font-size:9px;color:#8a8580;", _pendingScan.isRectangular ? "rectangular" : _pendingScan.wallCount + " walls"));
+    scanBanner.appendChild(scanHdr);
+    scanBanner.appendChild(el("div", "font-size:12px;color:#e8e4de;margin-bottom:10px;", formatScanDims(_pendingScan)));
+    var scanBtns = el("div", "display:flex;gap:8px;");
+    scanBtns.appendChild(btn("Add as Room", function(){ acceptScan(_pendingScan); },
+      "background:#d4a843;border:none;border-radius:4px;color:#1a1a1a;font-size:11px;padding:6px 16px;cursor:pointer;font-weight:600;"));
+    scanBtns.appendChild(btn("Dismiss", dismissScan,
+      "background:#2e2e2e;border:1px solid #3a3a3a;border-radius:4px;color:#8a8580;font-size:11px;padding:6px 16px;cursor:pointer;"));
+    scanBanner.appendChild(scanBtns);
+    body.appendChild(scanBanner);
   }
 
   /* Job Name */
@@ -2406,6 +2585,15 @@ function render(){
         roomRow.appendChild(right);
         body.appendChild(roomRow);
       })(job.rooms[i]);
+    }
+
+    // Scan Room button (visible only inside native app with LiDAR)
+    if(window.PAINTCALC_NATIVE && window.PAINTCALC_HAS_LIDAR){
+      body.appendChild(btn("Scan Room", function(){
+        if(window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.paintCalcNative){
+          window.webkit.messageHandlers.paintCalcNative.postMessage({action: "scanRoom"});
+        }
+      }, "background:#d4a843;color:#1a1a1a;border:none;border-radius:4px;padding:10px 0;cursor:pointer;font-size:12px;font-weight:700;letter-spacing:.5px;width:100%;margin-top:8px;"));
     }
 
     body.appendChild(btn("+ Add Room", function(){
