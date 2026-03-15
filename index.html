@@ -1011,9 +1011,9 @@
     <div id="diagram" class="panel active">
         <div class="info-bar">
             <span class="full">● Full: <b id="fullCount">0</b></span> &nbsp;
-            <span style="color:var(--accent)">● Done: <b id="cutDoneCount">0</b></span>
+            <span style="color:#FF9800">● Cuts: <b id="cutCount">0</b></span> &nbsp;
+            <span style="color:var(--text-secondary)">📦 Waste: <b id="wastePercent">0%</b></span>
         </div>
-        <div class="hint mb-3">Tap cut tile to cycle: Orange → Yellow (selected) → Red (cut) → Orange</div>
         <div class="flex-row mb-3">
             <span>🔍</span><input type="range" id="zoom" min="4" max="100" value="5" step="1" oninput="updateZoom()" style="flex:1"><span id="zoomVal">5x</span>
         </div>
@@ -3266,15 +3266,8 @@ var pendingUncutKey = null;
 var detailTileData = null; // Store tile data for detail view
 
 function handleCanvasTap(e) {
-    // Allow tapping in segment projection mode, but not regular projector mode
-    if (projMode && !window.segmentProjMode) return;
-    
-    // Only allow cut tile interactions when pattern is locked (or in segment projection)
-    if (!patternLocked && !window.segmentProjMode) {
-        // Show a hint to lock the pattern first
-        showLockHint();
-        return;
-    }
+    // Only allow cut tile tap interactions in segment projection mode
+    if (!window.segmentProjMode) return;
     
     var rect = cv.getBoundingClientRect();
     var scaleX = cv.width / rect.width;
@@ -5790,8 +5783,8 @@ function draw() {
         cx.fillRect(segX + segW - 3, segY + segH - cornerSize + 3, 6, cornerSize);
     }
     
-    // Draw cut dimension labels ON TOP of wall border and voids
-    if (!projMode && showCuts && cutLabels.length > 0) {
+    // Draw cut dimension labels ON TOP of wall border and voids (only in segment projection mode)
+    if (window.segmentProjMode && showCuts && cutLabels.length > 0) {
         cx.textAlign = 'center';
         cx.textBaseline = 'middle';
         
@@ -5842,7 +5835,18 @@ function draw() {
     document.getElementById('fullCount').textContent = full;
     var partialEl = document.getElementById('partialCount');
     if (partialEl) partialEl.textContent = part;
-    document.getElementById('cutDoneCount').textContent = cutDoneCount;
+    // Update cut count and waste % on layout tab
+    var cutCountEl = document.getElementById('cutCount');
+    if (cutCountEl) cutCountEl.textContent = part;
+    var wastePercentEl = document.getElementById('wastePercent');
+    if (wastePercentEl) {
+        var total = full + part;
+        var wastePct = total > 0 ? Math.round((part / total) * 100) : 0;
+        wastePercentEl.textContent = wastePct + '%';
+    }
+    // Update done count for projection tab
+    var cutDoneEl = document.getElementById('cutDoneCount');
+    if (cutDoneEl) cutDoneEl.textContent = cutDoneCount;
     
     var waste = parseFloat(document.getElementById('waste').value) || 10;
     var total = full + part;
