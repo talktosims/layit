@@ -3724,75 +3724,6 @@ function setSection(sec) {
     projSection = sec;
 }
 
-function updateSectionButtons() {
-    // Legacy function - no longer used
-}
-
-// Legacy projector functions - kept as stubs for compatibility
-function updateProjSetup() {
-    // Removed - projector mode replaced with laser export
-}
-
-function startCalibration() {
-    // Removed - use startLaserCalibration instead
-    showToast('Use Laser Calibration instead');
-}
-
-function drawCalibration() {
-    var container = document.getElementById('canvasContainer');
-    cv.width = window.innerWidth * 2;
-    cv.height = window.innerHeight * 2;
-    
-    cx.setTransform(1, 0, 0, 1, 0, 0);
-    cx.scale(2, 2);
-    
-    // White background
-    cx.fillStyle = '#ffffff';
-    cx.fillRect(0, 0, cv.width, cv.height);
-    
-    var centerX = cv.width / 4;
-    var centerY = cv.height / 4 - 50;
-    
-    // Draw 12" calibration line
-    // At correct scale, this should be 12 inches when projected
-    var s = C.view.z; // Use current zoom as scale reference
-    var lineLength = 12 * s; // 12 inches at current scale
-    
-    cx.strokeStyle = '#000000';
-    cx.lineWidth = 4;
-    cx.beginPath();
-    cx.moveTo(centerX - lineLength, centerY);
-    cx.lineTo(centerX + lineLength, centerY);
-    cx.stroke();
-    
-    // Draw end markers
-    cx.beginPath();
-    cx.moveTo(centerX - lineLength, centerY - 20);
-    cx.lineTo(centerX - lineLength, centerY + 20);
-    cx.moveTo(centerX + lineLength, centerY - 20);
-    cx.lineTo(centerX + lineLength, centerY + 20);
-    cx.stroke();
-    
-    // Label
-    cx.fillStyle = '#000000';
-    cx.font = 'bold 24px sans-serif';
-    cx.textAlign = 'center';
-    cx.fillText('← 12 INCHES →', centerX, centerY - 40);
-    
-    // Zoom hint
-    cx.font = '16px sans-serif';
-    cx.fillText('Current app zoom: ' + C.view.z + 'x', centerX, centerY + 60);
-    cx.fillText('Adjust projector distance/zoom until line = 12"', centerX, centerY + 90);
-}
-
-function confirmCalibration() {
-    calibrationMode = false;
-    alert('✅ Calibration saved!\n\nYour projector is now set to display actual-size patterns.\n\nLaunch the projector to see your tile layout!');
-    exitProj();
-}
-
-// Initialize setup calculator
-setTimeout(updateProjSetup, 100);
 let C = {
     wall: { lH: 70, rV: 0.5, tW: 58, bV: 0.25 },
     tile: { sh: 'herringbone', or: 'pointy', w: 2, h: 4, gr: 0.125, pattern: 0 },
@@ -3832,113 +3763,6 @@ var completedSegments = []; // IDs of completed segments
 //   edgeSignature: { top: [...], bottom: [...], left: [...], right: [...] }
 // }
 
-// Generate segments for the current floor layout
-function generateSegments() {
-    segments = [];
-    segmentPath = [];
-    completedSegments = [];
-    currentSegmentId = null;
-    
-    // Get floor dimensions
-    var floorW = Math.max(C.wall.tW, C.wall.tW + C.wall.bV);
-    var floorH = Math.max(C.wall.lH, C.wall.lH + C.wall.rV);
-    
-    // Calculate grid dimensions
-    var segW = segmentConfig.width;
-    var segH = segmentConfig.height;
-    var cols = Math.ceil(floorW / segW);
-    var rows = Math.ceil(floorH / segH);
-    
-    // Generate segment grid
-    var id = 0;
-    for (var row = 0; row < rows; row++) {
-        for (var col = 0; col < cols; col++) {
-            var seg = {
-                id: id,
-                row: row,
-                col: col,
-                x: col * segW,
-                y: row * segH,
-                width: Math.min(segW, floorW - col * segW),
-                height: Math.min(segH, floorH - row * segH),
-                status: 'pending',
-                adjacent: {
-                    up: null,
-                    down: null,
-                    left: null,
-                    right: null
-                },
-                pathOrder: -1,
-                edgeSignature: null
-            };
-            segments.push(seg);
-            id++;
-        }
-    }
-    
-    // Build adjacency graph
-    for (var i = 0; i < segments.length; i++) {
-        var seg = segments[i];
-        var r = seg.row;
-        var c = seg.col;
-        
-        // Find adjacent segments
-        seg.adjacent.up = findSegmentByRowCol(r - 1, c);
-        seg.adjacent.down = findSegmentByRowCol(r + 1, c);
-        seg.adjacent.left = findSegmentByRowCol(r, c - 1);
-        seg.adjacent.right = findSegmentByRowCol(r, c + 1);
-    }
-    
-    // Generate optimal path (serpentine from top-left)
-    generateSerpentinePath(rows, cols);
-    
-    // Set first segment as current
-    if (segmentPath.length > 0) {
-        currentSegmentId = segmentPath[0];
-        segments[currentSegmentId].status = 'current';
-    }
-    
-    console.log('Generated ' + segments.length + ' segments (' + cols + ' cols x ' + rows + ' rows)');
-    return segments;
-}
-
-// Find segment by row/col
-function findSegmentByRowCol(row, col) {
-    for (var i = 0; i < segments.length; i++) {
-        if (segments[i].row === row && segments[i].col === col) {
-            return segments[i].id;
-        }
-    }
-    return null;
-}
-
-// Generate serpentine path starting from top-left corner
-function generateSerpentinePath(rows, cols) {
-    segmentPath = [];
-    var order = 0;
-    
-    for (var row = 0; row < rows; row++) {
-        if (row % 2 === 0) {
-            // Even rows: left to right
-            for (var col = 0; col < cols; col++) {
-                var segId = findSegmentByRowCol(row, col);
-                if (segId !== null) {
-                    segmentPath.push(segId);
-                    segments[segId].pathOrder = order++;
-                }
-            }
-        } else {
-            // Odd rows: right to left
-            for (var col = cols - 1; col >= 0; col--) {
-                var segId = findSegmentByRowCol(row, col);
-                if (segId !== null) {
-                    segmentPath.push(segId);
-                    segments[segId].pathOrder = order++;
-                }
-            }
-        }
-    }
-}
 
 // Get next recommended segment
 function getNextSegment() {
@@ -3989,7 +3813,6 @@ function completeCurrentSegment() {
         segments[nextId].status = 'current';
     } else {
         currentSegmentId = null;
-        console.log('All segments complete!');
     }
     
     saveData();
@@ -4803,20 +4626,6 @@ function drawDetailView() {
             }
         }
 
-        // Debug: log cut polygon points and what was detected
-        console.log('CUT DETAIL: cutPointsInches=' + cutPointsInches.length + ' tileVerts=' + tileVertsLocal.length + ' cutMarks=' + cutMarks.length);
-        for (var i = 0; i < cutPointsInches.length; i++) {
-            var p = cutPointsInches[i];
-            var onEdge = false, isCorner = false;
-            for (var j = 0; j < tileVertsLocal.length; j++) {
-                var c = tileVertsLocal[j];
-                if (Math.abs(p.x - c.x) < 0.15 && Math.abs(p.y - c.y) < 0.15) isCorner = true;
-                var e2 = tileVertsLocal[(j + 1) % tileVertsLocal.length];
-                if (isPointOnSegment(p.x, p.y, c.x, c.y, e2.x, e2.y, 0.3)) onEdge = true;
-            }
-            console.log('  pt[' + i + '] x=' + p.x.toFixed(2) + ' y=' + p.y.toFixed(2) + ' corner=' + isCorner + ' onEdge=' + onEdge);
-        }
-        
         // Post-process cut marks:
         // 1. Remove marks under 1/4" (negligible)
         // 2. Deduplicate: if two marks are on the same edge, keep only the one measured from kept corner
@@ -8045,10 +7854,6 @@ function doOptimize(mode) {
     C.view.oyInches = best.y;
     draw();
     
-    // Show results
-    if (best.results) {
-        console.log('Optimize results:', mode, 'Full:', best.results.full, 'Cut:', best.results.cut, 'Small cuts:', best.results.smallCuts);
-    }
 }
 
 // Count tiles for optimization (without drawing)
