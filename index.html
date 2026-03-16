@@ -327,6 +327,11 @@
         .void-item button { width:auto; padding:8px 14px; margin:0; }
 
         /* ---- CALCULATOR ---- */
+        .shop-item { display:flex; justify-content:space-between; align-items:center; padding:12px 14px; background:var(--bg-surface); border:1px solid var(--border-default); border-radius:var(--radius-sm); margin-bottom:8px; }
+        .shop-item-name { font-weight:600; color:var(--text-primary); font-size:14px; }
+        .shop-item-qty { font-weight:700; color:var(--success); font-size:18px; min-width:60px; text-align:right; }
+        .shop-item-note { font-size:11px; color:var(--text-muted); margin-top:2px; }
+
         .calc-result {
             font-size:36px;
             font-weight:800;
@@ -1185,6 +1190,7 @@
         <button class="tab" data-tab="calc"><span class="tab-icon">🔢</span><span class="tab-label">Calc</span></button>
         <button class="tab" data-tab="projects"><span class="tab-icon">📁</span><span class="tab-label">Files</span></button>
         <button class="tab" data-tab="proj"><span class="tab-icon"><svg class="hex-icon" viewBox="0 0 24 24" width="18" height="18"><path d="M12 2 L21.5 7.5 L21.5 16.5 L12 22 L2.5 16.5 L2.5 7.5 Z" fill="none" stroke="#4ade80" stroke-width="2.5" stroke-linejoin="round"/></svg></span><span class="tab-label">Laser</span></button>
+        <button class="tab" data-tab="settings"><span class="tab-icon">⚙️</span><span class="tab-label">Settings</span></button>
     </div>
 
     <div id="diagram" class="panel active">
@@ -1407,6 +1413,13 @@
             <div class="calc-result" id="costEstimate">$0.00</div>
             <div class="hint" id="costBreakdown"></div>
         </div>
+
+        <div class="section">
+            <h3>🛒 Shopping List</h3>
+            <div class="hint" style="margin-bottom:12px;">Calculate everything you need to buy for this job.</div>
+            <button class="btn-primary" onclick="calculateShoppingList()" style="margin-bottom:12px;">🛒 Calculate Materials</button>
+            <div id="shoppingListResults"></div>
+        </div>
     </div>
 
     <div id="projects" class="panel">
@@ -1441,125 +1454,68 @@
                 <button class="btn-secondary" onclick="document.getElementById('importFile').click()">📥 Import</button>
             </div>
             <input type="file" id="importFile" accept=".json" style="display:none" onchange="importProject(event)">
+            <div style="margin-top:12px;">
+                <button class="btn-success" onclick="shareProject()" style="width:100%;display:flex;align-items:center;justify-content:center;gap:8px;padding:14px;">
+                    <span style="font-size:18px;">📤</span> Share Project with Client
+                    <span style="background:rgba(255,255,255,0.2);font-size:10px;padding:2px 6px;border-radius:4px;font-weight:700;">PRO</span>
+                </button>
+            </div>
+        </div>
+
+        <div class="section">
+            <h3>🏢 Company Branding</h3>
+            <p class="hint mb-3" style="text-align:left;">Add your company info for shared project pages.</p>
+            <div class="field">
+                <label>Company Name</label>
+                <input type="text" id="companyName" placeholder="Your Company Name" oninput="saveCompanyBranding()">
+            </div>
+            <div class="field">
+                <label>Company Logo (optional)</label>
+                <div style="display:flex;gap:8px;align-items:center;">
+                    <button class="btn-secondary" onclick="document.getElementById('logoUpload').click()" style="flex:1;font-size:12px;">📎 Upload Logo</button>
+                    <button class="btn-secondary" onclick="clearCompanyLogo()" style="font-size:12px;padding:10px 12px;">✕</button>
+                </div>
+                <input type="file" id="logoUpload" accept="image/*" style="display:none" onchange="handleLogoUpload(event)">
+                <div id="logoPreview" style="display:none;margin-top:8px;text-align:center;">
+                    <img id="logoPreviewImg" style="max-height:60px;max-width:200px;border-radius:6px;background:rgba(255,255,255,0.1);padding:4px;">
+                </div>
+            </div>
         </div>
     </div>
 
     <div id="proj" class="panel">
-        <!-- Laser Position & Coverage Section -->
+        <!-- Coming Soon -->
+        <div class="section" style="text-align:center;padding:40px 20px;">
+            <div style="font-size:64px;margin-bottom:16px;">🔴</div>
+            <h3 style="font-size:22px;margin-bottom:8px;">LayIt Laser</h3>
+            <p style="color:var(--text-secondary);font-size:15px;line-height:1.6;margin-bottom:24px;">
+                Project your exact tile layout onto the wall or floor.<br>
+                No more chalk lines. No more guesswork.
+            </p>
+            <div style="background:var(--bg-base);border:1px solid var(--border-success);border-radius:var(--radius-md);padding:20px;margin-bottom:20px;">
+                <div style="color:var(--success);font-weight:700;font-size:16px;margin-bottom:4px;">Coming Soon</div>
+                <div style="color:var(--text-muted);font-size:13px;">Be the first to know when it launches</div>
+            </div>
+            <input type="email" id="waitlistEmail" placeholder="Enter your email" style="width:100%;padding:14px;margin-bottom:10px;background:var(--bg-surface);border:1px solid var(--border-default);border-radius:var(--radius-md);color:var(--text-primary);font-size:15px;">
+            <button class="btn-success" onclick="joinWaitlist()" style="width:100%;padding:14px;font-size:16px;">
+                Join the Waitlist
+            </button>
+            <div id="waitlistConfirm" style="display:none;color:var(--success);margin-top:12px;font-weight:600;">
+                ✓ You're on the list! We'll notify you.
+            </div>
+        </div>
+
         <div class="section">
-            <h3>📏 Laser Position</h3>
-            
-            <!-- Wall / Floor Toggle -->
-            <div class="grid-2 mb-4">
-                <button id="wallModeBtn" class="btn-primary" onclick="setProjectionSurface('wall')">
-                    🧱 Wall
-                </button>
-                <button id="floorModeBtn" class="btn-secondary" onclick="setProjectionSurface('floor')">
-                    🏠 Floor
-                </button>
-            </div>
-            
-            <!-- When laser NOT connected: show inputs -->
-            <div id="distanceInputSection">
-                
-                <!-- Wall Mode Inputs -->
-                <div id="wallInputs">
-                    <label>Distance from wall</label>
-                    <div class="flex-row" style="margin:10px 0;">
-                        <input type="range" id="distanceSlider" min="3" max="15" value="6" step="0.5"
-                               oninput="updateFromDistance()" style="flex:1;">
-                        <span id="distanceValue" style="font-size:var(--text-xl);font-weight:bold;color:var(--text-primary);min-width:50px;">6 ft</span>
-                    </div>
-                    <div class="hint" style="font-size:12px;color:var(--text-muted);margin-top:-4px;">
-                        Recommended: 6-8 ft for the best balance of coverage and line sharpness
-                    </div>
-                </div>
-                
-                <!-- Floor Mode Inputs -->
-                <div id="floorInputs" style="display:none;">
-                    <div class="mb-3">
-                        <label>Tripod height</label>
-                        <div class="flex-row" style="margin-top:6px;">
-                            <input type="range" id="tripodHeightSlider" min="2" max="6" value="4" step="0.5" 
-                                   oninput="updateFloorCoverage()" style="flex:1;">
-                            <span id="tripodHeightValue" style="font-size:var(--text-lg);font-weight:bold;color:var(--text-primary);min-width:45px;">4 ft</span>
-                        </div>
-                    </div>
-                    <div>
-                        <label>Distance to work area</label>
-                        <div class="flex-row" style="margin-top:6px;">
-                            <input type="range" id="floorDistanceSlider" min="3" max="12" value="5" step="0.5" 
-                                   oninput="updateFloorCoverage()" style="flex:1;">
-                            <span id="floorDistanceValue" style="font-size:var(--text-lg);font-weight:bold;color:var(--text-primary);min-width:45px;">5 ft</span>
-                        </div>
-                    </div>
-                    <div class="hint" style="margin-top:10px;padding:10px;background:var(--bg-base);border-radius:var(--radius-sm);">
-                        💡 Position tripod at edge of room, angled down toward floor
-                    </div>
-                </div>
-            </div>
-            
-            <!-- When laser connected: show detected values -->
-            <div id="detectedDistanceSection" style="display:none;">
-                <div class="stat-box" style="background:var(--success-subtle);border-color:var(--border-success);">
-                    <div class="stat-label" style="color:var(--success);">● Laser Connected</div>
-                    <div class="stat-value" id="detectedDistance">6.2 ft</div>
-                    <div class="stat-detail" id="detectedDistanceLabel">from wall (detected)</div>
-                </div>
-            </div>
-            
-            <!-- Coverage & Quality Result -->
-            <div id="coverageResult" style="margin-top:15px;">
-                <!-- Filled by JS -->
+            <h3 style="font-size:16px;">What is LayIt Laser?</h3>
+            <div style="font-size:14px;color:var(--text-secondary);line-height:1.8;">
+                A precision laser projector that beams your tile pattern onto walls and floors at 1:1 scale.<br><br>
+                • WiFi connected to this app<br>
+                • Works in daylight (green laser)<br>
+                • Battery or plug-in powered<br>
+                • Auto-calibrates with built-in camera
             </div>
         </div>
-        
-        <!-- Projection Mode Section -->
-        <div class="section" id="projectionModeSection">
-            <h3>📐 Projection</h3>
-            
-            <!-- Full Wall Mode -->
-            <div id="fullWallMode" style="display:none;">
-                <div class="stat-box mb-4" style="background:var(--success-subtle);border-color:var(--border-success);">
-                    <div style="font-size:28px;">✓</div>
-                    <div style="font-size:var(--text-lg);color:var(--success);font-weight:bold;">Full Wall Coverage</div>
-                    <div class="stat-detail" style="margin-top:4px;">No segments needed</div>
-                </div>
-                
-                <button class="btn-primary" onclick="projectFullWall()" style="font-size:18px;padding:20px;">
-                    🔴 Project Full Wall
-                </button>
-            </div>
-            
-            <!-- Segmented Mode -->
-            <div id="segmentedMode" style="display:none;">
-                <div id="segmentGrid" style="margin-bottom:15px;">
-                    <!-- Filled by JS -->
-                </div>
-                
-                <div id="segmentInfo" style="text-align:center;margin-bottom:15px;">
-                    <!-- Filled by JS -->
-                </div>
-                
-                <button id="projectSegmentBtn" class="btn-primary" onclick="projectCurrentSegment()" style="font-size:18px;padding:20px;">
-                    🔴 Project Segment 1
-                </button>
-                
-                <button id="markCompleteBtn" class="btn-success" onclick="markSegmentComplete()" style="margin-top:10px;width:100%;display:none;">
-                    ✓ Mark Segment Complete
-                </button>
-            </div>
-            
-            <!-- No Wall Dimensions -->
-            <div id="noWallMode">
-                <div class="hint" style="padding:20px;">
-                    <div style="font-size:var(--text-md);">Enter wall dimensions first</div>
-                    <div style="font-size:var(--text-base);margin-top:5px;">🧱 Wall tab</div>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Export Section (simple) -->
+
         <div class="section">
             <h3>💾 Export File</h3>
             <div class="field">
@@ -1574,85 +1530,24 @@
                 📥 Download
             </button>
         </div>
-        
-        <!-- Laser Connection Section -->
+    </div>
+
+    <div id="settings" class="panel">
         <div class="section">
-            <h3>📡 Connect to LayIt Laser</h3>
-            <p class="hint mb-3" style="text-align:left;">Connect directly to your LayIt Laser device via WiFi.</p>
-            
-            <div id="laserNotConnected">
-                <div class="field">
-                    <label>Laser Device</label>
-                    <select id="laserDevice">
-                        <option value="">Scanning...</option>
-                    </select>
-                </div>
-                
-                <button class="btn-success" onclick="connectLaser()" style="padding:15px;width:100%">
-                    🔗 Connect to Laser
-                </button>
-                
-                <button class="btn-secondary" onclick="scanLasers()" style="margin-top:8px;width:100%">
-                    🔄 Scan for Devices
-                </button>
+            <h3>⭐ LayIt Pro</h3>
+            <div class="pro-status-card" id="proStatusCard">
+                <div class="pro-status-label">Subscription</div>
+                <div class="pro-status-value" id="proStatusValue">Free</div>
             </div>
-            
-            <div id="laserConnected" style="display:none;">
-                <div class="stat-box mb-3" style="background:var(--success-subtle);border-color:var(--border-success);">
-                    <div class="stat-label" style="color:var(--success);">● Connected</div>
-                    <div class="stat-value" id="laserDeviceName">LayIt Laser Pro</div>
-                    <div class="stat-detail" id="laserStatus">Ready to project</div>
-                </div>
-                
-                <button class="btn-primary" onclick="sendToLaser()" style="padding:15px;width:100%;font-size:16px;">
-                    🔴 Project Pattern
-                </button>
-                
-                <div class="grid-2 mt-3">
-                    <button class="btn-secondary" onclick="laserPreview()">👁️ Preview</button>
-                    <button class="btn-secondary" onclick="laserStop()">⏹️ Stop</button>
-                </div>
-                
-                <button class="btn-secondary" onclick="disconnectLaser()" style="margin-top:10px;background:#992222;width:100%">
-                    🔌 Disconnect
-                </button>
-            </div>
+            <button class="btn-pro" id="proUpgradeBtn" onclick="showUpgradeModal()" style="margin-top:12px;">Upgrade to Pro</button>
+            <button class="btn-secondary" id="proManageBtn" onclick="deactivateProDev()" style="margin-top:12px;display:none;width:100%;">Revert to Free (Dev)</button>
         </div>
-        
-        <!-- Laser Calibration Section -->
         <div class="section">
-            <h3>🎯 Laser Calibration</h3>
-            <p class="hint mb-3" style="text-align:left;">Calibrate your laser for accurate 1:1 scale projection.</p>
-            
-            <button class="btn-secondary" onclick="startLaserCalibration()" style="padding:15px;width:100%">
-                📏 Start Calibration
-            </button>
-            
-            <div style="margin-top:10px;font-size:var(--text-sm);color:var(--text-tertiary);line-height:1.6">
-                <b>Calibration Steps:</b><br>
-                1. Laser projects a 12" square<br>
-                2. Measure with tape measure<br>
-                3. Adjust until sides = 12"<br>
-                4. Save calibration to device
-            </div>
-        </div>
-        
-        <!-- Laser Info Section -->
-        <div class="section">
-            <h3>💡 About LayIt Laser</h3>
-            <div style="font-size:var(--text-sm);color:var(--text-secondary);line-height:1.8">
-                <b style="color:var(--accent)">What It Does:</b><br>
-                Projects your exact tile pattern onto walls/floors using a precision laser system. No more chalk lines or guesswork!<br><br>
-                
-                <b style="color:var(--accent)">Features:</b><br>
-                • 1:1 scale projection<br>
-                • WiFi connected to this app<br>
-                • Works in daylight (green laser)<br>
-                • Battery or plug-in powered<br><br>
-                
-                <b style="color:var(--accent)">Don't have a LayIt Laser?</b><br>
-                Export your pattern as SVG/DXF and use with any laser cutter or CNC for templates.
-            </div>
+            <h3>ℹ️ About</h3>
+            <p class="hint" style="text-align:left;line-height:1.7;">
+                <b>LayIt</b> — Tile layout planner with laser projection.<br>
+                Version 1.0
+            </p>
         </div>
     </div>
 
@@ -1660,810 +1555,6 @@
 // Projector setup variables
 var projSection = 'full'; // 'full', 'TL', 'TR', 'BL', 'BR'
 var calibrationMode = false;
-
-// ==================== SEGMENT PROJECTION SYSTEM ====================
-
-var segmentState = {
-    surface: 'wall',     // 'wall' or 'floor'
-    distance: 6,         // feet from wall (wall mode)
-    tripodHeight: 4,     // feet (floor mode)
-    floorDistance: 5,    // horizontal feet to work area (floor mode)
-    coverage: 52,        // inches - calculated from distance
-    segments: [],        
-    currentSegment: 0,
-    enabled: false
-};
-
-// Set projection surface (wall or floor)
-function setProjectionSurface(surface) {
-    segmentState.surface = surface;
-    
-    // Update toggle buttons
-    var wallBtn = document.getElementById('wallModeBtn');
-    var floorBtn = document.getElementById('floorModeBtn');
-    var wallInputs = document.getElementById('wallInputs');
-    var floorInputs = document.getElementById('floorInputs');
-    
-    if (surface === 'wall') {
-        wallBtn.className = 'btn-primary';
-        floorBtn.className = 'btn-secondary';
-        wallInputs.style.display = 'block';
-        floorInputs.style.display = 'none';
-        updateFromDistance();
-    } else {
-        wallBtn.className = 'btn-secondary';
-        floorBtn.className = 'btn-primary';
-        wallInputs.style.display = 'none';
-        floorInputs.style.display = 'block';
-        updateFloorCoverage();
-    }
-}
-
-// Calculate coverage from distance (based on ±20° galvo scan angle)
-function getCoverageFromDistance(distanceFt) {
-    // At distance d, coverage ≈ 2 * d * tan(20°) ≈ 0.73 * d (in same units)
-    // Convert feet to inches, apply formula
-    return Math.round(distanceFt * 12 * 0.73);
-}
-
-// Calculate floor coverage (more complex due to angle)
-function getFloorCoverage(tripodHeightFt, horizontalDistFt) {
-    // Beam travels along hypotenuse
-    var beamDistance = Math.sqrt(tripodHeightFt * tripodHeightFt + horizontalDistFt * horizontalDistFt);
-    
-    // Base coverage from beam distance
-    var baseCoverage = getCoverageFromDistance(beamDistance);
-    
-    // Angle affects effective coverage - steeper angle = more compression near, stretch far
-    // Calculate angle (from horizontal)
-    var angleDeg = Math.atan(tripodHeightFt / horizontalDistFt) * (180 / Math.PI);
-    
-    // Keystone correction compensates, but effective usable area is reduced
-    // At 45°, lose about 15%. At 30°, lose about 10%. At 60°, lose about 25%.
-    var angleEfficiency = 1 - (Math.abs(angleDeg - 35) * 0.005); // Sweet spot around 35°
-    angleEfficiency = Math.max(0.7, Math.min(1, angleEfficiency));
-    
-    return Math.round(baseCoverage * angleEfficiency);
-}
-
-// Get effective beam distance for quality calculation (floor mode)
-function getFloorBeamDistance(tripodHeightFt, horizontalDistFt) {
-    return Math.sqrt(tripodHeightFt * tripodHeightFt + horizontalDistFt * horizontalDistFt);
-}
-
-// Get line quality info based on distance
-function getLineQuality(distanceFt) {
-    if (distanceFt <= 4) {
-        return { label: 'Excellent', color: '#4CAF50', icon: '✓', width: '1-2mm' };
-    } else if (distanceFt <= 6) {
-        return { label: 'Good', color: '#8BC34A', icon: '✓', width: '2-3mm' };
-    } else if (distanceFt <= 8) {
-        return { label: 'Fair', color: '#FF9800', icon: '⚠️', width: '3-4mm' };
-    } else if (distanceFt <= 10) {
-        return { label: 'Poor', color: '#FF5722', icon: '⚠️', width: '4-5mm' };
-    } else {
-        return { label: 'Low', color: '#f44336', icon: '✗', width: '5mm+' };
-    }
-}
-
-// Update from wall distance slider
-function updateFromDistance() {
-    var slider = document.getElementById('distanceSlider');
-    var distanceFt = parseFloat(slider.value);
-    
-    segmentState.distance = distanceFt;
-    segmentState.coverage = getCoverageFromDistance(distanceFt);
-    
-    document.getElementById('distanceValue').textContent = distanceFt + ' ft';
-    
-    updateCoverageDisplay();
-    calculateSegments();
-}
-
-// Update from floor mode sliders
-function updateFloorCoverage() {
-    var heightSlider = document.getElementById('tripodHeightSlider');
-    var distSlider = document.getElementById('floorDistanceSlider');
-    
-    var tripodHeight = parseFloat(heightSlider.value);
-    var floorDist = parseFloat(distSlider.value);
-    
-    segmentState.tripodHeight = tripodHeight;
-    segmentState.floorDistance = floorDist;
-    segmentState.coverage = getFloorCoverage(tripodHeight, floorDist);
-    
-    document.getElementById('tripodHeightValue').textContent = tripodHeight + ' ft';
-    document.getElementById('floorDistanceValue').textContent = floorDist + ' ft';
-    
-    updateCoverageDisplay();
-    calculateSegments();
-}
-
-// Update coverage display with guardrail advisories
-function updateCoverageDisplay() {
-    var container = document.getElementById('coverageResult');
-    if (!container) return;
-
-    var coverage = segmentState.coverage;
-    var quality;
-    var effectiveDistance;
-
-    if (segmentState.surface === 'wall') {
-        effectiveDistance = segmentState.distance;
-        quality = getLineQuality(segmentState.distance);
-    } else {
-        effectiveDistance = getFloorBeamDistance(segmentState.tripodHeight, segmentState.floorDistance);
-        quality = getLineQuality(effectiveDistance);
-    }
-
-    var html = '<div class="grid-2">';
-
-    // Coverage box
-    html += '<div class="stat-box">';
-    html += '<div class="stat-label">Coverage</div>';
-    html += '<div class="stat-value">' + coverage + '"</div>';
-    html += '<div class="stat-detail">(' + (coverage/12).toFixed(1) + ' ft)</div>';
-    html += '</div>';
-
-    // Quality box
-    html += '<div class="stat-box">';
-    html += '<div class="stat-label">Line Quality</div>';
-    html += '<div class="stat-value" style="color:' + quality.color + ';">' + quality.icon + ' ' + quality.label + '</div>';
-    html += '<div class="stat-detail">~' + quality.width + '</div>';
-    html += '</div>';
-
-    html += '</div>';
-
-    // ── Guardrail advisory ──
-    // Guide users toward the optimal 4-8ft range for best results
-    if (effectiveDistance > 10) {
-        // Hard warning — quality is significantly degraded
-        html += '<div style="margin-top:12px;padding:12px;background:#ff572220;border:1px solid #ff5722;border-radius:8px;">';
-        html += '<div style="font-weight:600;color:#ff5722;margin-bottom:4px;">⚠️ Too Far for Sharp Lines</div>';
-        html += '<div style="font-size:13px;color:var(--text-secondary);line-height:1.4;">';
-        html += 'At ' + effectiveDistance.toFixed(1) + 'ft the laser beam is wider than most grout lines, ';
-        html += 'so tile edges will look blurry. <strong>Move the laser to 6-8ft</strong> for crisp, ';
-        html += 'well-defined tile outlines. The laser works best with smaller segments — ';
-        html += 'it will walk you through each one.';
-        html += '</div></div>';
-    } else if (effectiveDistance > 8) {
-        // Soft suggestion — still works but not ideal
-        html += '<div style="margin-top:12px;padding:12px;background:#ff980020;border:1px solid #ff9800;border-radius:8px;">';
-        html += '<div style="font-weight:600;color:#ff9800;margin-bottom:4px;">💡 Tip: Move a Little Closer</div>';
-        html += '<div style="font-size:13px;color:var(--text-secondary);line-height:1.4;">';
-        html += 'The laser works at this distance, but grout lines may start to merge together. ';
-        html += 'For the sharpest lines, <strong>6-8ft is the sweet spot</strong>. ';
-        html += 'The laser will automatically divide your wall into segments and guide you through each one.';
-        html += '</div></div>';
-    } else if (effectiveDistance <= 4 && coverage < 40) {
-        // Very close — great quality but tiny coverage, reassure them
-        html += '<div style="margin-top:12px;padding:10px;background:#4CAF5020;border:1px solid #4CAF50;border-radius:8px;">';
-        html += '<div style="font-size:13px;color:var(--text-secondary);line-height:1.4;">';
-        html += '✓ <strong>Great line quality!</strong> Small coverage area means more segments, ';
-        html += 'but every line will be razor-sharp. The laser guides you segment by segment.';
-        html += '</div></div>';
-    }
-
-    container.innerHTML = html;
-}
-
-// Calculate segments needed based on wall size vs coverage
-function calculateSegments() {
-    var wallW = C.wall.tW;
-    var wallH = C.wall.lH;
-    var coverage = segmentState.coverage;
-    
-    // Apply 10% safety buffer - don't want pattern right at the edge
-    var usableCoverage = coverage * 0.9;
-    
-    // No wall dimensions yet
-    if (wallW <= 0 || wallH <= 0) {
-        segmentState.enabled = false;
-        segmentState.segments = [];
-        updateProjectionModeUI();
-        return;
-    }
-    
-    var cols = Math.ceil(wallW / usableCoverage);
-    var rows = Math.ceil(wallH / usableCoverage);
-    var total = cols * rows;
-    
-    // If fits in one shot, no segments needed
-    if (total <= 1) {
-        segmentState.enabled = false;
-        segmentState.segments = [];
-        updateProjectionModeUI();
-        return;
-    }
-    
-    // Build segment array with path order based on mode
-    segmentState.enabled = true;
-    segmentState.segments = [];
-    segmentState.currentSegment = 0;
-    
-    // Create all segments first
-    var id = 0;
-    for (var row = 0; row < rows; row++) {
-        for (var col = 0; col < cols; col++) {
-            segmentState.segments.push({
-                id: id,
-                row: row,
-                col: col,
-                x: col * usableCoverage,          // Position in inches
-                y: row * usableCoverage,          // Position in inches  
-                width: Math.min(usableCoverage, wallW - col * usableCoverage),
-                height: Math.min(usableCoverage, wallH - row * usableCoverage),
-                status: 'locked',
-                pathOrder: -1,
-                adjacent: { up: null, down: null, left: null, right: null }
-            });
-            id++;
-        }
-    }
-    
-    // Build adjacency graph
-    for (var i = 0; i < segmentState.segments.length; i++) {
-        var seg = segmentState.segments[i];
-        var r = seg.row;
-        var c = seg.col;
-        
-        seg.adjacent.up = findSegmentAt(r + 1, c, rows, cols);
-        seg.adjacent.down = findSegmentAt(r - 1, c, rows, cols);
-        seg.adjacent.left = findSegmentAt(r, c - 1, rows, cols);
-        seg.adjacent.right = findSegmentAt(r, c + 1, rows, cols);
-    }
-    
-    // Generate path order based on surface type
-    if (segmentState.surface === 'floor') {
-        // Floor mode: Serpentine starting from corner you're standing at (row 0)
-        generateSerpentinePathOrder(rows, cols);
-    } else {
-        // Wall mode: Bottom-left first, work up (so you can see what you're doing)
-        generateBottomUpPathOrder(rows, cols);
-    }
-    
-    // Set first segment in path as ready
-    var firstSegId = findSegmentByPathOrder(0);
-    if (firstSegId !== null) {
-        segmentState.segments[firstSegId].status = 'ready';
-        segmentState.currentSegment = firstSegId;
-    }
-    
-    updateProjectionModeUI();
-    
-    // Also update our global segments for draw() overlay
-    segments = segmentState.segments;
-    currentSegmentId = segmentState.currentSegment;
-}
-
-// Find segment at grid position
-function findSegmentAt(row, col, maxRows, maxCols) {
-    if (row < 0 || row >= maxRows || col < 0 || col >= maxCols) return null;
-    return row * maxCols + col;
-}
-
-// Find segment by path order
-function findSegmentByPathOrder(order) {
-    for (var i = 0; i < segmentState.segments.length; i++) {
-        if (segmentState.segments[i].pathOrder === order) {
-            return i;
-        }
-    }
-    return null;
-}
-
-// Serpentine path for floor tiling (start corner, zigzag across)
-function generateSerpentinePathOrder(rows, cols) {
-    var order = 0;
-    
-    for (var row = 0; row < rows; row++) {
-        if (row % 2 === 0) {
-            // Even rows: left to right
-            for (var col = 0; col < cols; col++) {
-                var idx = row * cols + col;
-                segmentState.segments[idx].pathOrder = order++;
-            }
-        } else {
-            // Odd rows: right to left
-            for (var col = cols - 1; col >= 0; col--) {
-                var idx = row * cols + col;
-                segmentState.segments[idx].pathOrder = order++;
-            }
-        }
-    }
-}
-
-// Bottom-up path for wall projection (bottom row first)
-function generateBottomUpPathOrder(rows, cols) {
-    var order = 0;
-    
-    // Bottom row first, then work up
-    for (var row = 0; row < rows; row++) {
-        for (var col = 0; col < cols; col++) {
-            var idx = row * cols + col;
-            segmentState.segments[idx].pathOrder = order++;
-        }
-    }
-}
-
-// Update the projection mode UI
-function updateProjectionModeUI() {
-    var fullWallMode = document.getElementById('fullWallMode');
-    var segmentedMode = document.getElementById('segmentedMode');
-    var noWallMode = document.getElementById('noWallMode');
-    
-    if (!fullWallMode || !segmentedMode || !noWallMode) return;
-    
-    // No wall dimensions
-    if (C.wall.tW <= 0 || C.wall.lH <= 0) {
-        fullWallMode.style.display = 'none';
-        segmentedMode.style.display = 'none';
-        noWallMode.style.display = 'block';
-        return;
-    }
-    
-    noWallMode.style.display = 'none';
-    
-    // Full wall mode
-    if (!segmentState.enabled) {
-        fullWallMode.style.display = 'block';
-        segmentedMode.style.display = 'none';
-        return;
-    }
-    
-    // Segmented mode
-    fullWallMode.style.display = 'none';
-    segmentedMode.style.display = 'block';
-    
-    var usableCoverage = segmentState.coverage * 0.9;
-    var cols = Math.ceil(C.wall.tW / usableCoverage);
-    var rows = Math.ceil(C.wall.lH / usableCoverage);
-    
-    // Calculate progress
-    var completed = segmentState.segments.filter(function(s) { return s.status === 'complete'; }).length;
-    var total = segmentState.segments.length;
-    var percent = Math.round(completed / total * 100);
-    
-    // Build segment grid header with progress
-    var gridHtml = '<div class="mb-3">';
-    gridHtml += '<div class="flex-between mb-2">';
-    gridHtml += '<span class="text-sm text-muted">' + total + ' segments</span>';
-    gridHtml += '<span class="text-bold" style="font-size:14px;color:' + (percent === 100 ? '#46a758' : '#f0a000') + ';">' + percent + '% complete</span>';
-    gridHtml += '</div>';
-
-    // Progress bar
-    gridHtml += '<div class="progress-bar">';
-    gridHtml += '<div class="progress-bar-fill" style="width:' + percent + '%;"></div>';
-    gridHtml += '</div></div>';
-    
-    // Segment grid
-    gridHtml += '<div style="display:grid;grid-template-columns:repeat(' + cols + ',1fr);gap:6px;max-width:260px;margin:0 auto;">';
-    
-    // For floor mode, render from top (far from user) to bottom (near user)
-    // For wall mode, render from top to bottom visually (same as before)
-    var isFloor = segmentState.surface === 'floor';
-    
-    for (var row = rows - 1; row >= 0; row--) {
-        for (var col = 0; col < cols; col++) {
-            var seg = segmentState.segments.find(function(s) {
-                return s.row === row && s.col === col;
-            });
-            if (!seg) continue;
-            
-            var isCurrent = seg.id === segmentState.currentSegment;
-            var isComplete = seg.status === 'complete';
-            var isReady = seg.status === 'ready';
-            var isNext = false;
-            
-            // Check if this is the recommended next segment
-            if (!isCurrent && !isComplete) {
-                var currentSeg = segmentState.segments[segmentState.currentSegment];
-                if (currentSeg && seg.pathOrder === currentSeg.pathOrder + 1) {
-                    isNext = true;
-                }
-            }
-            
-            var bg = '#1c2333', border = '#484f58', color = '#484f58', cursor = 'pointer';
-            var content = String(seg.pathOrder + 1); // Show path order, not ID
-
-            if (isComplete) {
-                bg = 'rgba(70,167,88,0.12)'; border = '#46a758'; color = '#46a758'; content = '✓';
-            } else if (isCurrent) {
-                bg = 'rgba(229,72,77,0.12)'; border = '#e5484d'; color = '#e6edf3';
-            } else if (isNext) {
-                bg = 'rgba(240,160,0,0.12)'; border = '#f0a000'; color = '#f0a000';
-            } else if (!isReady && !isComplete) {
-                bg = '#0d1117'; border = 'rgba(240,246,252,0.08)'; color = '#484f58'; cursor = 'not-allowed';
-            }
-            
-            gridHtml += '<div onclick="selectSegment(' + seg.id + ')" style="';
-            gridHtml += 'background:' + bg + ';border:2px solid ' + border + ';border-radius:8px;';
-            gridHtml += 'padding:10px 6px;text-align:center;cursor:' + cursor + ';';
-            gridHtml += 'font-size:16px;font-weight:bold;color:' + color + ';';
-            gridHtml += 'transition:all 0.2s;';
-            gridHtml += '">' + content + '</div>';
-        }
-    }
-    gridHtml += '</div>';
-    
-    // Path direction hint
-    var pathHint = isFloor ? '↔ Serpentine: follow numbers' : '⬆ Start bottom, work up';
-    gridHtml += '<div class="hint mt-2">' + pathHint + '</div>';
-    
-    document.getElementById('segmentGrid').innerHTML = gridHtml;
-    
-    // Current segment info
-    var current = segmentState.segments[segmentState.currentSegment];
-    var label = getSegmentLabel(current);
-    
-    var infoHtml = '<div style="font-size:16px;font-weight:bold;color:var(--text-primary);">Segment ' + (current.pathOrder + 1) + ' of ' + total + '</div>';
-    infoHtml += '<div class="text-sm text-muted">' + label + '</div>';
-    
-    // Show adjacent segments for floor mode
-    if (isFloor && current.adjacent) {
-        var adjLabels = [];
-        if (current.adjacent.up !== null) adjLabels.push('↑');
-        if (current.adjacent.down !== null) adjLabels.push('↓');
-        if (current.adjacent.left !== null) adjLabels.push('←');
-        if (current.adjacent.right !== null) adjLabels.push('→');
-        if (adjLabels.length > 0) {
-            infoHtml += '<div style="font-size:10px;color:#666;margin-top:4px;">Adjacent: ' + adjLabels.join(' ') + '</div>';
-        }
-    }
-    
-    document.getElementById('segmentInfo').innerHTML = infoHtml;
-    
-    // Update buttons
-    var projectBtn = document.getElementById('projectSegmentBtn');
-    var completeBtn = document.getElementById('markCompleteBtn');
-    
-    projectBtn.textContent = '🔴 Project Segment ' + (current.id + 1);
-    completeBtn.style.display = current.status !== 'complete' ? 'block' : 'none';
-    completeBtn.textContent = '✓ Mark Segment ' + (current.id + 1) + ' Complete';
-}
-
-// Get human-readable segment label
-function getSegmentLabel(segment) {
-    var rows = Math.ceil(C.wall.lH / segmentState.coverage);
-    var cols = Math.ceil(C.wall.tW / segmentState.coverage);
-    
-    var rowLabel = segment.row === 0 ? 'Bottom' : segment.row === rows - 1 ? 'Top' : 'Row ' + (segment.row + 1);
-    var colLabel = segment.col === 0 ? 'Left' : segment.col === cols - 1 ? 'Right' : 'Col ' + (segment.col + 1);
-    
-    if (cols === 1) return rowLabel;
-    if (rows === 1) return colLabel;
-    return rowLabel + '-' + colLabel;
-}
-
-// Select a segment
-function selectSegment(id) {
-    var segment = segmentState.segments[id];
-    if (!segment) return;
-    
-    // In floor mode, allow selecting adjacent segments or next in path
-    var isFloor = segmentState.surface === 'floor';
-    var current = segmentState.segments[segmentState.currentSegment];
-    
-    if (segment.status === 'locked') {
-        // Check if this is an adjacent segment to current (more flexible navigation)
-        var isAdjacent = false;
-        if (current && current.adjacent) {
-            isAdjacent = current.adjacent.up === id || 
-                        current.adjacent.down === id || 
-                        current.adjacent.left === id || 
-                        current.adjacent.right === id;
-        }
-        
-        if (isAdjacent && isFloor) {
-            // Allow jumping to adjacent in floor mode
-            segment.status = 'ready';
-        } else {
-            // Find which segment needs to be done first (by path order)
-            var neededOrder = 0;
-            for (var i = 0; i < segmentState.segments.length; i++) {
-                var seg = segmentState.segments[i];
-                if (seg.status !== 'complete' && seg.pathOrder < segment.pathOrder) {
-                    neededOrder = seg.pathOrder + 1;
-                    break;
-                }
-            }
-            var hint = isFloor ? 'follow the serpentine path' : 'bottom to top';
-            showToast('⚠️ Complete Segment ' + neededOrder + ' first (' + hint + ')', 2500);
-            return;
-        }
-    }
-    
-    segmentState.currentSegment = id;
-    currentSegmentId = id; // Update global for draw()
-    updateProjectionModeUI();
-    draw(); // Redraw to show segment highlight
-}
-
-// Mark current segment complete
-function markSegmentComplete() {
-    var current = segmentState.segments[segmentState.currentSegment];
-    current.status = 'complete';
-    
-    // Find next segment by path order
-    var nextPathOrder = current.pathOrder + 1;
-    var nextSegment = null;
-    
-    for (var i = 0; i < segmentState.segments.length; i++) {
-        if (segmentState.segments[i].pathOrder === nextPathOrder) {
-            nextSegment = segmentState.segments[i];
-            break;
-        }
-    }
-    
-    if (nextSegment) {
-        nextSegment.status = 'ready';
-        segmentState.currentSegment = nextSegment.id;
-        currentSegmentId = nextSegment.id; // Update global for draw()
-        
-        // Show direction hint for floor mode
-        var hint = '';
-        if (segmentState.surface === 'floor') {
-            var currentCol = current.col;
-            var nextCol = nextSegment.col;
-            if (nextSegment.row > current.row) hint = ' (move away from start)';
-            else if (nextCol > currentCol) hint = ' (move right)';
-            else if (nextCol < currentCol) hint = ' (move left)';
-        }
-        
-        showToast('✅ Done! Reposition laser for Segment ' + (nextSegment.pathOrder + 1) + hint, 3000);
-    } else {
-        // All complete!
-        showToast('🎉 All segments complete! Floor is done!', 4000);
-    }
-    
-    updateProjectionModeUI();
-    autoSaveState();
-    draw();
-}
-
-// Project full wall
-function projectFullWall() {
-    if (!laserConnected) {
-        showToast('Connect to laser first, or use Export', 2000);
-        return;
-    }
-    sendToLaser();
-}
-
-// Project current segment
-function projectCurrentSegment() {
-    var seg = segmentState.segments[segmentState.currentSegment];
-    if (!seg) {
-        showToast('No segment selected', 2000);
-        return;
-    }
-    
-    // Start projector mode focused on this segment
-    startSegmentProjection(seg);
-}
-
-// Start projection mode focused on a specific segment
-function startSegmentProjection(seg) {
-    try {
-        projMode = true;
-        
-        // Sync global segments array with segmentState
-        segments = segmentState.segments;
-        currentSegmentId = segmentState.currentSegment;
-        
-        // Hide tabs
-        document.getElementById('tabBar').style.display = 'none';
-        document.body.style.background = '#ffffff';
-        
-        // Remove any existing overlay
-        var existing = document.getElementById('projOverlay');
-        if (existing) existing.remove();
-        
-        // IMPORTANT: Hide ALL panels and force diagram to front
-        var panels = document.querySelectorAll('.panel');
-        panels.forEach(function(p) { 
-            p.classList.remove('active');
-            p.style.display = 'none';  // Force hide
-        });
-        var diagram = document.getElementById('diagram');
-        diagram.classList.add('active');
-        diagram.style.display = 'block';  // Force show
-        
-        // Make canvas container fullscreen FIRST
-        var container = document.getElementById('canvasContainer');
-        container.style.cssText = 'position:fixed !important;top:0 !important;left:0 !important;width:100vw !important;height:100vh !important;z-index:1000 !important;border-radius:0 !important;margin:0 !important;background:#fff !important;';
-        
-        // Calculate zoom to fit segment with some padding
-        var viewW = window.innerWidth;
-        var viewH = window.innerHeight;
-        
-        // Segment dimensions in inches
-        var segW = seg.width || segmentConfig.width;
-        var segH = seg.height || segmentConfig.height;
-        
-        // Calculate zoom to fit segment (with 10% padding)
-        var zoomX = (viewW * 0.8) / segW;
-        var zoomY = (viewH * 0.8) / segH;
-        var targetZoom = Math.min(zoomX, zoomY);
-        
-        // Set zoom
-        C.view.z = targetZoom;
-        
-        // Calculate pan to center the segment
-        var segCenterX = seg.x + segW / 2;
-        var segCenterY = seg.y + segH / 2;
-        
-        // Pan so segment center is at screen center
-        C.view.panX = (viewW / 2) - (segCenterX * targetZoom) - 40; // 40 is baseOx
-        C.view.panY = (viewH / 2) - (segCenterY * targetZoom) - 40; // 40 is baseOy
-        
-        // Build overlay UI
-        var overlay = document.createElement('div');
-        overlay.id = 'projOverlay';
-        overlay.innerHTML =
-            // Top bar with segment info
-            '<div class="proj-top-bar">' +
-                '<div>' +
-                    '<div style="font-size:18px;font-weight:bold;color:#fff;">Segment ' + (seg.pathOrder + 1) + '</div>' +
-                    '<div style="font-size:12px;color:#8b949e;">Row ' + (seg.row + 1) + ', Col ' + (seg.col + 1) + '</div>' +
-                '</div>' +
-                '<div style="display:flex;gap:10px;align-items:center;">' +
-                    '<div id="segmentCutBadge" style="background:#8b949e;color:#fff;padding:6px 12px;border-radius:20px;font-size:14px;font-weight:bold;">...</div>' +
-                '</div>' +
-            '</div>' +
-
-            // Bottom controls
-            '<div class="proj-bottom-bar">' +
-                '<button class="proj-btn" onclick="prevSegment()" title="Previous">◀</button>' +
-                '<button onclick="markSegmentCompleteFromProj()" style="background:linear-gradient(135deg,#46a758,#3a8f4a);color:#fff;border:none;padding:15px 30px;border-radius:10px;font-size:16px;font-weight:bold;cursor:pointer;box-shadow:0 0 20px rgba(70,167,88,0.3);">✓ Done</button>' +
-                '<button class="proj-btn" onclick="nextSegment()" title="Next">▶</button>' +
-                '<button onclick="exitProj()" style="background:#cc0000;color:#fff;border:none;padding:15px 20px;border-radius:10px;font-size:18px;margin-left:20px;cursor:pointer;">✕</button>' +
-            '</div>' +
-
-            // Segment navigation hint
-            '<div style="position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.7);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);color:#e6edf3;padding:8px 16px;border-radius:8px;font-size:12px;z-index:1003;border:1px solid rgba(255,255,255,0.06);">' +
-                'Tap cut tiles for measurements • ◀▶ to navigate • ✓ when done' +
-            '</div>';
-            
-        document.body.appendChild(overlay);
-        
-        // Enable cut tile tapping in projector mode for this segment
-        window.segmentProjMode = true;
-        window.currentProjSegment = seg;
-        
-        // Draw first, then update cut count
-        setTimeout(function() {
-            draw();
-            // Update cut count after draw populates cutTilesData
-            updateSegmentCutCount(seg);
-        }, 100);
-        
-        showToast('Segment ' + (seg.pathOrder + 1) + ' - Tap tiles for cut details', 2500);
-        
-    } catch(err) {
-        console.error('Projection error:', err);
-        showToast('Error: ' + err.message, 3000);
-    }
-}
-
-// Update cut count display after draw
-function updateSegmentCutCount(seg) {
-    var count = 0;
-    
-    // Get scale and offset
-    var s = C.view.z;
-    var baseOx = 40;
-    var baseOy = 40;
-    var panX = C.view.panX || 0;
-    var panY = C.view.panY || 0;
-    
-    // Segment bounds in pixels with buffer for edge tiles
-    var buffer = C.tile.w * s; // One tile width as buffer
-    var segLeftPx = baseOx + panX + seg.x * s - buffer;
-    var segRightPx = baseOx + panX + (seg.x + (seg.width || 36)) * s + buffer;
-    var segTopPx = baseOy + panY + seg.y * s - buffer;
-    var segBottomPx = baseOy + panY + (seg.y + (seg.height || 36)) * s + buffer;
-    
-    // Count cut tiles within segment that are not yet marked as done
-    for (var i = 0; i < cutTilesData.length; i++) {
-        var tile = cutTilesData[i];
-        
-        // tile.x and tile.y are the tile position in pixels
-        if (tile.x >= segLeftPx && tile.x < segRightPx &&
-            tile.y >= segTopPx && tile.y < segBottomPx) {
-            
-            var state = cutTileStates[tile.key] || 0;
-            if (state !== 2) { // Not yet marked as cut
-                count++;
-            }
-        }
-    }
-    
-    // Find and update the badge
-    var badge = document.getElementById('segmentCutBadge');
-    if (badge) {
-        if (count > 0) {
-            badge.style.background = '#e5484d';
-            badge.textContent = count + ' cut' + (count > 1 ? 's' : '');
-        } else {
-            badge.style.background = '#46a758';
-            badge.textContent = 'All done!';
-        }
-    }
-}
-
-// Navigate to previous segment
-function prevSegment() {
-    var current = segmentState.segments[segmentState.currentSegment];
-    if (!current) return;
-    
-    var prevOrder = current.pathOrder - 1;
-    if (prevOrder < 0) {
-        showToast('This is the first segment', 1500);
-        return;
-    }
-    
-    // Find segment with previous path order
-    for (var i = 0; i < segmentState.segments.length; i++) {
-        if (segmentState.segments[i].pathOrder === prevOrder) {
-            segmentState.currentSegment = i;
-            currentSegmentId = i;
-            startSegmentProjection(segmentState.segments[i]);
-            return;
-        }
-    }
-}
-
-// Navigate to next segment
-function nextSegment() {
-    var current = segmentState.segments[segmentState.currentSegment];
-    if (!current) return;
-    
-    var nextOrder = current.pathOrder + 1;
-    if (nextOrder >= segmentState.segments.length) {
-        showToast('This is the last segment', 1500);
-        return;
-    }
-    
-    // Find segment with next path order
-    for (var i = 0; i < segmentState.segments.length; i++) {
-        if (segmentState.segments[i].pathOrder === nextOrder) {
-            segmentState.currentSegment = i;
-            currentSegmentId = i;
-            
-            // Unlock if needed
-            if (segmentState.segments[i].status === 'locked') {
-                segmentState.segments[i].status = 'ready';
-            }
-            
-            startSegmentProjection(segmentState.segments[i]);
-            return;
-        }
-    }
-}
-
-// Mark complete from projection mode
-function markSegmentCompleteFromProj() {
-    markSegmentComplete();
-    
-    // Check if there's a next segment
-    var current = segmentState.segments[segmentState.currentSegment];
-    if (current && current.status !== 'complete') {
-        // Move to next segment in projection
-        startSegmentProjection(current);
-    } else {
-        // All done - exit projection
-        showToast('🎉 All segments complete!', 3000);
-        setTimeout(exitProj, 2000);
-    }
-}
-
-// Initialize on page load
-function initLaserTab() {
-    updateFromDistance();
-}
-
-// ==================== END SEGMENT SYSTEM ====================
 
 // ==================== MEASUREMENT WIZARD ====================
 
@@ -2694,10 +1785,6 @@ function setPerimeterMode(mode) {
         floorBtn.className = 'btn-primary';
     }
     
-    // Also sync with laser tab
-    if (typeof setProjectionSurface === 'function') {
-        setProjectionSurface(mode);
-    }
 }
 
 // Handle click on perimeter canvas
@@ -3148,7 +2235,6 @@ function applyPerimeter() {
     C.wall.bV = 0;
     
     markUnsaved();
-    calculateSegments();
     draw();
     
     showToast('✓ Perimeter applied! Go to 📐 Diagram to see layout.', 3000);
@@ -3183,7 +2269,6 @@ function applyQuickRectangle() {
     C.wall.bV = 0;
     
     markUnsaved();
-    calculateSegments();
     draw();
     
     showToast('✓ Rectangle applied!', 2000);
@@ -3590,7 +2675,6 @@ function applyRoomScanImport(result) {
     C.wall.bV = 0;
 
     markUnsaved();
-    calculateSegments();
     draw();
 
     var perimFeet = Math.floor(result.perimeterInches / 12);
@@ -3605,75 +2689,6 @@ function setSection(sec) {
     projSection = sec;
 }
 
-function updateSectionButtons() {
-    // Legacy function - no longer used
-}
-
-// Legacy projector functions - kept as stubs for compatibility
-function updateProjSetup() {
-    // Removed - projector mode replaced with laser export
-}
-
-function startCalibration() {
-    // Removed - use startLaserCalibration instead
-    showToast('Use Laser Calibration instead');
-}
-
-function drawCalibration() {
-    var container = document.getElementById('canvasContainer');
-    cv.width = window.innerWidth * 2;
-    cv.height = window.innerHeight * 2;
-    
-    cx.setTransform(1, 0, 0, 1, 0, 0);
-    cx.scale(2, 2);
-    
-    // White background
-    cx.fillStyle = '#ffffff';
-    cx.fillRect(0, 0, cv.width, cv.height);
-    
-    var centerX = cv.width / 4;
-    var centerY = cv.height / 4 - 50;
-    
-    // Draw 12" calibration line
-    // At correct scale, this should be 12 inches when projected
-    var s = C.view.z; // Use current zoom as scale reference
-    var lineLength = 12 * s; // 12 inches at current scale
-    
-    cx.strokeStyle = '#000000';
-    cx.lineWidth = 4;
-    cx.beginPath();
-    cx.moveTo(centerX - lineLength, centerY);
-    cx.lineTo(centerX + lineLength, centerY);
-    cx.stroke();
-    
-    // Draw end markers
-    cx.beginPath();
-    cx.moveTo(centerX - lineLength, centerY - 20);
-    cx.lineTo(centerX - lineLength, centerY + 20);
-    cx.moveTo(centerX + lineLength, centerY - 20);
-    cx.lineTo(centerX + lineLength, centerY + 20);
-    cx.stroke();
-    
-    // Label
-    cx.fillStyle = '#000000';
-    cx.font = 'bold 24px sans-serif';
-    cx.textAlign = 'center';
-    cx.fillText('← 12 INCHES →', centerX, centerY - 40);
-    
-    // Zoom hint
-    cx.font = '16px sans-serif';
-    cx.fillText('Current app zoom: ' + C.view.z + 'x', centerX, centerY + 60);
-    cx.fillText('Adjust projector distance/zoom until line = 12"', centerX, centerY + 90);
-}
-
-function confirmCalibration() {
-    calibrationMode = false;
-    alert('✅ Calibration saved!\n\nYour projector is now set to display actual-size patterns.\n\nLaunch the projector to see your tile layout!');
-    exitProj();
-}
-
-// Initialize setup calculator
-setTimeout(updateProjSetup, 100);
 let C = {
     wall: { lH: 70, rV: 0.5, tW: 58, bV: 0.25 },
     tile: { sh: 'herringbone', or: 'pointy', w: 2, h: 4, gr: 0.125, pattern: 0 },
@@ -3779,7 +2794,6 @@ function generateSegments() {
         segments[currentSegmentId].status = 'current';
     }
     
-    console.log('Generated ' + segments.length + ' segments (' + cols + ' cols x ' + rows + ' rows)');
     return segments;
 }
 
@@ -3870,7 +2884,6 @@ function completeCurrentSegment() {
         segments[nextId].status = 'current';
     } else {
         currentSegmentId = null;
-        console.log('All segments complete!');
     }
     
     saveData();
@@ -4684,20 +3697,6 @@ function drawDetailView() {
             }
         }
 
-        // Debug: log cut polygon points and what was detected
-        console.log('CUT DETAIL: cutPointsInches=' + cutPointsInches.length + ' tileVerts=' + tileVertsLocal.length + ' cutMarks=' + cutMarks.length);
-        for (var i = 0; i < cutPointsInches.length; i++) {
-            var p = cutPointsInches[i];
-            var onEdge = false, isCorner = false;
-            for (var j = 0; j < tileVertsLocal.length; j++) {
-                var c = tileVertsLocal[j];
-                if (Math.abs(p.x - c.x) < 0.15 && Math.abs(p.y - c.y) < 0.15) isCorner = true;
-                var e2 = tileVertsLocal[(j + 1) % tileVertsLocal.length];
-                if (isPointOnSegment(p.x, p.y, c.x, c.y, e2.x, e2.y, 0.3)) onEdge = true;
-            }
-            console.log('  pt[' + i + '] x=' + p.x.toFixed(2) + ' y=' + p.y.toFixed(2) + ' corner=' + isCorner + ' onEdge=' + onEdge);
-        }
-        
         // Post-process cut marks:
         // 1. Remove marks under 1/4" (negligible)
         // 2. Deduplicate: if two marks are on the same edge, keep only the one measured from kept corner
@@ -5502,7 +4501,6 @@ function updateWall() {
     C.wall.tW = parseFloat(document.getElementById('topW').value) || 0;
     C.wall.bV = parseFloat(document.getElementById('botVar').value) || 0;
     markUnsaved();
-    calculateSegments(); // Recalculate segments when wall changes
     draw();
     showTab('diagram');
 }
@@ -7927,7 +6925,6 @@ function doOptimize(mode) {
     
     // Show results
     if (best.results) {
-        console.log('Optimize results:', mode, 'Full:', best.results.full, 'Cut:', best.results.cut, 'Small cuts:', best.results.smallCuts);
     }
 }
 
@@ -8469,6 +7466,169 @@ function exportProject() {
     a.click();
 }
 
+// ============================================
+// SHARE PROJECT (PRO FEATURE)
+// ============================================
+
+var companyLogo = localStorage.getItem('layit_company_logo') || '';
+
+function saveCompanyBranding() {
+    localStorage.setItem('layit_company_name', document.getElementById('companyName').value);
+}
+
+function loadCompanyBranding() {
+    var name = localStorage.getItem('layit_company_name') || '';
+    var logo = localStorage.getItem('layit_company_logo') || '';
+    document.getElementById('companyName').value = name;
+    companyLogo = logo;
+    if (logo) {
+        document.getElementById('logoPreview').style.display = 'block';
+        document.getElementById('logoPreviewImg').src = logo;
+    }
+}
+
+function handleLogoUpload(e) {
+    var file = e.target.files[0];
+    if (!file) return;
+    if (file.size > 500000) {
+        showToast('Logo too large. Max 500KB.');
+        return;
+    }
+    var reader = new FileReader();
+    reader.onload = function(ev) {
+        companyLogo = ev.target.result;
+        localStorage.setItem('layit_company_logo', companyLogo);
+        document.getElementById('logoPreview').style.display = 'block';
+        document.getElementById('logoPreviewImg').src = companyLogo;
+        showToast('Logo saved');
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+}
+
+function clearCompanyLogo() {
+    companyLogo = '';
+    localStorage.removeItem('layit_company_logo');
+    document.getElementById('logoPreview').style.display = 'none';
+    document.getElementById('logoPreviewImg').src = '';
+    showToast('Logo removed');
+}
+
+function getShareShapeName(sh) {
+    var names = { hexagon: 'Hexagon', square: 'Square', rectangle: 'Rectangle', herringbone: 'Herringbone', mosaic: 'Mosaic Sheet' };
+    return names[sh] || sh;
+}
+
+function escapeShareHtml(str) {
+    var div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+}
+
+function shareProject() {
+    if (!requirePro('Share Project')) return;
+
+    var canvasImg = cv.toDataURL('image/png');
+
+    var projName = document.getElementById('projName').value.trim() || 'Tile Layout';
+    var compName = (document.getElementById('companyName').value || '').trim();
+    var rH = C.wall.lH + C.wall.rV;
+    var bW = C.wall.tW + C.wall.bV;
+    var maxW = Math.max(C.wall.tW, bW);
+    var maxH = Math.max(C.wall.lH, rH);
+    var dimText = maxW.toFixed(1) + '" \u00d7 ' + maxH.toFixed(1) + '"';
+    var sqft = ((maxW * maxH) / 144).toFixed(1);
+    var shapeName = getShareShapeName(C.tile.sh);
+    var tileSize = C.tile.w + '" \u00d7 ' + C.tile.h + '"';
+    if (C.tile.sh === 'hexagon' || C.tile.sh === 'square') {
+        tileSize = C.tile.w + '"';
+    }
+    var totalTiles = full + part;
+    var wastePct = totalTiles > 0 ? Math.round((part / totalTiles) * 100) : 0;
+    var groutFrac = C.tile.gr;
+    var groutLabel = groutFrac === 0.0625 ? '1/16"' : groutFrac === 0.125 ? '1/8"' : groutFrac === 0.25 ? '1/4"' : groutFrac + '"';
+    var dateStr = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+
+    var logoHtml = '';
+    if (companyLogo) {
+        logoHtml = '<img src="' + companyLogo + '" style="max-height:56px;max-width:220px;margin-bottom:8px;border-radius:8px;" alt="Logo">';
+    }
+
+    var companySection = '';
+    if (compName || companyLogo) {
+        companySection = '<div style="text-align:center;margin-bottom:24px;">' +
+            (logoHtml ? logoHtml + '<br>' : '') +
+            (compName ? '<div style="font-size:22px;font-weight:700;color:#f1f5f9;">' + escapeShareHtml(compName) + '</div>' : '') +
+            '</div>';
+    }
+
+    var voidsRow = '';
+    if (C.voids && C.voids.length > 0) {
+        voidsRow = '<div class="detail-row"><span class="detail-label">Voids / Cutouts</span><span class="detail-value">' + C.voids.length + '</span></div>';
+    }
+
+    var html = '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">' +
+        '<meta name="viewport" content="width=device-width,initial-scale=1.0">' +
+        '<title>' + escapeShareHtml(projName) + ' - Tile Layout</title>' +
+        '<style>' +
+        '*{box-sizing:border-box;margin:0;padding:0}' +
+        'body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",system-ui,sans-serif;' +
+        'background:#f8fafc;color:#1e293b;line-height:1.6;-webkit-font-smoothing:antialiased}' +
+        '.wrap{max-width:720px;margin:0 auto;padding:24px 16px}' +
+        '.card{background:#ffffff;border-radius:16px;padding:28px;margin-bottom:20px;' +
+        'box-shadow:0 1px 3px rgba(0,0,0,0.08),0 4px 16px rgba(0,0,0,0.04);border:1px solid #e2e8f0}' +
+        '.header{text-align:center;padding:32px 20px;background:linear-gradient(135deg,#0f172a 0%,#1e1b4b 50%,#312e81 100%);' +
+        'border-radius:16px;margin-bottom:20px;color:#f1f5f9}' +
+        '.header h1{font-size:24px;font-weight:700;margin-bottom:4px;letter-spacing:-0.02em}' +
+        '.header .date{font-size:13px;color:rgba(255,255,255,0.6);margin-top:4px}' +
+        '.layout-img{width:100%;border-radius:12px;border:1px solid #e2e8f0;display:block}' +
+        '.stats{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:20px}' +
+        '.stat{background:#f8fafc;border-radius:12px;padding:16px;text-align:center;border:1px solid #e2e8f0}' +
+        '.stat-value{font-size:22px;font-weight:700;color:#0f172a;letter-spacing:-0.02em}' +
+        '.stat-label{font-size:12px;color:#64748b;text-transform:uppercase;letter-spacing:0.05em;margin-top:2px}' +
+        '.detail-row{display:flex;justify-content:space-between;padding:12px 0;border-bottom:1px solid #f1f5f9}' +
+        '.detail-row:last-child{border-bottom:none}' +
+        '.detail-label{color:#64748b;font-size:14px}' +
+        '.detail-value{font-weight:600;color:#0f172a;font-size:14px}' +
+        '.footer{text-align:center;padding:24px 16px;color:#94a3b8;font-size:12px}' +
+        '.footer a{color:#6366f1;text-decoration:none}' +
+        '@media print{body{background:#fff}.card{box-shadow:none;border:1px solid #ddd}' +
+        '.header{-webkit-print-color-adjust:exact;print-color-adjust:exact}}' +
+        '</style></head><body>' +
+        '<div class="wrap">' +
+        '<div class="header">' +
+        companySection +
+        '<h1>' + escapeShareHtml(projName) + '</h1>' +
+        '<div class="date">' + dateStr + '</div>' +
+        '</div>' +
+        '<div class="card">' +
+        '<img src="' + canvasImg + '" class="layout-img" alt="Tile Layout">' +
+        '<div class="stats">' +
+        '<div class="stat"><div class="stat-value">' + dimText + '</div><div class="stat-label">Dimensions</div></div>' +
+        '<div class="stat"><div class="stat-value">' + sqft + ' ft\u00b2</div><div class="stat-label">Total Area</div></div>' +
+        '<div class="stat"><div class="stat-value">' + totalTiles + '</div><div class="stat-label">Total Tiles</div></div>' +
+        '<div class="stat"><div class="stat-value">' + wastePct + '%</div><div class="stat-label">Cut Waste</div></div>' +
+        '</div>' +
+        '</div>' +
+        '<div class="card">' +
+        '<div style="font-size:16px;font-weight:700;margin-bottom:12px;color:#0f172a;">Project Details</div>' +
+        '<div class="detail-row"><span class="detail-label">Tile Shape</span><span class="detail-value">' + shapeName + '</span></div>' +
+        '<div class="detail-row"><span class="detail-label">Tile Size</span><span class="detail-value">' + tileSize + '</span></div>' +
+        '<div class="detail-row"><span class="detail-label">Grout Width</span><span class="detail-value">' + groutLabel + '</span></div>' +
+        '<div class="detail-row"><span class="detail-label">Full Tiles</span><span class="detail-value">' + full + '</span></div>' +
+        '<div class="detail-row"><span class="detail-label">Cut Tiles</span><span class="detail-value">' + part + '</span></div>' +
+        '<div class="detail-row"><span class="detail-label">Surface</span><span class="detail-value">' + dimText + ' (' + sqft + ' ft\u00b2)</span></div>' +
+        voidsRow +
+        '</div>' +
+        '<div class="footer">Powered by <a href="https://layit.app" target="_blank">LayIt</a> \u2014 Tile layout + laser projection</div>' +
+        '</div></body></html>';
+
+    var blob = new Blob([html], { type: 'text/html' });
+    var url = URL.createObjectURL(blob);
+    window.open(url, '_blank');
+    showToast('\u2713 Share page opened in new tab');
+}
+
 // Import project from file
 function importProject(e) {
     var file = e.target.files[0];
@@ -8558,6 +7718,57 @@ function updateCostEstimate() {
     
     document.getElementById('costEstimate').textContent = '$' + cost.toFixed(2);
     document.getElementById('costBreakdown').textContent = breakdown ? breakdown : 'Enter price to calculate';
+}
+
+function calculateShoppingList() {
+    updateTileCount();
+    var waste = parseFloat(document.getElementById('waste').value) || 10;
+    var total = full + part;
+    var tilesNeeded = Math.ceil(total * (1 + waste / 100));
+    var tilesPerBox = parseFloat(document.getElementById('tilesPerBox').value) || 0;
+
+    // Wall/floor area in sq ft
+    var wH = (C.wall.lH || 0) / 12;
+    var wW = (C.wall.tW || 0) / 12;
+    var areaSqFt = wH * wW;
+
+    // Subtract voids
+    if (C.voids && C.voids.length) {
+        C.voids.forEach(function(v) {
+            areaSqFt -= ((v.w || 0) * (v.h || 0)) / 144;
+        });
+    }
+    areaSqFt = Math.max(areaSqFt, 1);
+
+    var items = [];
+
+    // Tile boxes
+    if (tilesPerBox > 0) {
+        var boxes = Math.ceil(tilesNeeded / tilesPerBox);
+        items.push({ name: 'Tile', qty: boxes + ' boxes', note: tilesNeeded + ' tiles ÷ ' + tilesPerBox + '/box (rounded up)' });
+    } else {
+        items.push({ name: 'Tile', qty: tilesNeeded + ' tiles', note: 'Enter tiles/box above for box count' });
+    }
+
+    // Thinset — ~70 sq ft per 50lb bag with 1/4"x1/4" trowel
+    var thinsetBags = Math.ceil(areaSqFt / 70);
+    items.push({ name: 'Thinset Mortar (50lb)', qty: thinsetBags + ' bag' + (thinsetBags > 1 ? 's' : ''), note: Math.round(areaSqFt) + ' sq ft ÷ 70 sq ft/bag' });
+
+    // Grout — ~80 sq ft per 25lb bag
+    var groutBags = Math.ceil(areaSqFt / 80);
+    items.push({ name: 'Grout (25lb)', qty: groutBags + ' bag' + (groutBags > 1 ? 's' : ''), note: Math.round(areaSqFt) + ' sq ft ÷ 80 sq ft/bag' });
+
+    // Spacers
+    var groutSize = C.tile.grout || 0.125;
+    var spacerLabel = groutSize <= 0.0625 ? '1/16"' : groutSize <= 0.125 ? '1/8"' : '1/4"';
+    items.push({ name: 'Spacers', qty: spacerLabel, note: 'Match your grout width setting' });
+
+    // Render
+    var html = '';
+    items.forEach(function(item) {
+        html += '<div class="shop-item"><div><div class="shop-item-name">' + item.name + '</div><div class="shop-item-note">' + item.note + '</div></div><div class="shop-item-qty">' + item.qty + '</div></div>';
+    });
+    document.getElementById('shoppingListResults').innerHTML = html;
 }
 
 // Initialize project list on load
@@ -8687,9 +7898,6 @@ function exitProj() {
     
     // Reset calibration mode
     calibrationMode = false;
-    
-    // Update segment UI
-    updateProjectionModeUI();
     
     draw();
 }
@@ -8884,14 +8092,30 @@ function applySyncState(state) {
     draw();
 }
 
-function setupControllerSync() {
-    // Legacy stub
-}
-
 // ==================== LASER EXPORT FUNCTIONS ====================
 
-var laserConnected = false;
-var laserDevice = null;
+function joinWaitlist() {
+    var email = document.getElementById('waitlistEmail').value.trim();
+    if (!email || !email.includes('@')) {
+        showToast('Enter a valid email address');
+        return;
+    }
+    if (typeof firebase !== 'undefined' && firebase.database) {
+        try {
+            firebase.database().ref('waitlist').push({
+                email: email,
+                timestamp: Date.now()
+            });
+        } catch(e) { console.warn('Waitlist save error:', e); }
+    }
+    var list = JSON.parse(localStorage.getItem('layit_waitlist') || '[]');
+    list.push({ email: email, date: new Date().toISOString() });
+    localStorage.setItem('layit_waitlist', JSON.stringify(list));
+    document.getElementById('waitlistEmail').style.display = 'none';
+    document.querySelector('#proj .btn-success').style.display = 'none';
+    document.getElementById('waitlistConfirm').style.display = 'block';
+    showToast('You\'re on the list!');
+}
 
 function exportLaser() {
     var format = document.getElementById('laserFormat').value;
@@ -9241,154 +8465,6 @@ function exportDXFFormat(tiles, wallPts) {
     }
 }
 
-function scanLasers() {
-    showToast('🔄 Scanning for LayIt Laser devices...');
-    // Placeholder - in real implementation, this would scan WiFi/Bluetooth
-    setTimeout(function() {
-        document.getElementById('laserDevice').innerHTML = '<option value="demo">LayIt Laser Demo (Simulated)</option>';
-        showToast('Found 1 device');
-    }, 1500);
-}
-
-function connectLaser() {
-    var device = document.getElementById('laserDevice').value;
-    if (!device) {
-        showToast('⚠️ Select a device first');
-        return;
-    }
-    
-    showToast('🔗 Connecting...');
-    // Placeholder - simulate connection
-    setTimeout(function() {
-        laserConnected = true;
-        laserDevice = device;
-        document.getElementById('laserNotConnected').style.display = 'none';
-        document.getElementById('laserConnected').style.display = 'block';
-        document.getElementById('laserDeviceName').textContent = 'LayIt Laser Demo';
-        
-        // Switch to detected distance mode
-        document.getElementById('distanceInputSection').style.display = 'none';
-        document.getElementById('detectedDistanceSection').style.display = 'block';
-        
-        // Simulate detected distance (would come from laser camera)
-        var detectedDist = 6.2;
-        document.getElementById('detectedDistance').textContent = detectedDist + ' ft';
-        document.getElementById('detectedDistanceLabel').textContent = 
-            segmentState.surface === 'wall' ? 'from wall (detected)' : 'beam distance (detected)';
-        
-        segmentState.distance = detectedDist;
-        segmentState.coverage = getCoverageFromDistance(detectedDist);
-        updateCoverageDisplay();
-        calculateSegments();
-        
-        showToast('✅ Connected!');
-    }, 1000);
-}
-
-function disconnectLaser() {
-    laserConnected = false;
-    laserDevice = null;
-    document.getElementById('laserNotConnected').style.display = 'block';
-    document.getElementById('laserConnected').style.display = 'none';
-    
-    // Switch back to input mode
-    document.getElementById('distanceInputSection').style.display = 'block';
-    document.getElementById('detectedDistanceSection').style.display = 'none';
-    
-    // Recalculate based on current slider values
-    if (segmentState.surface === 'wall') {
-        updateFromDistance();
-    } else {
-        updateFloorCoverage();
-    }
-    
-    showToast('🔌 Disconnected');
-}
-
-function sendToLaser() {
-    if (!laserConnected) {
-        showToast('⚠️ Not connected to laser');
-        return;
-    }
-    
-    showToast('🔴 Sending pattern to laser...');
-    // Placeholder - would send data to actual device
-    setTimeout(function() {
-        document.getElementById('laserStatus').textContent = 'Projecting pattern...';
-        showToast('✅ Pattern sent! Laser is projecting.');
-    }, 500);
-}
-
-function laserPreview() {
-    showToast('👁️ Preview mode - laser showing outline only');
-}
-
-function laserStop() {
-    if (laserConnected) {
-        document.getElementById('laserStatus').textContent = 'Ready to project';
-        showToast('⏹️ Laser stopped');
-    }
-}
-
-function startLaserCalibration() {
-    showToast('📏 Calibration mode - laser projecting 12" square');
-    // Would send calibration pattern to laser
-}
-
-// Handle advisory messages from the laser firmware
-// These are guardrail messages sent when distance or segment size pushes limits
-function handleLaserAdvisory(data) {
-    if (!data || data.type !== 'advisory') return;
-
-    var level = data.level || 'suggestion';
-    var category = data.category || '';
-    var message = data.message || '';
-
-    // Build user-facing notification
-    var icon = level === 'warning' ? '⚠️' : '💡';
-    var prefix = '';
-
-    if (category === 'distance') {
-        prefix = icon + ' Distance: ';
-    } else if (category === 'segment_size') {
-        if (data.tiles_simplified > 0) {
-            prefix = icon + ' ';
-            message = data.tiles_simplified + ' tiles simplified to stay bright. Try a smaller segment (36"×36") for full detail on every tile.';
-        } else {
-            prefix = '💡 ';
-        }
-    }
-
-    showToast(prefix + message);
-
-    // If tiles were simplified, show a persistent banner in the laser panel
-    if (data.tiles_simplified > 0) {
-        showSimplifiedTilesBanner(data.tiles_simplified, data.tiles_in_segment);
-    }
-}
-
-// Show a non-intrusive banner when the laser has simplified interior tiles
-function showSimplifiedTilesBanner(simplified, total) {
-    // Remove existing banner if any
-    var existing = document.getElementById('laserAdvisoryBanner');
-    if (existing) existing.remove();
-
-    var banner = document.createElement('div');
-    banner.id = 'laserAdvisoryBanner';
-    banner.style.cssText = 'margin:10px 0;padding:12px;background:#ff980018;border:1px solid #ff980060;border-radius:8px;font-size:13px;color:var(--text-secondary);line-height:1.4;';
-    banner.innerHTML = '<strong style="color:#ff9800;">💡 Smart Projection Active</strong><br>'
-        + simplified + ' of ' + total + ' interior tiles are showing corner markers instead of full outlines '
-        + 'to keep the projection bright and steady. Cut lines and edge tiles are always shown in full detail.'
-        + '<br><span style="font-size:12px;opacity:0.7;">Try a smaller segment for full outlines on every tile.</span>';
-
-    // Insert at top of laser status area if it exists
-    var statusEl = document.getElementById('laserStatus');
-    if (statusEl) {
-        statusEl.parentNode.insertBefore(banner, statusEl.nextSibling);
-    }
-}
-
-// ==================== END LASER FUNCTIONS ====================
 
 // ==================== AUTO-SAVE LAST SESSION ====================
 
@@ -9468,12 +8544,12 @@ initTabs();
 buildPresetDropdown();
 initTileDb();
 generateAppIcon();
+loadCompanyBranding();
 
 // Try to restore last session first
 var restored = autoRestoreState();
 
 updateVoidList();
-initLaserTab(); // Initialize laser position/coverage
 draw();
 
 if (restored) {
