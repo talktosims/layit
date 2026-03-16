@@ -1000,6 +1000,51 @@
         }
         .btn-pro:active { transform:scale(0.97); }
 
+        /* ---- TAB INFO POPUP ---- */
+        @keyframes tabInfoSlideIn {
+            from { opacity:0; transform:translateY(-12px); }
+            to { opacity:1; transform:translateY(0); }
+        }
+        .tab-info-popup {
+            background: var(--bg-surface);
+            border-left: 3px solid var(--success);
+            border-radius: var(--radius-sm);
+            padding: 14px 16px;
+            margin: 10px 12px 6px;
+            box-shadow: var(--shadow-md);
+            animation: tabInfoSlideIn 0.3s var(--ease-out) both;
+            position: relative;
+            z-index: 50;
+        }
+        .tab-info-popup-title {
+            font-size: var(--text-md);
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 6px;
+        }
+        .tab-info-popup-desc {
+            font-size: var(--text-sm);
+            color: var(--text-secondary);
+            line-height: var(--leading-relaxed);
+            margin-bottom: 12px;
+        }
+        .tab-info-popup .btn-dismiss {
+            background: var(--success);
+            color: #fff;
+            border: none;
+            border-radius: var(--radius-sm);
+            padding: 6px 18px;
+            font-size: var(--text-sm);
+            font-weight: 600;
+            cursor: pointer;
+            font-family: var(--font-family);
+            transition: background 0.15s;
+        }
+        .tab-info-popup .btn-dismiss:active {
+            background: var(--success-hover);
+            transform: scale(0.97);
+        }
+
     </style>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
@@ -1726,7 +1771,7 @@
             <div id="featureGuide" style="display:flex;flex-direction:column;gap:2px;">
                 <div class="guide-item">
                     <div class="guide-header" onclick="toggleGuide(this)" style="display:flex;align-items:center;gap:8px;padding:10px 8px;cursor:pointer;border-radius:var(--radius-sm);transition:background 0.15s;">
-                        <span class="guide-arrow" style="font-size:11px;color:var(--text-muted);transition:transform 0.2s;display:inline-block;">&#9656;</span>
+                        <span class="guide-arrow" style="font-size:12px;color:var(--text-secondary);transition:transform 0.2s;display:inline-block;width:12px;">&#9656;</span>
                         <span style="font-weight:600;font-size:13px;color:var(--text-primary);">Layout Tab</span>
                     </div>
                     <div class="guide-body" style="display:none;padding:4px 8px 12px 28px;font-size:12px;color:var(--text-secondary);line-height:1.6;">
@@ -1735,7 +1780,7 @@
                 </div>
                 <div class="guide-item">
                     <div class="guide-header" onclick="toggleGuide(this)" style="display:flex;align-items:center;gap:8px;padding:10px 8px;cursor:pointer;border-radius:var(--radius-sm);transition:background 0.15s;">
-                        <span class="guide-arrow" style="font-size:11px;color:var(--text-muted);transition:transform 0.2s;display:inline-block;">&#9656;</span>
+                        <span class="guide-arrow" style="font-size:12px;color:var(--text-secondary);transition:transform 0.2s;display:inline-block;width:12px;">&#9656;</span>
                         <span style="font-weight:600;font-size:13px;color:var(--text-primary);">Wall Dimensions</span>
                     </div>
                     <div class="guide-body" style="display:none;padding:4px 8px 12px 28px;font-size:12px;color:var(--text-secondary);line-height:1.6;">
@@ -1744,7 +1789,7 @@
                 </div>
                 <div class="guide-item">
                     <div class="guide-header" onclick="toggleGuide(this)" style="display:flex;align-items:center;gap:8px;padding:10px 8px;cursor:pointer;border-radius:var(--radius-sm);transition:background 0.15s;">
-                        <span class="guide-arrow" style="font-size:11px;color:var(--text-muted);transition:transform 0.2s;display:inline-block;">&#9656;</span>
+                        <span class="guide-arrow" style="font-size:12px;color:var(--text-secondary);transition:transform 0.2s;display:inline-block;width:12px;">&#9656;</span>
                         <span style="font-weight:600;font-size:13px;color:var(--text-primary);">Tile Settings</span>
                     </div>
                     <div class="guide-body" style="display:none;padding:4px 8px 12px 28px;font-size:12px;color:var(--text-secondary);line-height:1.6;">
@@ -1753,7 +1798,7 @@
                 </div>
                 <div class="guide-item">
                     <div class="guide-header" onclick="toggleGuide(this)" style="display:flex;align-items:center;gap:8px;padding:10px 8px;cursor:pointer;border-radius:var(--radius-sm);transition:background 0.15s;">
-                        <span class="guide-arrow" style="font-size:11px;color:var(--text-muted);transition:transform 0.2s;display:inline-block;">&#9656;</span>
+                        <span class="guide-arrow" style="font-size:12px;color:var(--text-secondary);transition:transform 0.2s;display:inline-block;width:12px;">&#9656;</span>
                         <span style="font-weight:600;font-size:13px;color:var(--text-primary);">Cutouts & Obstacles</span>
                     </div>
                     <div class="guide-body" style="display:none;padding:4px 8px 12px 28px;font-size:12px;color:var(--text-secondary);line-height:1.6;">
@@ -1762,7 +1807,7 @@
                 </div>
                 <div class="guide-item">
                     <div class="guide-header" onclick="toggleGuide(this)" style="display:flex;align-items:center;gap:8px;padding:10px 8px;cursor:pointer;border-radius:var(--radius-sm);transition:background 0.15s;">
-                        <span class="guide-arrow" style="font-size:11px;color:var(--text-muted);transition:transform 0.2s;display:inline-block;">&#9656;</span>
+                        <span class="guide-arrow" style="font-size:12px;color:var(--text-secondary);transition:transform 0.2s;display:inline-block;width:12px;">&#9656;</span>
                         <span style="font-weight:600;font-size:13px;color:var(--text-primary);">Cut Tracking <span style="background:var(--success);color:#fff;font-size:9px;padding:1px 5px;border-radius:3px;font-weight:700;margin-left:4px;">PRO</span></span>
                     </div>
                     <div class="guide-body" style="display:none;padding:4px 8px 12px 28px;font-size:12px;color:var(--text-secondary);line-height:1.6;">
@@ -1771,7 +1816,7 @@
                 </div>
                 <div class="guide-item">
                     <div class="guide-header" onclick="toggleGuide(this)" style="display:flex;align-items:center;gap:8px;padding:10px 8px;cursor:pointer;border-radius:var(--radius-sm);transition:background 0.15s;">
-                        <span class="guide-arrow" style="font-size:11px;color:var(--text-muted);transition:transform 0.2s;display:inline-block;">&#9656;</span>
+                        <span class="guide-arrow" style="font-size:12px;color:var(--text-secondary);transition:transform 0.2s;display:inline-block;width:12px;">&#9656;</span>
                         <span style="font-weight:600;font-size:13px;color:var(--text-primary);">Barcode Scanner <span style="background:var(--success);color:#fff;font-size:9px;padding:1px 5px;border-radius:3px;font-weight:700;margin-left:4px;">PRO</span></span>
                     </div>
                     <div class="guide-body" style="display:none;padding:4px 8px 12px 28px;font-size:12px;color:var(--text-secondary);line-height:1.6;">
@@ -1780,7 +1825,7 @@
                 </div>
                 <div class="guide-item">
                     <div class="guide-header" onclick="toggleGuide(this)" style="display:flex;align-items:center;gap:8px;padding:10px 8px;cursor:pointer;border-radius:var(--radius-sm);transition:background 0.15s;">
-                        <span class="guide-arrow" style="font-size:11px;color:var(--text-muted);transition:transform 0.2s;display:inline-block;">&#9656;</span>
+                        <span class="guide-arrow" style="font-size:12px;color:var(--text-secondary);transition:transform 0.2s;display:inline-block;width:12px;">&#9656;</span>
                         <span style="font-weight:600;font-size:13px;color:var(--text-primary);">Project Sharing <span style="background:var(--success);color:#fff;font-size:9px;padding:1px 5px;border-radius:3px;font-weight:700;margin-left:4px;">PRO</span></span>
                     </div>
                     <div class="guide-body" style="display:none;padding:4px 8px 12px 28px;font-size:12px;color:var(--text-secondary);line-height:1.6;">
@@ -4804,20 +4849,78 @@ document.addEventListener('click', function(e) {
     }
 });
 
+// ==================== TAB INFO POPUPS ====================
+var TAB_INFO = {
+    diagram: { title: 'Layout', desc: 'See your complete tile layout rendered in real-time. Use pinch to zoom, drag to pan. Tap Optimize to find the best pattern placement with minimal cuts and waste.' },
+    wall:    { title: 'Wall', desc: 'Enter your wall or floor measurements in inches. The app supports rectangular spaces with optional height/width variations for non-square walls.' },
+    tile:    { title: 'Tile', desc: 'Choose from preset tiles or enter custom dimensions. Toggle Nominal to enter box label sizes — grout is auto-subtracted. Supports hex, square, rectangle, herringbone, and mosaic patterns.' },
+    voids:   { title: 'Cutouts', desc: 'Add niches, windows, outlets, or any obstacle. Measure to the center of the cutout and enter its dimensions. The layout automatically tiles around them.' },
+    calc:    { title: 'Calculator', desc: 'See exactly how many tiles you need, estimate costs, and generate a material shopping list. Accounts for waste percentage so you never come up short.' },
+    projects:{ title: 'Files', desc: 'Save and load projects, export/import backups, and share professional layout pages with clients. Set up your company branding for shared pages.' },
+    proj:    { title: 'Laser', desc: 'LayIt Laser is coming soon — a WiFi laser projector that beams your tile pattern onto walls and floors at 1:1 scale. Join the waitlist to be first in line.' },
+    settings:{ title: 'Settings', desc: 'Manage your Pro subscription, browse the feature guide, or restart the tutorial.' }
+};
+
+function getVisitedTabs() {
+    try { return JSON.parse(localStorage.getItem('layit_visited_tabs')) || []; }
+    catch(e) { return []; }
+}
+
+function markTabVisited(tabId) {
+    var visited = getVisitedTabs();
+    if (visited.indexOf(tabId) === -1) {
+        visited.push(tabId);
+        localStorage.setItem('layit_visited_tabs', JSON.stringify(visited));
+    }
+}
+
+function showTabInfoPopup(tabId) {
+    // Don't show if onboarding hasn't been completed
+    if (!localStorage.getItem('layit_onboarded')) return;
+    // Don't show if already visited
+    if (getVisitedTabs().indexOf(tabId) !== -1) return;
+    // Don't show if no info for this tab
+    var info = TAB_INFO[tabId];
+    if (!info) return;
+    // Remove any existing popup
+    var existing = document.querySelector('.tab-info-popup');
+    if (existing) existing.remove();
+
+    var panel = document.getElementById(tabId);
+    if (!panel) return;
+
+    var popup = document.createElement('div');
+    popup.className = 'tab-info-popup';
+    popup.innerHTML = '<div class="tab-info-popup-title">' + info.title + '</div>' +
+        '<div class="tab-info-popup-desc">' + info.desc + '</div>' +
+        '<button class="btn-dismiss">Got it!</button>';
+    popup.querySelector('.btn-dismiss').addEventListener('click', function() {
+        markTabVisited(tabId);
+        popup.style.opacity = '0';
+        popup.style.transform = 'translateY(-8px)';
+        popup.style.transition = 'opacity 0.2s, transform 0.2s';
+        setTimeout(function() { popup.remove(); }, 200);
+    });
+    panel.insertBefore(popup, panel.firstChild);
+}
+
 function showTab(id) {
     document.querySelectorAll('.panel').forEach(function(p) { p.classList.remove('active'); });
     document.querySelectorAll('.tab').forEach(function(t) { t.classList.remove('active'); });
     document.getElementById(id).classList.add('active');
-    
+
     // Update active tab button
     document.querySelectorAll('.tab').forEach(function(t) {
         if (t.getAttribute('data-tab') === id) {
             t.classList.add('active');
         }
     });
-    
+
     if (id === 'diagram') draw();
     if (id === 'projects') updateProjectList();
+
+    // Show first-visit info popup
+    showTabInfoPopup(id);
 }
 
 // Toast notification
