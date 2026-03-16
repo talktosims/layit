@@ -914,6 +914,92 @@
         .onboarding-btn-skip:active { color:var(--text-secondary); }
         .onboarding-step-content { min-height:200px; display:flex; flex-direction:column; align-items:center; justify-content:center; }
 
+        /* ---- PRO UPGRADE MODAL ---- */
+        #upgradeModal {
+            position:fixed; top:0; left:0; right:0; bottom:0;
+            background:rgba(0,0,0,0.85); z-index:9999;
+            display:flex; align-items:center; justify-content:center;
+            padding:20px;
+            animation: upgradeModalFadeIn 0.25s ease;
+        }
+        @keyframes upgradeModalFadeIn {
+            from { opacity:0; } to { opacity:1; }
+        }
+        .upgrade-modal-card {
+            background:linear-gradient(165deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            border:1px solid rgba(255,215,0,0.25);
+            border-radius:var(--radius-lg);
+            padding:28px 24px 20px;
+            max-width:360px; width:100%;
+            text-align:center;
+            box-shadow:0 16px 48px rgba(0,0,0,0.6), 0 0 40px rgba(255,215,0,0.08);
+            animation: upgradeCardSlideUp 0.3s var(--ease-spring);
+        }
+        @keyframes upgradeCardSlideUp {
+            from { transform:translateY(30px); opacity:0; } to { transform:translateY(0); opacity:1; }
+        }
+        .upgrade-modal-header {
+            font-size:var(--text-2xl); font-weight:700;
+            color:#ffd700; margin-bottom:16px;
+        }
+        .upgrade-modal-desc {
+            font-size:var(--text-base); color:var(--text-secondary);
+            line-height:var(--leading-relaxed);
+            margin-bottom:20px; padding:0 4px;
+        }
+        .upgrade-modal-features-label {
+            font-size:var(--text-sm); font-weight:600;
+            color:var(--text-tertiary); text-transform:uppercase;
+            letter-spacing:var(--tracking-wide); margin-bottom:10px;
+        }
+        .upgrade-modal-features {
+            text-align:left; margin-bottom:22px;
+            display:flex; flex-direction:column; gap:8px;
+            padding:0 8px;
+        }
+        .upgrade-feature-row {
+            font-size:var(--text-md); color:var(--text-primary);
+            padding:6px 0;
+        }
+        .upgrade-modal-buttons {
+            display:flex; flex-direction:column; gap:10px;
+            margin-bottom:16px;
+        }
+        .upgrade-price-btn {
+            width:100%; padding:14px 16px;
+            border:none; border-radius:var(--radius-md);
+            font-size:var(--text-lg); font-weight:700;
+            cursor:pointer; transition:all 0.2s ease;
+            background:linear-gradient(135deg, #ffd700 0%, #ffaa00 100%);
+            color:#1a1a2e;
+        }
+        .upgrade-price-btn:active { transform:scale(0.97); }
+        .upgrade-price-btn-alt {
+            background:linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+            color:#fff;
+        }
+        .upgrade-modal-links {
+            display:flex; justify-content:center; gap:24px;
+            padding-top:4px;
+        }
+        .upgrade-link {
+            font-size:var(--text-sm); color:var(--text-tertiary);
+            text-decoration:none; cursor:pointer;
+            transition:color 0.15s;
+        }
+        .upgrade-link:active { color:var(--text-secondary); }
+
+        .btn-pro {
+            width:100%; padding:12px 16px;
+            border:none; border-radius:var(--radius-md);
+            font-size:var(--text-md); font-weight:600;
+            cursor:pointer;
+            background:linear-gradient(135deg, #ffd700 0%, #ffaa00 100%);
+            color:#1a1a2e;
+            transition:all 0.2s ease;
+        }
+        .btn-pro:active { transform:scale(0.97); }
+
     </style>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
@@ -1133,6 +1219,29 @@
         </div>
     </div>
 
+    <!-- Pro Upgrade Modal -->
+    <div class="modal-overlay" id="upgradeModal" style="display:none;">
+        <div class="upgrade-modal-card">
+            <div class="upgrade-modal-header">⭐ LayIt Pro</div>
+            <div class="upgrade-modal-desc" id="upgradeModalDesc"></div>
+            <div class="upgrade-modal-features-label">Everything you get with Pro:</div>
+            <div class="upgrade-modal-features">
+                <div class="upgrade-feature-row">📦 Barcode box scanner</div>
+                <div class="upgrade-feature-row">✂️ Cut tracking &amp; progress</div>
+                <div class="upgrade-feature-row">📤 Share projects with clients</div>
+                <div class="upgrade-feature-row">🏢 Company branding</div>
+            </div>
+            <div class="upgrade-modal-buttons">
+                <button class="upgrade-price-btn" onclick="handleProPurchase('monthly')">$4.99/month</button>
+                <button class="upgrade-price-btn upgrade-price-btn-alt" onclick="handleProPurchase('annual')">$39.99/year <span style="font-size:11px;opacity:0.85;">(save 33%)</span></button>
+            </div>
+            <div class="upgrade-modal-links">
+                <a href="#" onclick="event.preventDefault(); restoreProPurchases();" class="upgrade-link">Restore Purchases</a>
+                <a href="#" onclick="event.preventDefault(); closeUpgradeModal();" class="upgrade-link">Maybe Later</a>
+            </div>
+        </div>
+    </div>
+
     <!-- Unlock warning modal -->
     <div class="modal-overlay" id="unlockModal">
         <div class="modal-box">
@@ -1258,7 +1367,7 @@
         <button class="tab active" data-tab="diagram"><span class="tab-icon">📐</span><span class="tab-label">Layout</span></button>
         <button class="tab" data-tab="wall"><span class="tab-icon">🧱</span><span class="tab-label">Wall</span></button>
         <button class="tab" data-tab="tile"><span class="tab-icon">🔷</span><span class="tab-label">Tile</span></button>
-        <button class="tab" data-tab="voids"><span class="tab-icon">⬛</span><span class="tab-label">Voids</span></button>
+        <button class="tab" data-tab="voids"><span class="tab-icon">⬛</span><span class="tab-label">Cutouts</span></button>
         <button class="tab" data-tab="calc"><span class="tab-icon">🔢</span><span class="tab-label">Calc</span></button>
         <button class="tab" data-tab="projects"><span class="tab-icon">📁</span><span class="tab-label">Files</span></button>
         <button class="tab" data-tab="proj"><span class="tab-icon"><svg class="hex-icon" viewBox="0 0 24 24" width="18" height="18"><path d="M12 2 L21.5 7.5 L21.5 16.5 L12 22 L2.5 16.5 L2.5 7.5 Z" fill="none" stroke="#4ade80" stroke-width="2.5" stroke-linejoin="round"/></svg></span><span class="tab-label">Laser</span></button>
@@ -1466,9 +1575,10 @@
     </div>
 
     <div id="voids" class="panel">
-        <div class="section"><h3>Voids</h3>
+        <div class="section"><h3>Cutouts</h3>
             <div class="field"><label>Label</label><input type="text" id="voidLabel" placeholder="Niche"></div>
-            <div class="row"><div class="field"><label>From Left</label><input type="number" id="voidX"></div><div class="field"><label>From Bottom</label><input type="number" id="voidY"></div></div>
+            <div class="row"><div class="field"><label>Center from Left (in)</label><input type="number" id="voidX"></div><div class="field"><label>Center from Bottom (in)</label><input type="number" id="voidY"></div></div>
+            <div style="font-size:11px;color:var(--text-muted);margin:-4px 0 8px 0;">Measure to the center of the cutout</div>
             <div class="row"><div class="field"><label>Width</label><input type="number" id="voidW"></div><div class="field"><label>Height</label><input type="number" id="voidH"></div></div>
             <button class="btn-success" onclick="addVoid()">+ Add</button>
             <div id="voidList"></div>
@@ -1644,10 +1754,10 @@
                 <div class="guide-item">
                     <div class="guide-header" onclick="toggleGuide(this)" style="display:flex;align-items:center;gap:8px;padding:10px 8px;cursor:pointer;border-radius:var(--radius-sm);transition:background 0.15s;">
                         <span class="guide-arrow" style="font-size:11px;color:var(--text-muted);transition:transform 0.2s;display:inline-block;">&#9656;</span>
-                        <span style="font-weight:600;font-size:13px;color:var(--text-primary);">Voids & Cutouts</span>
+                        <span style="font-weight:600;font-size:13px;color:var(--text-primary);">Cutouts & Obstacles</span>
                     </div>
                     <div class="guide-body" style="display:none;padding:4px 8px 12px 28px;font-size:12px;color:var(--text-secondary);line-height:1.6;">
-                        Add niches, windows, outlets, or any obstacle. Enter position from left/bottom edges and the void dimensions. The layout automatically tiles around them.
+                        Add niches, windows, outlets, or any obstacle. Enter the center position of the cutout from left/bottom edges, then the width and height. The layout automatically tiles around them.
                     </div>
                 </div>
                 <div class="guide-item">
@@ -1689,6 +1799,86 @@
     </div>
 
 <script>
+// ==================== PRO SUBSCRIPTION SYSTEM ====================
+
+var proFeatureDescriptions = {
+    'Cut Tracking': 'Track your cutting progress in real-time. Tap any cut tile to see exact dimensions, then mark it done. Never lose your place on a complex job.',
+    'Share Project': 'Send a professional, branded layout page to your client. Shows the tile pattern, dimensions, specs, and your company branding \u2014 no pricing.',
+    'Barcode Scanner': 'Scan the barcode on any tile box to auto-populate tile specs instantly. No more measuring or guessing sizes.',
+    'Scan Tile Box': 'Scan the barcode on any tile box to auto-populate tile specs instantly. Save time on every job.'
+};
+
+function isProUser() {
+    return localStorage.getItem('layit_pro') === 'true';
+}
+
+function requirePro(featureName) {
+    if (isProUser()) return true;
+    var desc = proFeatureDescriptions[featureName] || 'Upgrade to Pro to unlock premium features.';
+    showUpgradeModal(desc);
+    return false;
+}
+
+function showUpgradeModal(featureDescription) {
+    var desc = featureDescription || 'Upgrade to Pro to unlock premium features.';
+    document.getElementById('upgradeModalDesc').textContent = desc;
+    var modal = document.getElementById('upgradeModal');
+    modal.style.display = 'flex';
+}
+
+function closeUpgradeModal() {
+    document.getElementById('upgradeModal').style.display = 'none';
+}
+
+function handleProPurchase(plan) {
+    if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.purchase) {
+        window.webkit.messageHandlers.purchase.postMessage(plan);
+    } else {
+        closeUpgradeModal();
+        showToast('In-app purchases are available in the LayIt iOS app.', 3000);
+    }
+}
+
+function restoreProPurchases() {
+    if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.restorePurchases) {
+        window.webkit.messageHandlers.restorePurchases.postMessage('restore');
+    } else {
+        closeUpgradeModal();
+        showToast('Purchase restoration is available in the LayIt iOS app.', 3000);
+    }
+}
+
+function activateProDev() {
+    localStorage.setItem('layit_pro', 'true');
+    updateProStatus();
+    showToast('Pro activated (dev mode)', 2000);
+}
+
+function deactivateProDev() {
+    localStorage.removeItem('layit_pro');
+    updateProStatus();
+    showToast('Pro deactivated (dev mode)', 2000);
+}
+
+function updateProStatus() {
+    var isPro = isProUser();
+    var statusEl = document.getElementById('proStatusValue');
+    var upgradeBtn = document.getElementById('proUpgradeBtn');
+    var manageBtn = document.getElementById('proManageBtn');
+    if (statusEl) statusEl.textContent = isPro ? 'Pro \u2B50' : 'Free';
+    if (upgradeBtn) upgradeBtn.style.display = isPro ? 'none' : 'block';
+    if (manageBtn) manageBtn.style.display = isPro ? 'block' : 'none';
+}
+
+// Close upgrade modal on overlay click
+document.addEventListener('click', function(e) {
+    if (e.target && e.target.id === 'upgradeModal') {
+        closeUpgradeModal();
+    }
+});
+
+// ==================== END PRO SUBSCRIPTION SYSTEM ====================
+
 // Projector setup variables
 var projSection = 'full'; // 'full', 'TL', 'TR', 'BL', 'BR'
 var calibrationMode = false;
@@ -1887,6 +2077,7 @@ function addWizardButton() {
 
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', function() {
+    updateProStatus();
     setTimeout(function() {
         patchStartNewProject();
         addWizardButton();
@@ -3107,9 +3298,10 @@ function handleCanvasTap(e) {
     for (var i = 0; i < cutTilesData.length; i++) {
         var tile = cutTilesData[i];
         if (isPointInTile(tapX, tapY, tile.x, tile.y, tile.tw, tile.th, tile.verts)) {
+            if (!requirePro('Cut Tracking')) return;
             var key = tile.key;
             var currentState = cutTileStates[key] || 0;
-            
+
             // If tile is red (state 2), show confirmation modal
             if (currentState === 2) {
                 pendingUncutKey = key;
@@ -4629,7 +4821,8 @@ function showTab(id) {
 }
 
 // Toast notification
-function showToast(msg) {
+function showToast(msg, duration) {
+    var dur = duration || 3000;
     var existing = document.querySelector('.toast-notification');
     if (existing) existing.remove();
 
@@ -4642,7 +4835,7 @@ function showToast(msg) {
         toast.style.opacity = '0';
         toast.style.transition = 'opacity 0.3s';
         setTimeout(function() { toast.remove(); }, 300);
-    }, 3000);
+    }, dur);
 }
 
 function updateWall() {
@@ -4952,6 +5145,7 @@ function hasBarcodeSupport() {
 }
 
 function openBarcodeScanner() {
+    if (!requirePro('Barcode Scanner')) return;
     var overlay = document.getElementById('scannerOverlay');
     overlay.classList.add('active');
     var statusEl = document.getElementById('scannerStatus');
@@ -6967,12 +7161,16 @@ cv.addEventListener('mouseleave', function() {
 
 // Voids
 function addVoid() {
+    var centerX = parseFloat(document.getElementById('voidX').value) || 0;
+    var centerY = parseFloat(document.getElementById('voidY').value) || 0;
+    var w = parseFloat(document.getElementById('voidW').value) || 0;
+    var h = parseFloat(document.getElementById('voidH').value) || 0;
     var v = {
-        l: document.getElementById('voidLabel').value || 'Void',
-        x: parseFloat(document.getElementById('voidX').value) || 0,
-        y: parseFloat(document.getElementById('voidY').value) || 0,
-        w: parseFloat(document.getElementById('voidW').value) || 0,
-        h: parseFloat(document.getElementById('voidH').value) || 0
+        l: document.getElementById('voidLabel').value || 'Cutout',
+        x: centerX - w / 2,
+        y: centerY - h / 2,
+        w: w,
+        h: h
     };
     if (v.w && v.h) {
         C.voids.push(v);
@@ -6993,7 +7191,9 @@ function updateVoidList() {
     var html = '';
     for (var i = 0; i < C.voids.length; i++) {
         var v = C.voids[i];
-        html += '<div class="void-item"><span>' + v.l + ': ' + v.w + '"×' + v.h + '"</span><button class="btn-primary" onclick="removeVoid(' + i + ')">✕</button></div>';
+        var cx = Math.round((v.x + v.w / 2) * 100) / 100;
+        var cy = Math.round((v.y + v.h / 2) * 100) / 100;
+        html += '<div class="void-item"><span>' + v.l + ': ' + v.w + '"×' + v.h + '" at (' + cx + '", ' + cy + '")</span><button class="btn-primary" onclick="removeVoid(' + i + ')">✕</button></div>';
     }
     document.getElementById('voidList').innerHTML = html;
 }
@@ -7714,7 +7914,7 @@ function shareProject() {
 
     var voidsRow = '';
     if (C.voids && C.voids.length > 0) {
-        voidsRow = '<div class="detail-row"><span class="detail-label">Voids / Cutouts</span><span class="detail-value">' + C.voids.length + '</span></div>';
+        voidsRow = '<div class="detail-row"><span class="detail-label">Cutouts</span><span class="detail-value">' + C.voids.length + '</span></div>';
     }
 
     var html = '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">' +
@@ -8741,8 +8941,8 @@ var onboardingSteps = [
     {
         icon: '🪟',
         label: 'Step 4',
-        title: 'Add Voids',
-        text: 'Have a niche, window, or outlet? Add voids to cut around obstacles.',
+        title: 'Add Cutouts',
+        text: 'Have a niche, window, or outlet? Add cutouts to cut around obstacles.',
         nextLabel: 'Next'
     },
     {
