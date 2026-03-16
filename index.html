@@ -475,19 +475,6 @@
             pointer-events:none;
         }
 
-        /* ---- OPTIMIZE MENU ---- */
-        .optimize-option {
-            padding:14px 18px;
-            color:var(--text-primary);
-            cursor:pointer;
-            border-bottom:1px solid rgba(148,163,184,0.08);
-            font-size:15px;
-            font-weight:500;
-            transition:all 0.12s ease;
-        }
-        .optimize-option:last-child { border-bottom:none; }
-        .optimize-option:hover { background:var(--success); color:#fff; }
-
         /* ---- TILE DETAIL VIEW ---- */
         .detail-overlay {
             display:none;
@@ -1134,8 +1121,9 @@
     <!-- Barcode Scanner Overlay -->
     <div class="scanner-overlay" id="scannerOverlay">
         <div class="scanner-header">
-            <span style="color:#fff;font-weight:700;font-size:16px;">Scan Tile Barcode</span>
-            <button class="scan-btn" onclick="closeBarcodeScanner()" style="font-size:20px;background:rgba(255,255,255,0.1);border-color:rgba(255,255,255,0.2);color:#fff;">✕</button>
+            <button onclick="closeBarcodeScanner()" style="font-size:18px;background:rgba(0,0,0,0.4);border:none;color:#fff;width:36px;height:36px;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;">‹</button>
+            <span style="color:#fff;font-weight:700;font-size:16px;position:absolute;left:50%;transform:translateX(-50%);">Scan Tile Barcode</span>
+            <div style="width:36px;"></div>
         </div>
         <video class="scanner-video" id="scannerVideo" autoplay playsinline></video>
         <div class="scanner-viewfinder" id="scannerViewfinder"></div>
@@ -1244,7 +1232,6 @@
     <div class="modal-overlay" id="proUpgradeModal">
         <div class="pro-upgrade-box">
             <h3>LayIt Pro</h3>
-            <p class="pro-price"><b>$14.99</b> / month</p>
             <ul class="pro-feature-list">
                 <li><span class="pf-icon">📷</span> Barcode scanner + auto-populate</li>
                 <li><span class="pf-icon">☁️</span> Cloud sync across devices</li>
@@ -1252,7 +1239,14 @@
                 <li><span class="pf-icon">📤</span> Project sharing <span class="pf-soon">SOON</span></li>
                 <li><span class="pf-icon">💼</span> Job costing + invoicing <span class="pf-soon">SOON</span></li>
             </ul>
-            <button class="btn-pro" onclick="activateProDev()">Subscribe</button>
+            <div id="proSubscribeButtons">
+                <button class="btn-pro" onclick="handleProPurchase('monthly')" style="width:100%;">$4.99 / month</button>
+                <button class="btn-pro" onclick="handleProPurchase('annual')" style="width:100%; margin-top:8px; background:linear-gradient(135deg,#f5a623,#f7c948);">$39.99 / year <span style="font-size:0.8em; opacity:0.9;">(Save 33%)</span></button>
+                <button class="pro-dismiss" onclick="handleRestorePurchases()" style="margin-top:8px; font-size:0.85em;">Restore Purchases</button>
+            </div>
+            <div id="proWebFallback" style="display:none; text-align:center; padding:12px 0;">
+                <p style="color:#aaa; font-size:0.95em;">Download the LayIt app from the App Store to subscribe.</p>
+            </div>
             <button class="pro-dismiss" onclick="closeUpgradeModal()">Maybe Later</button>
         </div>
     </div>
@@ -1285,14 +1279,7 @@
         <div class="hint mb-3" id="controlsHint">📱 One finger: pattern • Two fingers: pan & zoom | 💻 Drag: pattern • Shift+drag: pan • Scroll: zoom</div>
         <div class="row">
             <button class="btn-secondary" onclick="resetView()">📍 Reset View</button>
-            <div style="position:relative;flex:1;">
-                <button class="btn-success" onclick="toggleOptimizeMenu()" style="width:100%;" id="optimizeBtn">🎯 Optimize</button>
-                <div id="optimizeMenu" style="display:none;position:absolute;bottom:100%;left:0;right:0;background:var(--bg-surface);border:1px solid var(--border-success);border-radius:var(--radius-md);margin-bottom:5px;overflow:hidden;z-index:100;box-shadow:var(--shadow-md);">
-                    <div class="optimize-option" onclick="runOptimize('fullTiles')">📦 Maximize Full Tiles</div>
-                    <div class="optimize-option" onclick="runOptimize('minSmallCuts')">🔪 Avoid Small Slivers</div>
-                    <div class="optimize-option" onclick="runOptimize('balanced')">⚖️ Balanced (Both)</div>
-                </div>
-            </div>
+            <button class="btn-success" onclick="runOptimize()" style="flex:1;" id="optimizeBtn">🎯 Optimize</button>
         </div>
         <button id="restoreBtn" class="btn-primary" onclick="restorePattern()" style="display:none;margin-bottom:10px;background:#ff9800;">⚠️ Restore Saved Pattern Position</button>
         <div id="canvasContainer"><canvas id="canvas"></canvas></div>
@@ -1389,12 +1376,18 @@
     </div>
 
     <div id="tile" class="panel">
+        <div class="section" style="margin-bottom:12px;">
+            <button onclick="openBarcodeScanner()" style="width:100%;padding:16px;background:linear-gradient(135deg,var(--bg-surface),rgba(34,197,94,0.1));border:1px dashed var(--border-success);border-radius:var(--radius-md);cursor:pointer;display:flex;align-items:center;gap:14px;text-align:left;">
+                <span style="font-size:32px;line-height:1;">📦</span>
+                <div>
+                    <div style="color:var(--success);font-weight:700;font-size:15px;">Scan Tile Box <span class="pro-badge" id="scanProBadge">PRO</span></div>
+                    <div style="color:var(--text-secondary);font-size:12px;margin-top:2px;">Scan barcode or SKU on box to auto-fill tile specs</div>
+                </div>
+            </button>
+        </div>
         <div class="section"><h3>Tile Settings</h3>
             <div class="field"><label>Preset</label>
-                <div style="display:flex;gap:6px;">
-                    <select id="tilePreset" onchange="applyPreset()" style="flex:1;"><option value="custom">Custom (enter below)</option></select>
-                    <button class="scan-btn" onclick="openBarcodeScanner()" title="Scan tile barcode">📷 <span class="pro-badge" id="scanProBadge">PRO</span></button>
-                </div>
+                <select id="tilePreset" onchange="applyPreset()"><option value="custom">Custom (enter below)</option></select>
             </div>
             <div class="row">
                 <div class="field"><label>Shape</label><select id="tileShape" onchange="onShape()"><option value="hexagon">Hexagon</option><option value="square">Square</option><option value="rectangle">Rectangle</option><option value="herringbone" selected>Herringbone</option><option value="mosaic">Mosaic Sheet</option></select></div>
@@ -1544,19 +1537,41 @@
     </div>
 
     <div id="proj" class="panel">
-        <!-- Laser Position & Coverage Section -->
-        <div class="section">
-            <h3>📏 Laser Position</h3>
-            
-            <!-- Wall / Floor Toggle -->
-            <div class="grid-2 mb-4">
-                <button id="wallModeBtn" class="btn-primary" onclick="setProjectionSurface('wall')">
-                    🧱 Wall
-                </button>
-                <button id="floorModeBtn" class="btn-secondary" onclick="setProjectionSurface('floor')">
-                    🏠 Floor
-                </button>
+        <!-- Coming Soon -->
+        <div class="section" style="text-align:center;padding:40px 20px;">
+            <div style="font-size:64px;margin-bottom:16px;">🔴</div>
+            <h3 style="font-size:22px;margin-bottom:8px;">LayIt Laser</h3>
+            <p style="color:var(--text-secondary);font-size:15px;line-height:1.6;margin-bottom:24px;">
+                Project your exact tile layout onto the wall or floor.<br>
+                No more chalk lines. No more guesswork.
+            </p>
+            <div style="background:var(--bg-base);border:1px solid var(--border-success);border-radius:var(--radius-md);padding:20px;margin-bottom:20px;">
+                <div style="color:var(--success);font-weight:700;font-size:16px;margin-bottom:4px;">Coming Soon</div>
+                <div style="color:var(--text-muted);font-size:13px;">Be the first to know when it launches</div>
             </div>
+            <input type="email" id="waitlistEmail" placeholder="Enter your email" style="width:100%;padding:14px;margin-bottom:10px;background:var(--bg-surface);border:1px solid var(--border-default);border-radius:var(--radius-md);color:var(--text-primary);font-size:15px;">
+            <button class="btn-success" onclick="joinWaitlist()" style="width:100%;padding:14px;font-size:16px;">
+                Join the Waitlist
+            </button>
+            <div id="waitlistConfirm" style="display:none;color:var(--success);margin-top:12px;font-weight:600;">
+                ✓ You're on the list! We'll notify you.
+            </div>
+        </div>
+
+        <div class="section">
+            <h3 style="font-size:16px;">What is LayIt Laser?</h3>
+            <div style="font-size:14px;color:var(--text-secondary);line-height:1.8;">
+                A precision laser projector that beams your tile pattern onto walls and floors at 1:1 scale.<br><br>
+                • WiFi connected to this app<br>
+                • Works in daylight (green laser)<br>
+                • Battery or plug-in powered<br>
+                • Auto-calibrates with built-in camera
+            </div>
+        </div>
+
+        <!-- Keep export for now -->
+        <div class="section">
+            <h3>💾 Export File</h3>
             
             <!-- When laser NOT connected: show inputs -->
             <div id="distanceInputSection">
@@ -1672,86 +1687,6 @@
             <button class="btn-secondary" onclick="exportLaser()" style="width:100%;">
                 📥 Download
             </button>
-        </div>
-        
-        <!-- Laser Connection Section -->
-        <div class="section">
-            <h3>📡 Connect to LayIt Laser</h3>
-            <p class="hint mb-3" style="text-align:left;">Connect directly to your LayIt Laser device via WiFi.</p>
-            
-            <div id="laserNotConnected">
-                <div class="field">
-                    <label>Laser Device</label>
-                    <select id="laserDevice">
-                        <option value="">Scanning...</option>
-                    </select>
-                </div>
-                
-                <button class="btn-success" onclick="connectLaser()" style="padding:15px;width:100%">
-                    🔗 Connect to Laser
-                </button>
-                
-                <button class="btn-secondary" onclick="scanLasers()" style="margin-top:8px;width:100%">
-                    🔄 Scan for Devices
-                </button>
-            </div>
-            
-            <div id="laserConnected" style="display:none;">
-                <div class="stat-box mb-3" style="background:var(--success-subtle);border-color:var(--border-success);">
-                    <div class="stat-label" style="color:var(--success);">● Connected</div>
-                    <div class="stat-value" id="laserDeviceName">LayIt Laser Pro</div>
-                    <div class="stat-detail" id="laserStatus">Ready to project</div>
-                </div>
-                
-                <button class="btn-primary" onclick="sendToLaser()" style="padding:15px;width:100%;font-size:16px;">
-                    🔴 Project Pattern
-                </button>
-                
-                <div class="grid-2 mt-3">
-                    <button class="btn-secondary" onclick="laserPreview()">👁️ Preview</button>
-                    <button class="btn-secondary" onclick="laserStop()">⏹️ Stop</button>
-                </div>
-                
-                <button class="btn-secondary" onclick="disconnectLaser()" style="margin-top:10px;background:#992222;width:100%">
-                    🔌 Disconnect
-                </button>
-            </div>
-        </div>
-        
-        <!-- Laser Calibration Section -->
-        <div class="section">
-            <h3>🎯 Laser Calibration</h3>
-            <p class="hint mb-3" style="text-align:left;">Calibrate your laser for accurate 1:1 scale projection.</p>
-            
-            <button class="btn-secondary" onclick="startLaserCalibration()" style="padding:15px;width:100%">
-                📏 Start Calibration
-            </button>
-            
-            <div style="margin-top:10px;font-size:var(--text-sm);color:var(--text-tertiary);line-height:1.6">
-                <b>Calibration Steps:</b><br>
-                1. Laser projects a 12" square<br>
-                2. Measure with tape measure<br>
-                3. Adjust until sides = 12"<br>
-                4. Save calibration to device
-            </div>
-        </div>
-        
-        <!-- Laser Info Section -->
-        <div class="section">
-            <h3>💡 About LayIt Laser</h3>
-            <div style="font-size:var(--text-sm);color:var(--text-secondary);line-height:1.8">
-                <b style="color:var(--accent)">What It Does:</b><br>
-                Projects your exact tile pattern onto walls/floors using a precision laser system. No more chalk lines or guesswork!<br><br>
-                
-                <b style="color:var(--accent)">Features:</b><br>
-                • 1:1 scale projection<br>
-                • WiFi connected to this app<br>
-                • Works in daylight (green laser)<br>
-                • Battery or plug-in powered<br><br>
-                
-                <b style="color:var(--accent)">Don't have a LayIt Laser?</b><br>
-                Export your pattern as SVG/DXF and use with any laser cutter or CNC for templates.
-            </div>
         </div>
     </div>
 
@@ -5382,15 +5317,6 @@ document.addEventListener('wheel', function(e) {
     }
 }, { passive: true });
 
-// Close optimize menu when clicking outside
-document.addEventListener('click', function(e) {
-    var menu = document.getElementById('optimizeMenu');
-    var btn = document.getElementById('optimizeBtn');
-    if (optimizeMenuOpen && !menu.contains(e.target) && e.target !== btn) {
-        closeOptimizeMenu();
-    }
-});
-
 function showTab(id) {
     document.querySelectorAll('.panel').forEach(function(p) { p.classList.remove('active'); });
     document.querySelectorAll('.tab').forEach(function(t) { t.classList.remove('active'); });
@@ -5739,8 +5665,9 @@ function openBarcodeScanner() {
     var videoEl = document.getElementById('scannerVideo');
     var vfEl = document.getElementById('scannerViewfinder');
 
-    if (!hasBarcodeSupport() || !navigator.mediaDevices) {
-        statusEl.textContent = 'Camera scanning not supported on this device — use manual entry below';
+    // Always try camera first, regardless of BarcodeDetector support
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        statusEl.textContent = 'Camera not available — enter UPC/SKU below';
         videoEl.style.display = 'none';
         vfEl.style.display = 'none';
         return;
@@ -5750,7 +5677,10 @@ function openBarcodeScanner() {
     vfEl.style.display = 'block';
     statusEl.textContent = 'Starting camera...';
 
-    barcodeDetector = new BarcodeDetector({ formats: ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128'] });
+    // Set up BarcodeDetector if available (Chrome/Android)
+    if (hasBarcodeSupport()) {
+        barcodeDetector = new BarcodeDetector({ formats: ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128'] });
+    }
 
     navigator.mediaDevices.getUserMedia({
         video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } },
@@ -5759,19 +5689,24 @@ function openBarcodeScanner() {
         scannerStream = stream;
         videoEl.srcObject = stream;
         videoEl.play();
-        statusEl.textContent = 'Point camera at barcode on tile box';
 
-        scannerInterval = setInterval(function() {
-            if (!barcodeDetector || videoEl.readyState < 2) return;
-            barcodeDetector.detect(videoEl).then(function(barcodes) {
-                if (barcodes.length > 0) {
-                    onBarcodeDetected(barcodes[0].rawValue);
-                }
-            }).catch(function() {});
-        }, 250);
+        if (barcodeDetector) {
+            statusEl.textContent = 'Point camera at barcode on tile box';
+            scannerInterval = setInterval(function() {
+                if (!barcodeDetector || videoEl.readyState < 2) return;
+                barcodeDetector.detect(videoEl).then(function(barcodes) {
+                    if (barcodes.length > 0) {
+                        onBarcodeDetected(barcodes[0].rawValue);
+                    }
+                }).catch(function() {});
+            }, 250);
+        } else {
+            // Camera works but no native barcode detection — prompt manual entry
+            statusEl.textContent = 'Camera ready — auto-detect not available on this device. Enter UPC/SKU below or take a photo for reference.';
+        }
     }).catch(function(err) {
         console.warn('Camera error:', err);
-        statusEl.textContent = 'Camera access denied — use manual entry below';
+        statusEl.textContent = 'Camera access denied — enter UPC/SKU below';
         videoEl.style.display = 'none';
         vfEl.style.display = 'none';
     });
@@ -5815,8 +5750,14 @@ function closeBarcodeScanner() {
 }
 
 function lookupManualUPC() {
-    var code = document.getElementById('manualUPC').value.trim();
-    if (!code) { showToast('Enter a UPC code'); return; }
+    var input = document.getElementById('manualUPC');
+    var code = input.value.trim();
+    if (!code) {
+        input.focus();
+        input.setAttribute('placeholder', 'Enter UPC or SKU number');
+        showToast('⚠️ Enter a UPC or SKU code first');
+        return;
+    }
     closeBarcodeScanner();
     lookupBarcode(code);
 }
@@ -7779,70 +7720,40 @@ function updateVoidList() {
     document.getElementById('voidList').innerHTML = html;
 }
 
-var optimizeMenuOpen = false;
-
-function toggleOptimizeMenu() {
-    var menu = document.getElementById('optimizeMenu');
-    optimizeMenuOpen = !optimizeMenuOpen;
-    menu.style.display = optimizeMenuOpen ? 'block' : 'none';
-}
-
-function closeOptimizeMenu() {
-    optimizeMenuOpen = false;
-    document.getElementById('optimizeMenu').style.display = 'none';
-}
-
-function runOptimize(mode) {
-    closeOptimizeMenu();
-    
+function runOptimize() {
     // Show loading state
     var btn = document.getElementById('optimizeBtn');
     var originalText = btn.innerHTML;
     btn.innerHTML = '⏳ Optimizing...';
     btn.disabled = true;
-    
+
     // Run optimization after a brief delay to show the loading state
     setTimeout(function() {
-        doOptimize(mode);
+        doOptimize();
         btn.innerHTML = originalText;
         btn.disabled = false;
     }, 50);
 }
 
-function doOptimize(mode) {
+function doOptimize() {
     var best = { score: -Infinity, x: 0, y: 0 };
     var tileW = C.tile.w;
     var tileH = C.tile.h;
-    var smallCutThreshold = 0.25; // 25% of tile dimension = small cut
-    
-    // Save current position
-    var origX = C.view.oxInches || 0;
-    var origY = C.view.oyInches || 0;
-    
+
     // Try different offsets (in inches)
     var stepX = tileW / 8;
     var stepY = tileH / 8;
-    
+
     for (var ox = 0; ox < tileW; ox += stepX) {
         for (var oy = 0; oy < tileH; oy += stepY) {
             C.view.oxInches = ox;
             C.view.oyInches = oy;
-            
+
             // Count tiles and analyze cuts
             var results = countTilesForOptimize();
-            var score = 0;
-            
-            if (mode === 'fullTiles') {
-                // Maximize full tiles, penalize cut tiles
-                score = results.full * 100 - results.cut * 10;
-            } else if (mode === 'minSmallCuts') {
-                // Minimize small cuts (< 25% of tile)
-                score = -results.smallCuts * 100 + results.full * 10;
-            } else {
-                // Balanced - maximize full tiles AND minimize small cuts
-                score = results.full * 50 - results.cut * 5 - results.smallCuts * 100;
-            }
-            
+            // Maximize full tiles, minimize total cuts, heavily penalize small slivers
+            var score = results.full * 50 - results.cut * 5 - results.smallCuts * 100;
+
             if (score > best.score) {
                 best = { score: score, x: ox, y: oy, results: results };
             }
@@ -8811,6 +8722,32 @@ function setupControllerSync() {
 var laserConnected = false;
 var laserDevice = null;
 
+function joinWaitlist() {
+    var email = document.getElementById('waitlistEmail').value.trim();
+    if (!email || !email.includes('@')) {
+        showToast('⚠️ Enter a valid email address');
+        return;
+    }
+    // Save to Firebase if available
+    if (typeof firebase !== 'undefined' && firebase.database) {
+        try {
+            firebase.database().ref('waitlist').push({
+                email: email,
+                timestamp: Date.now()
+            });
+        } catch(e) { console.warn('Waitlist save error:', e); }
+    }
+    // Save locally too
+    var list = JSON.parse(localStorage.getItem('layit_waitlist') || '[]');
+    list.push({ email: email, date: new Date().toISOString() });
+    localStorage.setItem('layit_waitlist', JSON.stringify(list));
+
+    document.getElementById('waitlistEmail').style.display = 'none';
+    document.querySelector('#proj .btn-success').style.display = 'none';
+    document.getElementById('waitlistConfirm').style.display = 'block';
+    showToast('✓ You\'re on the list!');
+}
+
 function exportLaser() {
     var format = document.getElementById('laserFormat').value;
     var area = 'wall'; // Always export wall area only
@@ -9383,6 +9320,7 @@ draw = function() {
 
 // ==================== LAYIT PRO SUBSCRIPTION ====================
 var proUser = localStorage.getItem('layit_pro') === 'true';
+var _isNativeApp = !!(window._nativeApp || (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.purchase));
 
 function requirePro(featureName) {
     if (proUser) return true;
@@ -9391,11 +9329,34 @@ function requirePro(featureName) {
 }
 
 function showUpgradeModal(featureName) {
+    // Detect native app vs web browser
+    var isNative = _isNativeApp || !!(window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.purchase);
+    var subBtns = document.getElementById('proSubscribeButtons');
+    var webFallback = document.getElementById('proWebFallback');
+    if (subBtns && webFallback) {
+        subBtns.style.display = isNative ? '' : 'none';
+        webFallback.style.display = isNative ? 'none' : '';
+    }
     document.getElementById('proUpgradeModal').classList.add('active');
 }
 
 function closeUpgradeModal() {
     document.getElementById('proUpgradeModal').classList.remove('active');
+}
+
+function handleProPurchase(plan) {
+    if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.purchase) {
+        window.webkit.messageHandlers.purchase.postMessage(plan);
+    } else {
+        // Fallback for dev/testing
+        activateProDev();
+    }
+}
+
+function handleRestorePurchases() {
+    if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.restorePurchases) {
+        window.webkit.messageHandlers.restorePurchases.postMessage('restore');
+    }
 }
 
 function activateProDev() {
