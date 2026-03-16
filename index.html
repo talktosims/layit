@@ -851,12 +851,84 @@
             font-size:13px; padding:8px 0;
         }
 
+        /* ---- ONBOARDING WIZARD ---- */
+        .onboarding-overlay {
+            position:fixed; top:0; left:0; right:0; bottom:0;
+            z-index:10000; background:rgba(0,0,0,0.85);
+            display:flex; align-items:center; justify-content:center;
+            padding:20px; opacity:0; transition:opacity 0.3s ease; pointer-events:none;
+        }
+        .onboarding-overlay.visible { opacity:1; pointer-events:auto; }
+        .onboarding-card {
+            background:linear-gradient(145deg, #111827, #0f172a);
+            border:1px solid rgba(139,92,246,0.3); border-radius:var(--radius-lg);
+            max-width:380px; width:100%; padding:36px 28px 28px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.7), 0 0 40px rgba(139,92,246,0.15);
+            text-align:center; transform:translateY(20px) scale(0.96);
+            transition:transform 0.35s var(--ease-spring), opacity 0.3s ease; opacity:0;
+        }
+        .onboarding-overlay.visible .onboarding-card { transform:translateY(0) scale(1); opacity:1; }
+        .onboarding-icon { font-size:48px; margin-bottom:16px; display:block; line-height:1.2; }
+        .onboarding-logo { width:64px; height:64px; margin:0 auto 16px; display:block; }
+        .onboarding-title {
+            font-size:var(--text-2xl); font-weight:800; color:var(--text-primary);
+            margin-bottom:8px; line-height:var(--leading-tight);
+        }
+        .onboarding-subtitle {
+            font-size:var(--text-md); color:var(--text-secondary);
+            line-height:var(--leading-relaxed); margin-bottom:24px;
+        }
+        .onboarding-step-label {
+            font-size:var(--text-xs); font-weight:700; color:rgba(139,92,246,0.9);
+            text-transform:uppercase; letter-spacing:0.1em; margin-bottom:6px;
+        }
+        .onboarding-dots { display:flex; justify-content:center; gap:8px; margin-bottom:24px; }
+        .onboarding-dot {
+            width:8px; height:8px; border-radius:50%;
+            background:rgba(148,163,184,0.2); transition:all 0.3s ease;
+        }
+        .onboarding-dot.active {
+            background:linear-gradient(135deg, #8b5cf6, #ec4899);
+            box-shadow:0 0 8px rgba(139,92,246,0.5); transform:scale(1.3);
+        }
+        .onboarding-dot.done { background:rgba(139,92,246,0.5); }
+        .onboarding-actions { display:flex; flex-direction:column; gap:10px; align-items:center; }
+        .onboarding-btn-next {
+            width:100%; padding:14px 24px; font-size:var(--text-lg); font-weight:700;
+            border:none; border-radius:var(--radius-sm);
+            background:linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+            color:#fff; cursor:pointer; box-shadow: 0 4px 14px rgba(34,197,94,0.35); transition:all 0.2s ease;
+        }
+        .onboarding-btn-next:active { transform:scale(0.97); }
+        .onboarding-btn-upgrade {
+            width:100%; padding:14px 24px; font-size:var(--text-lg); font-weight:700;
+            border:none; border-radius:var(--radius-sm);
+            background:linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+            color:#fff; cursor:pointer; box-shadow: 0 4px 14px rgba(139,92,246,0.35); transition:all 0.2s ease;
+        }
+        .onboarding-btn-upgrade:active { transform:scale(0.97); }
+        .onboarding-btn-skip {
+            background:none; border:none; color:var(--text-tertiary);
+            font-size:var(--text-sm); cursor:pointer; padding:4px 8px; transition:color 0.2s ease;
+        }
+        .onboarding-btn-skip:active { color:var(--text-secondary); }
+        .onboarding-step-content { min-height:200px; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+
     </style>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 </head>
 <body>
+    <!-- Onboarding Wizard Overlay -->
+    <div id="onboardingOverlay" class="onboarding-overlay">
+        <div class="onboarding-card">
+            <div id="onboardingStepContent" class="onboarding-step-content"></div>
+            <div class="onboarding-dots" id="onboardingDots"></div>
+            <div class="onboarding-actions" id="onboardingActions"></div>
+        </div>
+    </div>
+
     <!-- Measurement Wizard Overlay -->
     <div id="measureWizard" class="wizard-overlay hidden">
         <div class="wizard-header">
@@ -1314,11 +1386,22 @@
     </div>
 
     <div id="tile" class="panel">
+        <div class="section" style="margin-bottom:16px;">
+            <button onclick="openBarcodeScanner()" style="width:100%;padding:18px 16px;background:linear-gradient(135deg,rgba(34,197,94,0.08),rgba(34,197,94,0.02));border:2px dashed var(--success);border-radius:var(--radius-md);cursor:pointer;display:flex;align-items:center;gap:14px;text-align:left;color:var(--text-primary);">
+                <span style="font-size:32px;line-height:1;">📦</span>
+                <div style="flex:1;">
+                    <div style="display:flex;align-items:center;gap:8px;">
+                        <span style="font-size:17px;font-weight:700;color:var(--success);">Scan Tile Box</span>
+                        <span style="background:var(--success);color:#fff;font-size:9px;padding:2px 6px;border-radius:4px;font-weight:700;letter-spacing:0.5px;">PRO</span>
+                    </div>
+                    <div style="font-size:12px;color:var(--text-muted);margin-top:3px;">Scan barcode or SKU on box to auto-fill tile specs</div>
+                </div>
+            </button>
+        </div>
         <div class="section"><h3>Tile Settings</h3>
             <div class="field"><label>Preset</label>
                 <div style="display:flex;gap:6px;">
                     <select id="tilePreset" onchange="applyPreset()" style="flex:1;"><option value="custom">Custom (enter below)</option></select>
-                    <button class="scan-btn" onclick="openBarcodeScanner()" title="Scan tile barcode">📷</button>
                 </div>
             </div>
             <div class="row">
@@ -1424,6 +1507,22 @@
 
     <div id="projects" class="panel">
         <div class="section">
+            <h3>📤 Backup & Share</h3>
+            <p class="hint mb-3" style="text-align:left;">Export to share or backup. Import to restore.</p>
+            <div class="grid-2">
+                <button class="btn-secondary" onclick="exportProject()">📤 Export</button>
+                <button class="btn-secondary" onclick="document.getElementById('importFile').click()">📥 Import</button>
+            </div>
+            <input type="file" id="importFile" accept=".json" style="display:none" onchange="importProject(event)">
+            <div style="margin-top:12px;">
+                <button class="btn-success" onclick="shareProject()" style="width:100%;display:flex;align-items:center;justify-content:center;gap:8px;padding:14px;">
+                    <span style="font-size:18px;">📤</span> Share Project with Client
+                    <span style="background:rgba(255,255,255,0.2);font-size:10px;padding:2px 6px;border-radius:4px;font-weight:700;">PRO</span>
+                </button>
+            </div>
+        </div>
+
+        <div class="section">
             <h3>📁 Current Project</h3>
             <div class="field">
                 <label>Project Name</label>
@@ -1446,22 +1545,6 @@
             </div>
         </div>
         
-        <div class="section">
-            <h3>📤 Backup & Share</h3>
-            <p class="hint mb-3" style="text-align:left;">Export to share or backup. Import to restore.</p>
-            <div class="grid-2">
-                <button class="btn-secondary" onclick="exportProject()">📤 Export</button>
-                <button class="btn-secondary" onclick="document.getElementById('importFile').click()">📥 Import</button>
-            </div>
-            <input type="file" id="importFile" accept=".json" style="display:none" onchange="importProject(event)">
-            <div style="margin-top:12px;">
-                <button class="btn-success" onclick="shareProject()" style="width:100%;display:flex;align-items:center;justify-content:center;gap:8px;padding:14px;">
-                    <span style="font-size:18px;">📤</span> Share Project with Client
-                    <span style="background:rgba(255,255,255,0.2);font-size:10px;padding:2px 6px;border-radius:4px;font-weight:700;">PRO</span>
-                </button>
-            </div>
-        </div>
-
         <div class="section">
             <h3>🏢 Company Branding</h3>
             <p class="hint mb-3" style="text-align:left;">Add your company info for shared project pages.</p>
@@ -1516,20 +1599,6 @@
             </div>
         </div>
 
-        <div class="section">
-            <h3>💾 Export File</h3>
-            <div class="field">
-                <label>Format</label>
-                <select id="laserFormat">
-                    <option value="layit">LayIt Laser (.layit)</option>
-                    <option value="svg">SVG Vector (.svg)</option>
-                    <option value="dxf">DXF CAD (.dxf)</option>
-                </select>
-            </div>
-            <button class="btn-secondary" onclick="exportLaser()" style="width:100%;">
-                📥 Download
-            </button>
-        </div>
     </div>
 
     <div id="settings" class="panel">
@@ -1543,11 +1612,79 @@
             <button class="btn-secondary" id="proManageBtn" onclick="deactivateProDev()" style="margin-top:12px;display:none;width:100%;">Revert to Free (Dev)</button>
         </div>
         <div class="section">
-            <h3>ℹ️ About</h3>
-            <p class="hint" style="text-align:left;line-height:1.7;">
-                <b>LayIt</b> — Tile layout planner with laser projection.<br>
-                Version 1.0
+            <h3>📖 Feature Guide</h3>
+            <div id="featureGuide" style="display:flex;flex-direction:column;gap:2px;">
+                <div class="guide-item">
+                    <div class="guide-header" onclick="toggleGuide(this)" style="display:flex;align-items:center;gap:8px;padding:10px 8px;cursor:pointer;border-radius:var(--radius-sm);transition:background 0.15s;">
+                        <span class="guide-arrow" style="font-size:11px;color:var(--text-muted);transition:transform 0.2s;display:inline-block;">&#9656;</span>
+                        <span style="font-weight:600;font-size:13px;color:var(--text-primary);">Layout Tab</span>
+                    </div>
+                    <div class="guide-body" style="display:none;padding:4px 8px 12px 28px;font-size:12px;color:var(--text-secondary);line-height:1.6;">
+                        See your complete tile layout rendered in real-time. Use pinch to zoom, drag to pan. Tap Optimize to find the best pattern placement with minimal cuts and waste.
+                    </div>
+                </div>
+                <div class="guide-item">
+                    <div class="guide-header" onclick="toggleGuide(this)" style="display:flex;align-items:center;gap:8px;padding:10px 8px;cursor:pointer;border-radius:var(--radius-sm);transition:background 0.15s;">
+                        <span class="guide-arrow" style="font-size:11px;color:var(--text-muted);transition:transform 0.2s;display:inline-block;">&#9656;</span>
+                        <span style="font-weight:600;font-size:13px;color:var(--text-primary);">Wall Dimensions</span>
+                    </div>
+                    <div class="guide-body" style="display:none;padding:4px 8px 12px 28px;font-size:12px;color:var(--text-secondary);line-height:1.6;">
+                        Enter your wall or floor measurements in inches. The app supports rectangular spaces with optional height/width variations for non-square walls.
+                    </div>
+                </div>
+                <div class="guide-item">
+                    <div class="guide-header" onclick="toggleGuide(this)" style="display:flex;align-items:center;gap:8px;padding:10px 8px;cursor:pointer;border-radius:var(--radius-sm);transition:background 0.15s;">
+                        <span class="guide-arrow" style="font-size:11px;color:var(--text-muted);transition:transform 0.2s;display:inline-block;">&#9656;</span>
+                        <span style="font-weight:600;font-size:13px;color:var(--text-primary);">Tile Settings</span>
+                    </div>
+                    <div class="guide-body" style="display:none;padding:4px 8px 12px 28px;font-size:12px;color:var(--text-secondary);line-height:1.6;">
+                        Choose from preset tiles or enter custom dimensions. Toggle Nominal to enter box label sizes — grout is auto-subtracted. Supports hex, square, rectangle, herringbone, and mosaic patterns.
+                    </div>
+                </div>
+                <div class="guide-item">
+                    <div class="guide-header" onclick="toggleGuide(this)" style="display:flex;align-items:center;gap:8px;padding:10px 8px;cursor:pointer;border-radius:var(--radius-sm);transition:background 0.15s;">
+                        <span class="guide-arrow" style="font-size:11px;color:var(--text-muted);transition:transform 0.2s;display:inline-block;">&#9656;</span>
+                        <span style="font-weight:600;font-size:13px;color:var(--text-primary);">Voids & Cutouts</span>
+                    </div>
+                    <div class="guide-body" style="display:none;padding:4px 8px 12px 28px;font-size:12px;color:var(--text-secondary);line-height:1.6;">
+                        Add niches, windows, outlets, or any obstacle. Enter position from left/bottom edges and the void dimensions. The layout automatically tiles around them.
+                    </div>
+                </div>
+                <div class="guide-item">
+                    <div class="guide-header" onclick="toggleGuide(this)" style="display:flex;align-items:center;gap:8px;padding:10px 8px;cursor:pointer;border-radius:var(--radius-sm);transition:background 0.15s;">
+                        <span class="guide-arrow" style="font-size:11px;color:var(--text-muted);transition:transform 0.2s;display:inline-block;">&#9656;</span>
+                        <span style="font-weight:600;font-size:13px;color:var(--text-primary);">Cut Tracking <span style="background:var(--success);color:#fff;font-size:9px;padding:1px 5px;border-radius:3px;font-weight:700;margin-left:4px;">PRO</span></span>
+                    </div>
+                    <div class="guide-body" style="display:none;padding:4px 8px 12px 28px;font-size:12px;color:var(--text-secondary);line-height:1.6;">
+                        Tap orange cut tiles on the layout to see exact dimensions. Mark them as cut when done — they turn red. Track your progress with the Full/Cuts/Done counter.
+                    </div>
+                </div>
+                <div class="guide-item">
+                    <div class="guide-header" onclick="toggleGuide(this)" style="display:flex;align-items:center;gap:8px;padding:10px 8px;cursor:pointer;border-radius:var(--radius-sm);transition:background 0.15s;">
+                        <span class="guide-arrow" style="font-size:11px;color:var(--text-muted);transition:transform 0.2s;display:inline-block;">&#9656;</span>
+                        <span style="font-weight:600;font-size:13px;color:var(--text-primary);">Barcode Scanner <span style="background:var(--success);color:#fff;font-size:9px;padding:1px 5px;border-radius:3px;font-weight:700;margin-left:4px;">PRO</span></span>
+                    </div>
+                    <div class="guide-body" style="display:none;padding:4px 8px 12px 28px;font-size:12px;color:var(--text-secondary);line-height:1.6;">
+                        Scan the barcode on any tile box to auto-populate tile specs. Saves time and reduces measurement errors.
+                    </div>
+                </div>
+                <div class="guide-item">
+                    <div class="guide-header" onclick="toggleGuide(this)" style="display:flex;align-items:center;gap:8px;padding:10px 8px;cursor:pointer;border-radius:var(--radius-sm);transition:background 0.15s;">
+                        <span class="guide-arrow" style="font-size:11px;color:var(--text-muted);transition:transform 0.2s;display:inline-block;">&#9656;</span>
+                        <span style="font-weight:600;font-size:13px;color:var(--text-primary);">Project Sharing <span style="background:var(--success);color:#fff;font-size:9px;padding:1px 5px;border-radius:3px;font-weight:700;margin-left:4px;">PRO</span></span>
+                    </div>
+                    <div class="guide-body" style="display:none;padding:4px 8px 12px 28px;font-size:12px;color:var(--text-secondary);line-height:1.6;">
+                        Generate a clean, branded project page to share with clients. Shows layout visual, dimensions, tile specs, and waste % — no pricing.
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="section">
+            <h3>📖 Tutorial</h3>
+            <p class="hint" style="text-align:left;line-height:1.7;margin-bottom:12px;">
+                New to LayIt? Replay the guided walkthrough to learn the basics.
             </p>
+            <button class="btn-secondary" onclick="restartOnboarding()" style="width:100%;">Restart Tutorial</button>
         </div>
     </div>
 
@@ -1555,6 +1692,19 @@
 // Projector setup variables
 var projSection = 'full'; // 'full', 'TL', 'TR', 'BL', 'BR'
 var calibrationMode = false;
+
+// ==================== FEATURE GUIDE ====================
+function toggleGuide(headerEl) {
+    var body = headerEl.nextElementSibling;
+    var arrow = headerEl.querySelector('.guide-arrow');
+    if (body.style.display === 'none') {
+        body.style.display = 'block';
+        arrow.innerHTML = '&#9662;'; // down arrow
+    } else {
+        body.style.display = 'none';
+        arrow.innerHTML = '&#9656;'; // right arrow
+    }
+}
 
 // ==================== MEASUREMENT WIZARD ====================
 
@@ -8555,6 +8705,150 @@ draw();
 if (restored) {
     showToast('✓ Restored last session', 2000);
 }
+
+// ==================== ONBOARDING WIZARD ====================
+
+var onboardingStep = 0;
+var onboardingSteps = [
+    {
+        icon: '',
+        useLogo: true,
+        title: 'Welcome to LayIt!',
+        text: "Let's set up your first tile project in under 2 minutes.",
+        nextLabel: "Let's Go!"
+    },
+    {
+        icon: '📐',
+        label: 'Step 1',
+        title: 'Measure Your Wall',
+        text: 'Start by entering your wall or floor dimensions. Measure the height and width in inches.',
+        nextLabel: 'Next'
+    },
+    {
+        icon: '🧱',
+        label: 'Step 2',
+        title: 'Pick Your Tile',
+        text: 'Choose your tile size or scan the box barcode. We\'ll auto-fill the dimensions and grout spacing.',
+        nextLabel: 'Next'
+    },
+    {
+        icon: '📊',
+        label: 'Step 3',
+        title: 'See Your Layout',
+        text: 'See your tiles laid out instantly. Tap Optimize to minimize cuts and waste.',
+        nextLabel: 'Next'
+    },
+    {
+        icon: '🪟',
+        label: 'Step 4',
+        title: 'Add Voids',
+        text: 'Have a niche, window, or outlet? Add voids to cut around obstacles.',
+        nextLabel: 'Next'
+    },
+    {
+        icon: '🧮',
+        label: 'Step 5',
+        title: 'Calculate Materials',
+        text: 'See exactly how many tiles and materials you need. No more guessing at the store.',
+        nextLabel: 'Next'
+    },
+    {
+        icon: '⭐',
+        label: 'Step 6',
+        title: 'Go Pro',
+        text: 'Unlock barcode scanning, cut tracking, project sharing, and more for just $4.99/mo.',
+        nextLabel: null,
+        isProStep: true
+    }
+];
+
+function renderOnboardingStep(stepIdx) {
+    var step = onboardingSteps[stepIdx];
+    var content = document.getElementById('onboardingStepContent');
+    var dots = document.getElementById('onboardingDots');
+    var actions = document.getElementById('onboardingActions');
+
+    // Build content
+    var html = '';
+    if (step.useLogo) {
+        html += '<svg class="onboarding-logo" viewBox="0 0 100 100"><rect width="100" height="100" rx="20" fill="#1a1a2e"/><polygon points="50,15 70,27 70,52 50,65 30,52 30,27" fill="#4CAF50"/><polygon points="30,52 30,77 50,90 50,65" fill="#FF9800"/><polygon points="70,52 70,77 50,90 50,65" fill="#FF9800"/></svg>';
+    } else {
+        html += '<span class="onboarding-icon">' + step.icon + '</span>';
+    }
+    if (step.label) {
+        html += '<div class="onboarding-step-label">' + step.label + '</div>';
+    }
+    html += '<div class="onboarding-title">' + step.title + '</div>';
+    html += '<div class="onboarding-subtitle">' + step.text + '</div>';
+    content.innerHTML = html;
+
+    // Build dots
+    var dotsHtml = '';
+    for (var i = 0; i < onboardingSteps.length; i++) {
+        var cls = 'onboarding-dot';
+        if (i === stepIdx) cls += ' active';
+        else if (i < stepIdx) cls += ' done';
+        dotsHtml += '<div class="' + cls + '"></div>';
+    }
+    dots.innerHTML = dotsHtml;
+
+    // Build actions
+    var actHtml = '';
+    if (step.isProStep) {
+        actHtml += '<button class="onboarding-btn-upgrade" onclick="completeOnboarding(); showUpgradeModal();">Upgrade to Pro</button>';
+        actHtml += '<button class="onboarding-btn-next" onclick="completeOnboarding();" style="background:linear-gradient(135deg, #22c55e 0%, #16a34a 100%);">Maybe Later</button>';
+    } else {
+        actHtml += '<button class="onboarding-btn-next" onclick="nextOnboardingStep();">' + step.nextLabel + '</button>';
+        actHtml += '<button class="onboarding-btn-skip" onclick="skipOnboarding();">Skip</button>';
+    }
+    actions.innerHTML = actHtml;
+}
+
+function showOnboarding() {
+    onboardingStep = 0;
+    renderOnboardingStep(0);
+    var overlay = document.getElementById('onboardingOverlay');
+    overlay.style.display = 'flex';
+    requestAnimationFrame(function() {
+        requestAnimationFrame(function() {
+            overlay.classList.add('visible');
+        });
+    });
+}
+
+function nextOnboardingStep() {
+    onboardingStep++;
+    if (onboardingStep >= onboardingSteps.length) {
+        completeOnboarding();
+        return;
+    }
+    renderOnboardingStep(onboardingStep);
+}
+
+function skipOnboarding() {
+    completeOnboarding();
+}
+
+function completeOnboarding() {
+    localStorage.setItem('layit_onboarded', '1');
+    var overlay = document.getElementById('onboardingOverlay');
+    overlay.classList.remove('visible');
+    setTimeout(function() {
+        overlay.style.display = 'none';
+    }, 350);
+}
+
+function restartOnboarding() {
+    localStorage.removeItem('layit_onboarded');
+    showOnboarding();
+}
+
+// Auto-show onboarding on first launch
+if (!localStorage.getItem('layit_onboarded')) {
+    setTimeout(function() { showOnboarding(); }, 600);
+}
+
+// ==================== END ONBOARDING WIZARD ====================
 </script>
 <script>
 if("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js");
