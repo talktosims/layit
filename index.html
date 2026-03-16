@@ -8182,14 +8182,7 @@ function saveCurrentProject() {
     updateProjectList();
     
     // Brief visual feedback
-    var btn = event.target;
-    var originalText = btn.innerHTML;
-    btn.innerHTML = '✓ Saved!';
-    btn.style.background = '#46a758';
-    setTimeout(function() {
-        btn.innerHTML = originalText;
-        btn.style.background = '';
-    }, 1500);
+    showToast('✓ Project saved', 1500);
 }
 
 // Load a project
