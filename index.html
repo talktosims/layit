@@ -412,6 +412,69 @@
         .modal-cancel { background:var(--bg-elevated); color:var(--text-primary); border:2px solid rgba(148,163,184,0.12); }
         .modal-confirm { background:linear-gradient(135deg, #ef4444, #dc2626); color:#fff; box-shadow:0 4px 14px rgba(239,68,68,0.35); }
 
+        /* ---- PRO SUBSCRIPTION UI ---- */
+        .pro-badge {
+            display:inline-block; font-size:9px; font-weight:800; letter-spacing:0.05em;
+            padding:2px 6px; border-radius:9999px; background:#4CAF50; color:#fff;
+            vertical-align:middle; margin-left:4px; line-height:1.4;
+        }
+        .pro-badge-lock { background:rgba(76,175,80,0.2); color:#4CAF50; }
+        .pro-badge-active { background:rgba(76,175,80,0.15); color:#4CAF50; border:1px solid rgba(76,175,80,0.3); }
+        .pro-upgrade-box {
+            background:linear-gradient(145deg, #1e293b, #0f172a);
+            border:1px solid rgba(148,163,184,0.15);
+            border-top:3px solid #4CAF50;
+            border-radius:var(--radius-lg);
+            padding:28px;
+            max-width:360px;
+            width:calc(100% - 40px);
+            text-align:center;
+            box-shadow: 0 25px 60px rgba(0,0,0,0.6);
+            animation:modalIn 0.3s var(--ease-spring);
+        }
+        .pro-upgrade-box h3 { color:#4CAF50; margin-bottom:4px; font-size:22px; font-weight:800; }
+        .pro-upgrade-box .pro-price { color:var(--text-secondary); font-size:15px; margin-bottom:20px; }
+        .pro-upgrade-box .pro-price b { color:var(--text-primary); font-size:20px; }
+        .pro-feature-list {
+            text-align:left; margin:0 0 24px 0; padding:0; list-style:none;
+        }
+        .pro-feature-list li {
+            padding:8px 0; font-size:14px; color:var(--text-secondary);
+            border-bottom:1px solid rgba(148,163,184,0.06);
+            display:flex; align-items:center; gap:10px;
+        }
+        .pro-feature-list li:last-child { border-bottom:none; }
+        .pro-feature-list .pf-icon { font-size:16px; flex-shrink:0; }
+        .pro-feature-list .pf-soon {
+            font-size:9px; font-weight:700; background:rgba(245,158,11,0.15);
+            color:#f59e0b; padding:2px 6px; border-radius:9999px; margin-left:auto; flex-shrink:0;
+        }
+        .btn-pro {
+            background:linear-gradient(135deg, #4CAF50, #2e7d32); color:#fff;
+            box-shadow:0 4px 14px rgba(76,175,80,0.35);
+            padding:14px; font-size:var(--text-lg); border:none; border-radius:var(--radius-md);
+            cursor:pointer; font-weight:700; width:100%;
+        }
+        .btn-pro:active { transform:scale(0.97); }
+        .pro-dismiss {
+            background:none; border:none; color:var(--text-tertiary); font-size:13px;
+            cursor:pointer; padding:12px; width:100%; margin-top:4px;
+        }
+        .pro-status-card {
+            background:var(--bg-recessed); border:1px solid rgba(76,175,80,0.2);
+            border-radius:var(--radius-md); padding:16px; text-align:center;
+        }
+        .pro-status-card.active { border-color:rgba(76,175,80,0.4); }
+        .pro-status-label { font-size:12px; color:var(--text-tertiary); text-transform:uppercase; letter-spacing:0.08em; margin-bottom:6px; }
+        .pro-status-value { font-size:18px; font-weight:700; color:var(--text-primary); }
+        .pro-status-value.is-pro { color:#4CAF50; }
+        .pro-gated-section { position:relative; }
+        .pro-gated-section.locked::after {
+            content:''; position:absolute; top:0; left:0; right:0; bottom:0;
+            background:rgba(8,11,18,0.4); border-radius:var(--radius-md);
+            pointer-events:none;
+        }
+
         /* ---- OPTIMIZE MENU ---- */
         .optimize-option {
             padding:14px 18px;
@@ -1177,6 +1240,23 @@
         </div>
     </div>
 
+    <!-- Pro Upgrade Modal -->
+    <div class="modal-overlay" id="proUpgradeModal">
+        <div class="pro-upgrade-box">
+            <h3>LayIt Pro</h3>
+            <p class="pro-price"><b>$14.99</b> / month</p>
+            <ul class="pro-feature-list">
+                <li><span class="pf-icon">📷</span> Barcode scanner + auto-populate</li>
+                <li><span class="pf-icon">☁️</span> Cloud sync across devices</li>
+                <li><span class="pf-icon">📐</span> AI room scan <span class="pf-soon">SOON</span></li>
+                <li><span class="pf-icon">📤</span> Project sharing <span class="pf-soon">SOON</span></li>
+                <li><span class="pf-icon">💼</span> Job costing + invoicing <span class="pf-soon">SOON</span></li>
+            </ul>
+            <button class="btn-pro" onclick="activateProDev()">Subscribe</button>
+            <button class="pro-dismiss" onclick="closeUpgradeModal()">Maybe Later</button>
+        </div>
+    </div>
+
     <div class="tabs" id="tabBar">
         <button class="tab active" data-tab="diagram"><span class="tab-icon">📐</span><span class="tab-label">Layout</span></button>
         <button class="tab" data-tab="wall"><span class="tab-icon">🧱</span><span class="tab-label">Wall</span></button>
@@ -1185,6 +1265,7 @@
         <button class="tab" data-tab="calc"><span class="tab-icon">🔢</span><span class="tab-label">Calc</span></button>
         <button class="tab" data-tab="projects"><span class="tab-icon">📁</span><span class="tab-label">Files</span></button>
         <button class="tab" data-tab="proj"><span class="tab-icon"><svg class="hex-icon" viewBox="0 0 24 24" width="18" height="18"><path d="M12 2 L21.5 7.5 L21.5 16.5 L12 22 L2.5 16.5 L2.5 7.5 Z" fill="none" stroke="#4ade80" stroke-width="2.5" stroke-linejoin="round"/></svg></span><span class="tab-label">Laser</span></button>
+        <button class="tab" data-tab="settings"><span class="tab-icon">⚙️</span><span class="tab-label">Settings</span></button>
     </div>
 
     <div id="diagram" class="panel active">
@@ -1298,7 +1379,7 @@
 
         <!-- Room Scan Import -->
         <div class="section">
-            <h3>📱 Import Room Scan</h3>
+            <h3>📱 Import Room Scan <span class="pro-badge" id="roomScanProBadge">PRO</span></h3>
             <p class="hint mb-3" style="text-align:left;">Import a room scan from Apple Measure app to auto-fill wall dimensions. Scan a room with LiDAR, export the .usdz file, then import it here.</p>
             <button class="btn-secondary" onclick="document.getElementById('roomScanFile').click()" style="width:100%;">
                 📱 Import Room Scan (.usdz)
@@ -1312,7 +1393,7 @@
             <div class="field"><label>Preset</label>
                 <div style="display:flex;gap:6px;">
                     <select id="tilePreset" onchange="applyPreset()" style="flex:1;"><option value="custom">Custom (enter below)</option></select>
-                    <button class="scan-btn" onclick="openBarcodeScanner()" title="Scan tile barcode">📷</button>
+                    <button class="scan-btn" onclick="openBarcodeScanner()" title="Scan tile barcode">📷 <span class="pro-badge" id="scanProBadge">PRO</span></button>
                 </div>
             </div>
             <div class="row">
@@ -1407,6 +1488,12 @@
             <div class="calc-result" id="costEstimate">$0.00</div>
             <div class="hint" id="costBreakdown"></div>
         </div>
+
+        <div class="section">
+            <h3>💼 Job Costing <span class="pro-badge" id="jobCostProBadge">PRO</span></h3>
+            <p class="hint mb-3" style="text-align:left;">Track labor, materials, and generate invoices for your tile jobs.</p>
+            <button class="btn-secondary" onclick="requirePro('Job Costing')" style="width:100%;" id="jobCostBtn">💼 Open Job Tracker</button>
+        </div>
     </div>
 
     <div id="projects" class="panel">
@@ -1441,6 +1528,18 @@
                 <button class="btn-secondary" onclick="document.getElementById('importFile').click()">📥 Import</button>
             </div>
             <input type="file" id="importFile" accept=".json" style="display:none" onchange="importProject(event)">
+        </div>
+
+        <div class="section">
+            <h3>☁️ Cloud Sync <span class="pro-badge" id="cloudSyncProBadge">PRO</span></h3>
+            <p class="hint mb-3" style="text-align:left;">Sync projects across all your devices automatically.</p>
+            <button class="btn-secondary" onclick="requirePro('Cloud Sync')" style="width:100%;" id="cloudSyncBtn">☁️ Enable Cloud Sync</button>
+        </div>
+
+        <div class="section">
+            <h3>📤 Share with Team <span class="pro-badge" id="shareProBadge">PRO</span></h3>
+            <p class="hint mb-3" style="text-align:left;">Send layouts to clients and crew members.</p>
+            <button class="btn-secondary" onclick="requirePro('Project Sharing')" style="width:100%;" id="shareBtn">📤 Share Project</button>
         </div>
     </div>
 
@@ -1653,6 +1752,25 @@
                 <b style="color:var(--accent)">Don't have a LayIt Laser?</b><br>
                 Export your pattern as SVG/DXF and use with any laser cutter or CNC for templates.
             </div>
+        </div>
+    </div>
+
+    <div id="settings" class="panel">
+        <div class="section">
+            <h3>⭐ LayIt Pro</h3>
+            <div class="pro-status-card" id="proStatusCard">
+                <div class="pro-status-label">Subscription</div>
+                <div class="pro-status-value" id="proStatusValue">Free</div>
+            </div>
+            <button class="btn-pro" id="proUpgradeBtn" onclick="showUpgradeModal()" style="margin-top:12px;">Upgrade to Pro</button>
+            <button class="btn-secondary" id="proManageBtn" onclick="deactivateProDev()" style="margin-top:12px;display:none;width:100%;">Revert to Free (Dev)</button>
+        </div>
+        <div class="section">
+            <h3>ℹ️ About</h3>
+            <p class="hint" style="text-align:left;line-height:1.7;">
+                <b>LayIt</b> — Tile layout planner with laser projection.<br>
+                Version 1.0
+            </p>
         </div>
     </div>
 
@@ -3441,6 +3559,7 @@ function wallsToPolygon(walls) {
 
 /** Main entry point: handle file input change */
 function handleRoomScanImport(event) {
+    if (!requirePro('Room Scan Import')) { event.target.value = ''; return; }
     var file = event.target.files[0];
     if (!file) return;
 
@@ -3605,75 +3724,6 @@ function setSection(sec) {
     projSection = sec;
 }
 
-function updateSectionButtons() {
-    // Legacy function - no longer used
-}
-
-// Legacy projector functions - kept as stubs for compatibility
-function updateProjSetup() {
-    // Removed - projector mode replaced with laser export
-}
-
-function startCalibration() {
-    // Removed - use startLaserCalibration instead
-    showToast('Use Laser Calibration instead');
-}
-
-function drawCalibration() {
-    var container = document.getElementById('canvasContainer');
-    cv.width = window.innerWidth * 2;
-    cv.height = window.innerHeight * 2;
-    
-    cx.setTransform(1, 0, 0, 1, 0, 0);
-    cx.scale(2, 2);
-    
-    // White background
-    cx.fillStyle = '#ffffff';
-    cx.fillRect(0, 0, cv.width, cv.height);
-    
-    var centerX = cv.width / 4;
-    var centerY = cv.height / 4 - 50;
-    
-    // Draw 12" calibration line
-    // At correct scale, this should be 12 inches when projected
-    var s = C.view.z; // Use current zoom as scale reference
-    var lineLength = 12 * s; // 12 inches at current scale
-    
-    cx.strokeStyle = '#000000';
-    cx.lineWidth = 4;
-    cx.beginPath();
-    cx.moveTo(centerX - lineLength, centerY);
-    cx.lineTo(centerX + lineLength, centerY);
-    cx.stroke();
-    
-    // Draw end markers
-    cx.beginPath();
-    cx.moveTo(centerX - lineLength, centerY - 20);
-    cx.lineTo(centerX - lineLength, centerY + 20);
-    cx.moveTo(centerX + lineLength, centerY - 20);
-    cx.lineTo(centerX + lineLength, centerY + 20);
-    cx.stroke();
-    
-    // Label
-    cx.fillStyle = '#000000';
-    cx.font = 'bold 24px sans-serif';
-    cx.textAlign = 'center';
-    cx.fillText('← 12 INCHES →', centerX, centerY - 40);
-    
-    // Zoom hint
-    cx.font = '16px sans-serif';
-    cx.fillText('Current app zoom: ' + C.view.z + 'x', centerX, centerY + 60);
-    cx.fillText('Adjust projector distance/zoom until line = 12"', centerX, centerY + 90);
-}
-
-function confirmCalibration() {
-    calibrationMode = false;
-    alert('✅ Calibration saved!\n\nYour projector is now set to display actual-size patterns.\n\nLaunch the projector to see your tile layout!');
-    exitProj();
-}
-
-// Initialize setup calculator
-setTimeout(updateProjSetup, 100);
 let C = {
     wall: { lH: 70, rV: 0.5, tW: 58, bV: 0.25 },
     tile: { sh: 'herringbone', or: 'pointy', w: 2, h: 4, gr: 0.125, pattern: 0 },
@@ -3713,113 +3763,6 @@ var completedSegments = []; // IDs of completed segments
 //   edgeSignature: { top: [...], bottom: [...], left: [...], right: [...] }
 // }
 
-// Generate segments for the current floor layout
-function generateSegments() {
-    segments = [];
-    segmentPath = [];
-    completedSegments = [];
-    currentSegmentId = null;
-    
-    // Get floor dimensions
-    var floorW = Math.max(C.wall.tW, C.wall.tW + C.wall.bV);
-    var floorH = Math.max(C.wall.lH, C.wall.lH + C.wall.rV);
-    
-    // Calculate grid dimensions
-    var segW = segmentConfig.width;
-    var segH = segmentConfig.height;
-    var cols = Math.ceil(floorW / segW);
-    var rows = Math.ceil(floorH / segH);
-    
-    // Generate segment grid
-    var id = 0;
-    for (var row = 0; row < rows; row++) {
-        for (var col = 0; col < cols; col++) {
-            var seg = {
-                id: id,
-                row: row,
-                col: col,
-                x: col * segW,
-                y: row * segH,
-                width: Math.min(segW, floorW - col * segW),
-                height: Math.min(segH, floorH - row * segH),
-                status: 'pending',
-                adjacent: {
-                    up: null,
-                    down: null,
-                    left: null,
-                    right: null
-                },
-                pathOrder: -1,
-                edgeSignature: null
-            };
-            segments.push(seg);
-            id++;
-        }
-    }
-    
-    // Build adjacency graph
-    for (var i = 0; i < segments.length; i++) {
-        var seg = segments[i];
-        var r = seg.row;
-        var c = seg.col;
-        
-        // Find adjacent segments
-        seg.adjacent.up = findSegmentByRowCol(r - 1, c);
-        seg.adjacent.down = findSegmentByRowCol(r + 1, c);
-        seg.adjacent.left = findSegmentByRowCol(r, c - 1);
-        seg.adjacent.right = findSegmentByRowCol(r, c + 1);
-    }
-    
-    // Generate optimal path (serpentine from top-left)
-    generateSerpentinePath(rows, cols);
-    
-    // Set first segment as current
-    if (segmentPath.length > 0) {
-        currentSegmentId = segmentPath[0];
-        segments[currentSegmentId].status = 'current';
-    }
-    
-    console.log('Generated ' + segments.length + ' segments (' + cols + ' cols x ' + rows + ' rows)');
-    return segments;
-}
-
-// Find segment by row/col
-function findSegmentByRowCol(row, col) {
-    for (var i = 0; i < segments.length; i++) {
-        if (segments[i].row === row && segments[i].col === col) {
-            return segments[i].id;
-        }
-    }
-    return null;
-}
-
-// Generate serpentine path starting from top-left corner
-function generateSerpentinePath(rows, cols) {
-    segmentPath = [];
-    var order = 0;
-    
-    for (var row = 0; row < rows; row++) {
-        if (row % 2 === 0) {
-            // Even rows: left to right
-            for (var col = 0; col < cols; col++) {
-                var segId = findSegmentByRowCol(row, col);
-                if (segId !== null) {
-                    segmentPath.push(segId);
-                    segments[segId].pathOrder = order++;
-                }
-            }
-        } else {
-            // Odd rows: right to left
-            for (var col = cols - 1; col >= 0; col--) {
-                var segId = findSegmentByRowCol(row, col);
-                if (segId !== null) {
-                    segmentPath.push(segId);
-                    segments[segId].pathOrder = order++;
-                }
-            }
-        }
-    }
-}
 
 // Get next recommended segment
 function getNextSegment() {
@@ -3870,7 +3813,6 @@ function completeCurrentSegment() {
         segments[nextId].status = 'current';
     } else {
         currentSegmentId = null;
-        console.log('All segments complete!');
     }
     
     saveData();
@@ -4684,20 +4626,6 @@ function drawDetailView() {
             }
         }
 
-        // Debug: log cut polygon points and what was detected
-        console.log('CUT DETAIL: cutPointsInches=' + cutPointsInches.length + ' tileVerts=' + tileVertsLocal.length + ' cutMarks=' + cutMarks.length);
-        for (var i = 0; i < cutPointsInches.length; i++) {
-            var p = cutPointsInches[i];
-            var onEdge = false, isCorner = false;
-            for (var j = 0; j < tileVertsLocal.length; j++) {
-                var c = tileVertsLocal[j];
-                if (Math.abs(p.x - c.x) < 0.15 && Math.abs(p.y - c.y) < 0.15) isCorner = true;
-                var e2 = tileVertsLocal[(j + 1) % tileVertsLocal.length];
-                if (isPointOnSegment(p.x, p.y, c.x, c.y, e2.x, e2.y, 0.3)) onEdge = true;
-            }
-            console.log('  pt[' + i + '] x=' + p.x.toFixed(2) + ' y=' + p.y.toFixed(2) + ' corner=' + isCorner + ' onEdge=' + onEdge);
-        }
-        
         // Post-process cut marks:
         // 1. Remove marks under 1/4" (negligible)
         // 2. Deduplicate: if two marks are on the same edge, keep only the one measured from kept corner
@@ -5804,6 +5732,7 @@ function hasBarcodeSupport() {
 }
 
 function openBarcodeScanner() {
+    if (!requirePro('Barcode Scanner')) return;
     var overlay = document.getElementById('scannerOverlay');
     overlay.classList.add('active');
     var statusEl = document.getElementById('scannerStatus');
@@ -7925,10 +7854,6 @@ function doOptimize(mode) {
     C.view.oyInches = best.y;
     draw();
     
-    // Show results
-    if (best.results) {
-        console.log('Optimize results:', mode, 'Full:', best.results.full, 'Cut:', best.results.cut, 'Small cuts:', best.results.smallCuts);
-    }
 }
 
 // Count tiles for optimization (without drawing)
@@ -8257,14 +8182,7 @@ function saveCurrentProject() {
     updateProjectList();
     
     // Brief visual feedback
-    var btn = event.target;
-    var originalText = btn.innerHTML;
-    btn.innerHTML = '✓ Saved!';
-    btn.style.background = '#46a758';
-    setTimeout(function() {
-        btn.innerHTML = originalText;
-        btn.style.background = '';
-    }, 1500);
+    showToast('✓ Project saved', 1500);
 }
 
 // Load a project
@@ -9463,6 +9381,66 @@ draw = function() {
 
 // ==================== END AUTO-SAVE ====================
 
+// ==================== LAYIT PRO SUBSCRIPTION ====================
+var proUser = localStorage.getItem('layit_pro') === 'true';
+
+function requirePro(featureName) {
+    if (proUser) return true;
+    showUpgradeModal(featureName);
+    return false;
+}
+
+function showUpgradeModal(featureName) {
+    document.getElementById('proUpgradeModal').classList.add('active');
+}
+
+function closeUpgradeModal() {
+    document.getElementById('proUpgradeModal').classList.remove('active');
+}
+
+function activateProDev() {
+    proUser = true;
+    localStorage.setItem('layit_pro', 'true');
+    closeUpgradeModal();
+    updateProUI();
+    showToast('✓ LayIt Pro activated', 2000);
+}
+
+function deactivateProDev() {
+    proUser = false;
+    localStorage.removeItem('layit_pro');
+    updateProUI();
+    showToast('Reverted to Free tier', 2000);
+}
+
+function updateProUI() {
+    // PRO badges: hide when pro, show when free
+    var badges = document.querySelectorAll('#scanProBadge, #roomScanProBadge, #cloudSyncProBadge, #shareProBadge, #jobCostProBadge');
+    badges.forEach(function(b) { b.style.display = proUser ? 'none' : ''; });
+
+    // Settings tab status
+    var statusCard = document.getElementById('proStatusCard');
+    var statusValue = document.getElementById('proStatusValue');
+    var upgradeBtn = document.getElementById('proUpgradeBtn');
+    var manageBtn = document.getElementById('proManageBtn');
+    if (statusCard && statusValue) {
+        if (proUser) {
+            statusCard.classList.add('active');
+            statusValue.textContent = 'Pro Active';
+            statusValue.classList.add('is-pro');
+            upgradeBtn.style.display = 'none';
+            manageBtn.style.display = '';
+        } else {
+            statusCard.classList.remove('active');
+            statusValue.textContent = 'Free';
+            statusValue.classList.remove('is-pro');
+            upgradeBtn.style.display = '';
+            manageBtn.style.display = 'none';
+        }
+    }
+}
+// ==================== END LAYIT PRO ====================
+
 // Initialize
 initTabs();
 buildPresetDropdown();
@@ -9474,6 +9452,7 @@ var restored = autoRestoreState();
 
 updateVoidList();
 initLaserTab(); // Initialize laser position/coverage
+updateProUI(); // Set initial pro badge/status visibility
 draw();
 
 if (restored) {
