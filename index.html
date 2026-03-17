@@ -417,8 +417,6 @@
         .modal-cancel { background:var(--bg-elevated); color:var(--text-primary); border:2px solid rgba(148,163,184,0.12); }
         .modal-confirm { background:linear-gradient(135deg, #ef4444, #dc2626); color:#fff; box-shadow:0 4px 14px rgba(239,68,68,0.35); }
 
-        /* ---- OPTIMIZE MENU ---- */
-
         /* ---- TILE DETAIL VIEW ---- */
         .detail-overlay {
             display:none;
@@ -1900,7 +1898,6 @@ document.addEventListener('click', function(e) {
 
 // Projector setup variables
 var projSection = 'full'; // 'full', 'TL', 'TR', 'BL', 'BR'
-var calibrationMode = false;
 
 // ==================== FEATURE GUIDE ====================
 function toggleGuide(headerEl) {
@@ -2640,411 +2637,6 @@ setTimeout(initPerimeterCanvas, 100);
 
 // ==================== END PERIMETER SYSTEM ====================
 
-// ==================== ROOM SCAN IMPORT SYSTEM ====================
-
-var _pendingRoomScan = null;
-
-/**
- * Extract the first .usda file from a USDZ (ZIP archive) ArrayBuffer.
- * USDZ spec uses ZIP store method (compression=0), so no decompression needed.
- * Returns the .usda text content, or null if not found.
- */
-function extractUSDAfromUSDZ(buffer) {
-    var view = new DataView(buffer);
-    var uint8 = new Uint8Array(buffer);
-    var decoder = new TextDecoder('utf-8');
-    var offset = 0;
-    var foundUsdc = false;
-
-    while (offset < buffer.byteLength - 30) {
-        // Check local file header signature: PK\x03\x04
-        if (view.getUint32(offset, true) !== 0x04034b50) break;
-
-        var compressionMethod = view.getUint16(offset + 8, true);
-        var compressedSize = view.getUint32(offset + 18, true);
-        var uncompressedSize = view.getUint32(offset + 22, true);
-        var filenameLen = view.getUint16(offset + 26, true);
-        var extraLen = view.getUint16(offset + 28, true);
-
-        var filename = decoder.decode(uint8.slice(offset + 30, offset + 30 + filenameLen));
-        var dataStart = offset + 30 + filenameLen + extraLen;
-        var dataSize = compressionMethod === 0 ? uncompressedSize : compressedSize;
-
-        if (filename.toLowerCase().endsWith('.usda')) {
-            if (compressionMethod !== 0) {
-                throw new Error('Compressed USDZ not supported');
-            }
-            return decoder.decode(uint8.slice(dataStart, dataStart + dataSize));
-        }
-
-        if (filename.toLowerCase().endsWith('.usdc')) foundUsdc = true;
-
-        offset = dataStart + dataSize;
-    }
-
-    if (foundUsdc) return null; // Binary only — caller will show error
-    return null;
-}
-
-/**
- * Parse USDA text to extract wall geometry from RoomPlan exports.
- * Looks for def Xform "Wall_N" blocks and extracts transform data.
- *
- * RoomPlan coordinate system: Y-up, X-Z is the floor plane, meters.
- * Wall scale.x = wall length, scale.y = wall height.
- * Rotation around Y axis = angle on the floor plane.
- */
-function parseUSDA(text) {
-    var result = { walls: [], doors: [], windows: [] };
-    var xformRegex = /def Xform "(Wall|Door|Window|Opening)[\s_]*([\d]*)"/g;
-    var match;
-
-    while ((match = xformRegex.exec(text)) !== null) {
-        var type = match[1].toLowerCase();
-        var startIdx = match.index;
-
-        // Find opening brace
-        var braceStart = text.indexOf('{', startIdx);
-        if (braceStart === -1) continue;
-
-        // Find matching closing brace (handle nesting)
-        var depth = 1;
-        var pos = braceStart + 1;
-        while (pos < text.length && depth > 0) {
-            if (text[pos] === '{') depth++;
-            else if (text[pos] === '}') depth--;
-            pos++;
-        }
-        var block = text.substring(braceStart + 1, pos - 1);
-
-        var xform = parseXformBlock(block);
-        if (!xform) continue;
-
-        if (type === 'wall') result.walls.push(xform);
-        else if (type === 'door' || type === 'opening') result.doors.push(xform);
-        else if (type === 'window') result.windows.push(xform);
-    }
-
-    return result;
-}
-
-/**
- * Parse transform data from a single Xform block.
- * Handles both matrix4d and separate translate/rotate/scale forms.
- * Returns { cx, cz, angle, length, height } or null.
- */
-function parseXformBlock(block) {
-    // Try matrix4d first
-    var matMatch = block.match(/matrix4d\s+xformOp:transform\s*=\s*\(\s*\(([^)]+)\)\s*,\s*\(([^)]+)\)\s*,\s*\(([^)]+)\)\s*,\s*\(([^)]+)\)\s*\)/);
-    if (matMatch) {
-        var rows = [];
-        for (var i = 1; i <= 4; i++) {
-            rows.push(matMatch[i].split(',').map(function(v) { return parseFloat(v.trim()); }));
-        }
-        // Translation from row 3
-        var tx = rows[3][0], ty = rows[3][1], tz = rows[3][2];
-        // Scale: length of first two row vectors
-        var scaleX = Math.sqrt(rows[0][0]*rows[0][0] + rows[0][1]*rows[0][1] + rows[0][2]*rows[0][2]);
-        var scaleY = Math.sqrt(rows[1][0]*rows[1][0] + rows[1][1]*rows[1][1] + rows[1][2]*rows[1][2]);
-        // Floor plane angle from X-axis direction
-        var angle = Math.atan2(rows[0][2], rows[0][0]);
-        return { cx: tx, cz: tz, angle: angle, length: scaleX, height: scaleY };
-    }
-
-    // Fall back to separate translate/rotate/scale
-    var translate = parseUsdaVec3(block, 'xformOp:translate');
-    var scale = parseUsdaVec3(block, 'xformOp:scale');
-    if (!translate || !scale) return null;
-
-    var angle = 0;
-    // Check rotateY (most common for walls in RoomPlan)
-    var rotY = block.match(/(?:float|double)\s+xformOp:rotateY\s*=\s*([-\d.eE+]+)/);
-    if (rotY) {
-        angle = parseFloat(rotY[1]) * Math.PI / 180;
-    } else {
-        // Check rotateXYZ — Y component is floor-plane rotation
-        var rotXYZ = block.match(/(?:float3|double3)\s+xformOp:rotateXYZ\s*=\s*\(\s*([-\d.eE+]+)\s*,\s*([-\d.eE+]+)\s*,\s*([-\d.eE+]+)\s*\)/);
-        if (rotXYZ) angle = parseFloat(rotXYZ[2]) * Math.PI / 180;
-        else {
-            var rotZ = block.match(/(?:float|double)\s+xformOp:rotateZ\s*=\s*([-\d.eE+]+)/);
-            if (rotZ) angle = parseFloat(rotZ[1]) * Math.PI / 180;
-        }
-    }
-
-    return {
-        cx: translate[0],
-        cz: translate[2],
-        angle: angle,
-        length: Math.abs(scale[0]),
-        height: Math.abs(scale[1])
-    };
-}
-
-/** Parse a vec3 property like: double3 xformOp:translate = (1.5, 0.1, -2.3) */
-function parseUsdaVec3(block, opName) {
-    var escaped = opName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    var regex = new RegExp('(?:float3|double3)\\s+' + escaped + '\\s*=\\s*\\(\\s*([-\\d.eE+]+)\\s*,\\s*([-\\d.eE+]+)\\s*,\\s*([-\\d.eE+]+)\\s*\\)');
-    var m = block.match(regex);
-    if (!m) return null;
-    return [parseFloat(m[1]), parseFloat(m[2]), parseFloat(m[3])];
-}
-
-/**
- * Convert parsed wall data to a closed polygon in inches.
- * Each wall: center + angle + length (meters) → two endpoints → chain into polygon.
- */
-function wallsToPolygon(walls) {
-    if (!walls || walls.length < 3) return null;
-
-    var M2IN = 39.3701;
-
-    // Convert each wall to a line segment
-    var segments = walls.map(function(w) {
-        var halfLen = w.length / 2;
-        var cosA = Math.cos(w.angle);
-        var sinA = Math.sin(w.angle);
-        return {
-            x1: (w.cx - halfLen * cosA) * M2IN,
-            y1: (w.cz - halfLen * sinA) * M2IN,
-            x2: (w.cx + halfLen * cosA) * M2IN,
-            y2: (w.cz + halfLen * sinA) * M2IN
-        };
-    });
-
-    // Chain segments into connected polygon via nearest-neighbor
-    var polygon = [];
-    var used = new Array(segments.length).fill(false);
-    used[0] = true;
-    polygon.push({ x: segments[0].x1, y: segments[0].y1 });
-    polygon.push({ x: segments[0].x2, y: segments[0].y2 });
-    var cur = { x: segments[0].x2, y: segments[0].y2 };
-
-    for (var iter = 1; iter < segments.length; iter++) {
-        var bestIdx = -1, bestDist = Infinity, bestFlip = false;
-
-        for (var j = 0; j < segments.length; j++) {
-            if (used[j]) continue;
-            var d1 = Math.hypot(cur.x - segments[j].x1, cur.y - segments[j].y1);
-            var d2 = Math.hypot(cur.x - segments[j].x2, cur.y - segments[j].y2);
-            if (d1 < bestDist) { bestDist = d1; bestIdx = j; bestFlip = false; }
-            if (d2 < bestDist) { bestDist = d2; bestIdx = j; bestFlip = true; }
-        }
-
-        if (bestIdx === -1) break;
-        used[bestIdx] = true;
-
-        if (bestFlip) {
-            polygon.push({ x: segments[bestIdx].x1, y: segments[bestIdx].y1 });
-            cur = { x: segments[bestIdx].x1, y: segments[bestIdx].y1 };
-        } else {
-            polygon.push({ x: segments[bestIdx].x2, y: segments[bestIdx].y2 });
-            cur = { x: segments[bestIdx].x2, y: segments[bestIdx].y2 };
-        }
-    }
-
-    // Calculate perimeter
-    var perimeter = 0;
-    for (var i = 0; i < polygon.length; i++) {
-        var next = polygon[(i + 1) % polygon.length];
-        perimeter += Math.hypot(next.x - polygon[i].x, next.y - polygon[i].y);
-    }
-
-    // Bounding box
-    var minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-    polygon.forEach(function(p) {
-        if (p.x < minX) minX = p.x;
-        if (p.y < minY) minY = p.y;
-        if (p.x > maxX) maxX = p.x;
-        if (p.y > maxY) maxY = p.y;
-    });
-    var width = maxX - minX;
-    var height = maxY - minY;
-
-    // Normalize: origin at min corner, Y=0 at bottom (LayIt convention)
-    polygon.forEach(function(p) {
-        p.x = p.x - minX;
-        p.y = height - (p.y - minY);
-    });
-
-    // Ensure counter-clockwise winding (matching applyPerimeter convention)
-    var signedArea = 0;
-    for (var i = 0; i < polygon.length; i++) {
-        var j = (i + 1) % polygon.length;
-        signedArea += polygon[i].x * polygon[j].y;
-        signedArea -= polygon[j].x * polygon[i].y;
-    }
-    if (signedArea < 0) polygon.reverse();
-
-    return {
-        polygon: polygon,
-        perimeterInches: perimeter,
-        wallCount: walls.length,
-        widthInches: width,
-        heightInches: height
-    };
-}
-
-/** Main entry point: handle file input change */
-function handleRoomScanImport(event) {
-    var file = event.target.files[0];
-    if (!file) return;
-
-    var ext = file.name.toLowerCase().split('.').pop();
-
-    if (ext === 'usda') {
-        var reader = new FileReader();
-        reader.onload = function(e) {
-            try { processRoomScanUSDA(e.target.result); }
-            catch (err) { showToast('Error reading file: ' + err.message); }
-        };
-        reader.readAsText(file);
-    } else if (ext === 'usdz') {
-        var reader = new FileReader();
-        reader.onload = function(e) {
-            try {
-                var usda = extractUSDAfromUSDZ(e.target.result);
-                if (!usda) {
-                    showToast('No readable .usda found. Binary .usdc format is not supported.');
-                    return;
-                }
-                processRoomScanUSDA(usda);
-            } catch (err) { showToast('Error parsing USDZ: ' + err.message); }
-        };
-        reader.readAsArrayBuffer(file);
-    } else {
-        showToast('Unsupported format. Use .usdz or .usda files.');
-    }
-
-    event.target.value = '';
-}
-
-/** Process parsed USDA text: extract walls, convert to polygon, show preview */
-function processRoomScanUSDA(usdaText) {
-    var parsed = parseUSDA(usdaText);
-
-    if (!parsed.walls || parsed.walls.length < 3) {
-        showToast('Not enough walls found (' + (parsed.walls ? parsed.walls.length : 0) + ', need 3+)');
-        return;
-    }
-
-    var result = wallsToPolygon(parsed.walls);
-    if (!result || !result.polygon || result.polygon.length < 3) {
-        showToast('Could not form a closed room shape from walls');
-        return;
-    }
-
-    _pendingRoomScan = result;
-    showRoomScanPreview(result);
-}
-
-/** Draw parsed room polygon on preview canvas and show modal */
-function showRoomScanPreview(result) {
-    var modal = document.getElementById('roomScanModal');
-    var canvas = document.getElementById('roomScanPreviewCanvas');
-    var ctx = canvas.getContext('2d');
-    var poly = result.polygon;
-
-    // Info text
-    var perimFeet = Math.floor(result.perimeterInches / 12);
-    var perimRem = Math.round(result.perimeterInches % 12);
-    var wFt = (result.widthInches / 12).toFixed(1);
-    var hFt = (result.heightInches / 12).toFixed(1);
-
-    var info = document.getElementById('roomScanInfo');
-    info.innerHTML =
-        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">' +
-        '<div><b>Walls:</b> ' + result.wallCount + '</div>' +
-        '<div><b>Perimeter:</b> ' + perimFeet + "' " + perimRem + '"</div>' +
-        '<div><b>Width:</b> ' + wFt + ' ft</div>' +
-        '<div><b>Depth:</b> ' + hFt + ' ft</div>' +
-        '</div>';
-
-    // Draw polygon
-    var w = canvas.width, h = canvas.height;
-    ctx.clearRect(0, 0, w, h);
-
-    var pad = 30;
-    var scaleX = (w - 2 * pad) / result.widthInches;
-    var scaleY = (h - 2 * pad) / result.heightInches;
-    var scale = Math.min(scaleX, scaleY);
-
-    var drawW = result.widthInches * scale;
-    var drawH = result.heightInches * scale;
-    var offX = (w - drawW) / 2;
-    var offY = (h - drawH) / 2;
-
-    // Filled polygon
-    ctx.beginPath();
-    ctx.moveTo(offX + poly[0].x * scale, offY + (result.heightInches - poly[0].y) * scale);
-    for (var i = 1; i < poly.length; i++) {
-        ctx.lineTo(offX + poly[i].x * scale, offY + (result.heightInches - poly[i].y) * scale);
-    }
-    ctx.closePath();
-    ctx.fillStyle = 'rgba(34, 197, 94, 0.15)';
-    ctx.fill();
-    ctx.strokeStyle = '#22c55e';
-    ctx.lineWidth = 2;
-    ctx.stroke();
-
-    // Corner dots
-    ctx.fillStyle = '#22c55e';
-    for (var i = 0; i < poly.length; i++) {
-        ctx.beginPath();
-        ctx.arc(offX + poly[i].x * scale, offY + (result.heightInches - poly[i].y) * scale, 4, 0, Math.PI * 2);
-        ctx.fill();
-    }
-
-    // Wall length labels
-    ctx.fillStyle = '#94a3b8';
-    ctx.font = '11px sans-serif';
-    ctx.textAlign = 'center';
-    for (var i = 0; i < poly.length; i++) {
-        var j = (i + 1) % poly.length;
-        var mx = (poly[i].x + poly[j].x) / 2;
-        var my = (poly[i].y + poly[j].y) / 2;
-        var len = Math.hypot(poly[j].x - poly[i].x, poly[j].y - poly[i].y);
-        var ft = Math.floor(len / 12);
-        var inR = Math.round(len % 12);
-        var label = ft + "'" + inR + '"';
-        ctx.fillText(label, offX + mx * scale, offY + (result.heightInches - my) * scale - 8);
-    }
-
-    modal.classList.add('active');
-}
-
-/** Handle modal close (Cancel or Apply) */
-function closeRoomScanModal(apply) {
-    document.getElementById('roomScanModal').classList.remove('active');
-    if (apply && _pendingRoomScan) {
-        applyRoomScanImport(_pendingRoomScan);
-    }
-    _pendingRoomScan = null;
-}
-
-/**
- * Apply imported room scan polygon to the layout.
- * Mirrors applyPerimeter() and applyQuickRectangle() output path.
- */
-function applyRoomScanImport(result) {
-    clearPerimeter();
-
-    C.polygon = result.polygon;
-    C.wall.tW = result.widthInches;
-    C.wall.lH = result.heightInches;
-    C.wall.rV = 0;
-    C.wall.bV = 0;
-
-    markUnsaved();
-    draw();
-
-    var perimFeet = Math.floor(result.perimeterInches / 12);
-    var perimRem = Math.round(result.perimeterInches % 12);
-    showToast('Room scan applied! ' + result.wallCount + ' walls, ' + perimFeet + "'" + perimRem + '" perimeter', 3000);
-    showTab('diagram');
-}
-
-// ==================== END ROOM SCAN IMPORT SYSTEM ====================
-
 function setSection(sec) {
     projSection = sec;
 }
@@ -3346,31 +2938,6 @@ function handleCanvasTap(e) {
             return;
         }
     }
-}
-
-function showLockHint() {
-    // Brief visual hint to lock the pattern first
-    var lockBtn = document.getElementById('lockBtn');
-    var originalBg = lockBtn.style.background;
-    
-    // Flash the lock button
-    lockBtn.style.background = '#f0a000';
-    lockBtn.style.transform = 'scale(1.05)';
-    
-    setTimeout(function() {
-        lockBtn.style.background = originalBg;
-        lockBtn.style.transform = 'scale(1)';
-    }, 300);
-    
-    // Also show a brief tooltip message
-    var hint = document.createElement('div');
-    hint.textContent = '🔒 Lock pattern first to mark tiles';
-    hint.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(0,0,0,0.9);color:#fff;padding:15px 25px;border-radius:8px;font-size:14px;z-index:9999;text-align:center;';
-    document.body.appendChild(hint);
-    
-    setTimeout(function() {
-        hint.remove();
-    }, 1500);
 }
 
 function closeUncutModal(confirmed) {
@@ -6147,7 +5714,7 @@ function draw() {
 
                 // Store cut tile data for tap detection and dimensions
                 if (isCut && (!projMode || window.segmentProjMode)) {
-                    var cutDims = getCutDimensions(verts, wall, voidPolys, s);
+                    var cutDims = getCutDimensions(verts, wall, voidPolys, s, C.tile.sh, C.tile.or, col);
                     cutLabels.push({ x: x, y: y, text: cutDims || '?', state: tileState });
                     // Store all data needed for detail view
                     // Deep copy verts to avoid reference issues
@@ -7160,14 +6727,14 @@ function getIntersections(verts, poly) {
 }
 
 // Calculate accurate cut dimensions for a partial tile
-function getCutDimensions(verts, wall, voidPolys, scale) {
+function getCutDimensions(verts, wall, voidPolys, scale, shape, orient, col) {
     // Collect all points that define the cut piece:
     // 1. Tile vertices that are inside wall and not in any void
     // 2. Intersection points with wall
     // 3. Intersection points with voids
-    
+
     var cutPoints = [];
-    
+
     // Add tile vertices that are inside the valid area
     for (var i = 0; i < verts.length; i++) {
         var inWall = inPoly(verts[i], wall);
@@ -7182,7 +6749,7 @@ function getCutDimensions(verts, wall, voidPolys, scale) {
             cutPoints.push(verts[i]);
         }
     }
-    
+
     // Add intersection points with wall
     var wallInters = getIntersections(verts, wall);
     for (var i = 0; i < wallInters.length; i++) {
@@ -7197,7 +6764,7 @@ function getCutDimensions(verts, wall, voidPolys, scale) {
             cutPoints.push(wallInters[i]);
         }
     }
-    
+
     // Add intersection points with voids
     for (var vi = 0; vi < voidPolys.length; vi++) {
         var voidInters = getIntersections(verts, voidPolys[vi]);
@@ -7207,7 +6774,16 @@ function getCutDimensions(verts, wall, voidPolys, scale) {
             }
         }
     }
-    
+
+    // Calculate tile center for coordinate transforms
+    var tileCenterX = 0, tileCenterY = 0;
+    for (var i = 0; i < verts.length; i++) {
+        tileCenterX += verts[i][0];
+        tileCenterY += verts[i][1];
+    }
+    tileCenterX /= verts.length;
+    tileCenterY /= verts.length;
+
     if (cutPoints.length < 2) {
         // Fallback to full tile size with ~ prefix
         var minX = verts[0][0], maxX = verts[0][0];
@@ -7218,10 +6794,40 @@ function getCutDimensions(verts, wall, voidPolys, scale) {
             minY = Math.min(minY, verts[i][1]);
             maxY = Math.max(maxY, verts[i][1]);
         }
-        return '~' + toFraction((maxX-minX)/scale) + '×' + toFraction((maxY-minY)/scale);
+        return '~' + toFraction((maxX-minX)/scale) + '\u00d7' + toFraction((maxY-minY)/scale);
     }
-    
-    // Calculate bounding box of the cut piece
+
+    // For herringbone tiles, un-rotate cut points to tile-local space
+    // so bounding box aligns with tile edges (not world axes)
+    var tileAngle = 0;
+    if (shape === 'herringbone') {
+        tileAngle = (col % 2 === 0) ? 45 : -45;
+        if (orient === 'flat') tileAngle = -tileAngle;
+    }
+
+    if (tileAngle !== 0) {
+        var rad = -tileAngle * Math.PI / 180;
+        var cosA = Math.cos(rad);
+        var sinA = Math.sin(rad);
+
+        var minX = Infinity, maxX = -Infinity;
+        var minY = Infinity, maxY = -Infinity;
+        for (var i = 0; i < cutPoints.length; i++) {
+            var rx = (cutPoints[i][0] - tileCenterX) / scale;
+            var ry = (cutPoints[i][1] - tileCenterY) / scale;
+            var lx = rx * cosA - ry * sinA;
+            var ly = rx * sinA + ry * cosA;
+            minX = Math.min(minX, lx);
+            maxX = Math.max(maxX, lx);
+            minY = Math.min(minY, ly);
+            maxY = Math.max(maxY, ly);
+        }
+        var widthIn = maxX - minX;
+        var heightIn = maxY - minY;
+        return toFraction(widthIn) + ' \u00d7 ' + toFraction(heightIn);
+    }
+
+    // Non-rotated tiles: use axis-aligned bounding box
     var minX = cutPoints[0][0], maxX = cutPoints[0][0];
     var minY = cutPoints[0][1], maxY = cutPoints[0][1];
     for (var i = 1; i < cutPoints.length; i++) {
@@ -7230,12 +6836,12 @@ function getCutDimensions(verts, wall, voidPolys, scale) {
         minY = Math.min(minY, cutPoints[i][1]);
         maxY = Math.max(maxY, cutPoints[i][1]);
     }
-    
+
     var widthIn = (maxX - minX) / scale;
     var heightIn = (maxY - minY) / scale;
-    
+
     // Format as fractions
-    return toFraction(widthIn) + ' × ' + toFraction(heightIn);
+    return toFraction(widthIn) + ' \u00d7 ' + toFraction(heightIn);
 }
 
 // Convert decimal inches to fractional string (to nearest 1/16)
@@ -8575,8 +8181,7 @@ setTimeout(function() {
 function startProj() {
     try {
         projMode = true;
-        calibrationMode = false;
-        
+
         // Hide tabs
         document.getElementById('tabBar').style.display = 'none';
         document.body.style.background = '#ffffff';
@@ -8687,9 +8292,6 @@ function exitProj() {
     if (document.fullscreenElement) {
         document.exitFullscreen();
     }
-    
-    // Reset calibration mode
-    calibrationMode = false;
     
     draw();
 }
