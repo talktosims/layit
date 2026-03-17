@@ -5999,9 +5999,20 @@ function draw() {
     full = 0;
     part = 0;
     var cutLabels = []; // Store cut dimensions to draw on top
-    
-    // Draw tiles
-    for (var row = startRow; row < endRow; row++) {
+
+    // Mosaic tiles: draw as continuous sub-tile field instead of sheet rectangles
+    if (C.tile.sh === 'mosaic' && C.tile.subShape && !projMode) {
+        var mosaicResult = drawMosaicField(ox, oy, s, wall, voidPolys, patternOx, patternOy, projMode, cutLabels);
+        full = mosaicResult.full;
+        part = mosaicResult.part;
+    } else if (C.tile.sh === 'mosaic' && projMode) {
+        // In projector mode, draw mosaic as sheet outlines (for laser cutting)
+        // Fall through to the normal tile loop below
+    }
+
+    // Draw tiles (skip for mosaic in normal mode - handled above)
+    var skipMainLoop = (C.tile.sh === 'mosaic' && C.tile.subShape && !projMode);
+    for (var row = startRow; !skipMainLoop && row < endRow; row++) {
         for (var col = startCol; col < endCol; col++) {
             var x = ox + col * colSp + patternOx;
             var y = oy + row * rowSp + patternOy;
@@ -6134,11 +6145,6 @@ function draw() {
                 // The sub-tile grout lines will define the visual grid instead.
                 if (C.tile.sh !== 'mosaic' || projMode) {
                     cx.stroke();
-                }
-
-                // Draw sub-tile pattern inside mosaic sheets
-                if (C.tile.sh === 'mosaic' && C.tile.subShape && !projMode) {
-                    drawMosaicSubTiles(x, y, tw, th, s);
                 }
 
                 // Store cut tile data for tap detection and dimensions
@@ -6770,151 +6776,318 @@ function drawTile(x, y, tw, th, g, row, col) {
     cx.closePath();
 }
 
-// Draw sub-tile grout pattern inside a mosaic sheet to show individual tiles.
-// Uses grout-colored lines so the within-sheet grout visually matches the
-// sheet-to-sheet gaps (both are the same colour and width).
-function drawMosaicSubTiles(x, y, tw, th, scale) {
-    var subShape = C.tile.subShape;
-    var subW = (C.tile.subW || 1) * scale;
-    var subH = (C.tile.subH || 1) * scale;
-    var subGr = (C.tile.subGr || 0.0625) * scale;
-    // Sheet drawable area matches drawTile: full tile size.
-    // Gap between sheets comes from the step spacing, not from shrinking the sheet.
-    var sheetW = tw;
-    var sheetH = th;
-    var left = x - sheetW / 2;
-    var top = y - sheetH / 2;
+// Draw mosaic as a continuous field of sub-tiles across the entire wall.
+// Sub-tiles are rendered individually (like any other tile shape), but counting
+// is done in sheets (since that's what you buy at the store).
+// Returns { full: N, part: N } sheet counts.
+function drawMosaicField(ox, oy, s, wall, voidPolys, patternOx, patternOy, projMode, cutLabels) {
+    var subShape = C.tile.subShape || 'square';
+    var subW = C.tile.subW || 1;   // inches
+    var subH = C.tile.subH || 1;
+    var subGr = C.tile.subGr || 0.0625;
+    var sheetW = C.tile.w;  // sheet width in inches
+    var sheetH = C.tile.h;  // sheet height in inches
+    var orient = C.tile.or || 'pointy';
 
-    // Save context and clip to sheet boundary
-    cx.save();
-    cx.beginPath();
+    // Sub-tile dimensions in pixels
+    var stWpx = subW * s;
+    var stHpx = subH * s;
+    var stGrPx = subGr * s;
+
+    // Sub-tile grid spacing in inches
+    var stColIn, stRowIn;  // spacing between sub-tile centers
     if (subShape === 'hex') {
-        var mVerts = getMosaicSheetVerts(x, y, sheetW, sheetH, false);
-        cx.moveTo(mVerts[0][0], mVerts[0][1]);
-        for (var mi = 1; mi < mVerts.length; mi++) cx.lineTo(mVerts[mi][0], mVerts[mi][1]);
-    } else {
-        cx.rect(left, top, sheetW, sheetH);
-    }
-    cx.closePath();
-    cx.clip();
-
-    // Grout lines match the background (white) so they look like real grout gaps.
-    // Line width = subGr so the gap width matches the sheet-to-sheet gap exactly.
-    var groutLineW = Math.max(1, subGr);
-    cx.strokeStyle = '#ffffff';
-    cx.lineWidth = groutLineW;
-
-    if (subShape === 'square') {
-        var cellW = subW + subGr;
-        var cellH = subH + subGr;
-        // Vertical grout lines
-        for (var gx = cellW; gx < sheetW; gx += cellW) {
-            cx.beginPath();
-            cx.moveTo(left + gx - subGr / 2, top);
-            cx.lineTo(left + gx - subGr / 2, top + sheetH);
-            cx.stroke();
-        }
-        // Horizontal grout lines
-        for (var gy = cellH; gy < sheetH; gy += cellH) {
-            cx.beginPath();
-            cx.moveTo(left, top + gy - subGr / 2);
-            cx.lineTo(left + sheetW, top + gy - subGr / 2);
-            cx.stroke();
-        }
-
-    } else if (subShape === 'hex') {
-        var orient = C.tile.or || 'pointy';
-        var colStep, rowStep;
         if (orient === 'pointy') {
-            colStep = (C.tile.subW + C.tile.subGr) * scale;
-            rowStep = (C.tile.subH + C.tile.subGr) * 0.75 * scale;
+            stColIn = subW + subGr;
+            stRowIn = (subH + subGr) * 0.75;
         } else {
-            colStep = (C.tile.subW + C.tile.subGr) * 0.75 * scale;
-            rowStep = (C.tile.subH + C.tile.subGr) * scale;
+            stColIn = (subW + subGr) * 0.75;
+            stRowIn = subH + subGr;
         }
-        var nCols = Math.ceil(sheetW / colStep) + 1;
-        var nRows = Math.ceil(sheetH / rowStep) + 1;
-
-        for (var r = 0; r < nRows; r++) {
-            for (var c = 0; c < nCols; c++) {
-                var hx, hy;
-                if (orient === 'pointy') {
-                    hx = left + c * colStep + subW / 2;
-                    hy = top + r * rowStep + subH / 2;
-                    if (r % 2 === 1) hx += colStep / 2;
-                } else {
-                    hx = left + c * colStep + subW / 2;
-                    hy = top + r * rowStep + subH / 2;
-                    if (c % 2 === 1) hy += rowStep / 2;
-                }
-                cx.beginPath();
-                if (orient === 'pointy') {
-                    var hw = subW / 2, hh = subH / 2;
-                    cx.moveTo(hx, hy - hh);
-                    cx.lineTo(hx + hw, hy - hh / 2);
-                    cx.lineTo(hx + hw, hy + hh / 2);
-                    cx.lineTo(hx, hy + hh);
-                    cx.lineTo(hx - hw, hy + hh / 2);
-                    cx.lineTo(hx - hw, hy - hh / 2);
-                } else {
-                    var hw = subW / 2, hh = subH / 2;
-                    cx.moveTo(hx + hw, hy);
-                    cx.lineTo(hx + hw / 2, hy + hh);
-                    cx.lineTo(hx - hw / 2, hy + hh);
-                    cx.lineTo(hx - hw, hy);
-                    cx.lineTo(hx - hw / 2, hy - hh);
-                    cx.lineTo(hx + hw / 2, hy - hh);
-                }
-                cx.closePath();
-                cx.stroke();
-            }
-        }
-
     } else if (subShape === 'penny') {
-        var cellW = subW + subGr;
-        var cellH = subH + subGr;
-        var radius = subW / 2;
-        for (var py = cellH / 2; py < sheetH + cellH / 2; py += cellH) {
-            for (var px = cellW / 2; px < sheetW + cellW / 2; px += cellW) {
-                cx.beginPath();
-                cx.arc(left + px, top + py, radius, 0, Math.PI * 2);
-                cx.stroke();
-            }
-        }
-
+        stColIn = subW + subGr;
+        stRowIn = subH + subGr;
     } else if (subShape === 'fishscale') {
-        var cellW = subW + subGr;
-        var cellH = (subH + subGr) * 0.75;
-        var radius = subW / 2;
-        var nRows_fs = Math.ceil(sheetH / cellH) + 2;
-        var nCols_fs = Math.ceil(sheetW / cellW) + 2;
-        for (var r = -1; r < nRows_fs; r++) {
-            for (var c = -1; c < nCols_fs; c++) {
-                var fx = left + c * cellW + cellW / 2;
-                var fy = top + r * cellH + cellH / 2;
-                if (r % 2 !== 0) fx += cellW / 2;
-                cx.beginPath();
-                cx.arc(fx, fy, radius, 0, Math.PI, false);
-                cx.stroke();
-            }
-        }
-
+        stColIn = subW + subGr;
+        stRowIn = (subH + subGr) * 0.75;
     } else if (subShape === 'diamond') {
-        var cellW = subW + subGr;
-        var cellH = subH + subGr;
-        for (var dx = -sheetH; dx < sheetW + sheetH; dx += cellW) {
-            cx.beginPath();
-            cx.moveTo(left + dx, top);
-            cx.lineTo(left + dx + sheetH, top + sheetH);
-            cx.stroke();
-            cx.beginPath();
-            cx.moveTo(left + dx, top + sheetH);
-            cx.lineTo(left + dx + sheetH, top);
-            cx.stroke();
+        // Diamonds are rotated 45deg squares, spacing is along the diagonal
+        stColIn = subW + subGr;
+        stRowIn = subH + subGr;
+    } else {
+        // square
+        stColIn = subW + subGr;
+        stRowIn = subH + subGr;
+    }
+
+    var stColPx = stColIn * s;
+    var stRowPx = stRowIn * s;
+
+    // Calculate wall bounding box for early culling
+    var wallMinX = Infinity, wallMaxX = -Infinity, wallMinY = Infinity, wallMaxY = -Infinity;
+    for (var wi = 0; wi < wall.length; wi++) {
+        if (wall[wi][0] < wallMinX) wallMinX = wall[wi][0];
+        if (wall[wi][0] > wallMaxX) wallMaxX = wall[wi][0];
+        if (wall[wi][1] < wallMinY) wallMinY = wall[wi][1];
+        if (wall[wi][1] > wallMaxY) wallMaxY = wall[wi][1];
+    }
+
+    // Expand bounds by one sub-tile to catch edge tiles
+    var margin = Math.max(stWpx, stHpx) * 1.5;
+    wallMinX -= margin;
+    wallMaxX += margin;
+    wallMinY -= margin;
+    wallMaxY += margin;
+
+    // How many sub-tile rows/cols to scan
+    var patternOxIn = (patternOx / s);  // pattern offset in inches
+    var patternOyIn = (patternOy / s);
+    var startCol = Math.floor((wallMinX - ox - patternOx) / stColPx) - 2;
+    var endCol = Math.ceil((wallMaxX - ox - patternOx) / stColPx) + 2;
+    var startRow = Math.floor((wallMinY - oy - patternOy) / stRowPx) - 2;
+    var endRow = Math.ceil((wallMaxY - oy - patternOy) / stRowPx) + 2;
+
+    // Sheet grid spacing in inches (for tracking which sheet a sub-tile belongs to)
+    var sheetColIn = sheetW + subGr;
+    var sheetRowIn = sheetH + subGr;
+
+    // Track sheet status: key -> { anyIn: bool, allIn: bool }
+    var sheetStatus = {};
+
+    // Function to get sheet key for a sub-tile position (in inches)
+    function getSheetKey(xIn, yIn) {
+        // Offset by pattern position
+        var sx = xIn - patternOxIn;
+        var sy = yIn - patternOyIn;
+        var sc = Math.floor(sx / sheetColIn);
+        var sr = Math.floor(sy / sheetRowIn);
+        return sc + ',' + sr;
+    }
+
+    // Function to get sub-tile vertices for hit testing (in pixels)
+    function getSubTileVerts(px, py) {
+        if (subShape === 'hex') {
+            var hw = stWpx / 2, hh = stHpx / 2;
+            if (orient === 'pointy') {
+                return [[px, py - hh], [px + hw, py - hh/2], [px + hw, py + hh/2],
+                        [px, py + hh], [px - hw, py + hh/2], [px - hw, py - hh/2]];
+            } else {
+                return [[px + hw, py], [px + hw/2, py + hh], [px - hw/2, py + hh],
+                        [px - hw, py], [px - hw/2, py - hh], [px + hw/2, py - hh]];
+            }
+        } else if (subShape === 'penny') {
+            // Approximate circle with 8 points for hit testing
+            var r = stWpx / 2;
+            var pts = [];
+            for (var a = 0; a < 8; a++) {
+                var angle = a * Math.PI / 4;
+                pts.push([px + r * Math.cos(angle), py + r * Math.sin(angle)]);
+            }
+            return pts;
+        } else if (subShape === 'fishscale') {
+            // Fan shape - approximate with semicircle points + base
+            var r = stWpx / 2;
+            var pts = [];
+            // Top semicircle
+            for (var a = 0; a <= 6; a++) {
+                var angle = Math.PI + (a / 6) * Math.PI;
+                pts.push([px + r * Math.cos(angle), py + r * Math.sin(angle)]);
+            }
+            return pts;
+        } else if (subShape === 'diamond') {
+            // Rotated 45-degree square
+            var hw = stWpx / 2, hh = stHpx / 2;
+            return [[px, py - hh], [px + hw, py], [px, py + hh], [px - hw, py]];
+        } else {
+            // square
+            var hw = stWpx / 2 - stGrPx / 2;
+            var hh = stHpx / 2 - stGrPx / 2;
+            return [[px - hw, py - hh], [px + hw, py - hh], [px + hw, py + hh], [px - hw, py + hh]];
         }
     }
 
-    cx.restore();
+    // Function to draw a single sub-tile shape path at pixel position
+    function drawSubTilePath(px, py) {
+        cx.beginPath();
+        if (subShape === 'hex') {
+            var hw = (stWpx - stGrPx) / 2, hh = (stHpx - stGrPx) / 2;
+            if (orient === 'pointy') {
+                cx.moveTo(px, py - hh);
+                cx.lineTo(px + hw, py - hh/2);
+                cx.lineTo(px + hw, py + hh/2);
+                cx.lineTo(px, py + hh);
+                cx.lineTo(px - hw, py + hh/2);
+                cx.lineTo(px - hw, py - hh/2);
+            } else {
+                cx.moveTo(px + hw, py);
+                cx.lineTo(px + hw/2, py + hh);
+                cx.lineTo(px - hw/2, py + hh);
+                cx.lineTo(px - hw, py);
+                cx.lineTo(px - hw/2, py - hh);
+                cx.lineTo(px + hw/2, py - hh);
+            }
+            cx.closePath();
+        } else if (subShape === 'penny') {
+            var r = (stWpx - stGrPx) / 2;
+            cx.arc(px, py, r, 0, Math.PI * 2);
+        } else if (subShape === 'fishscale') {
+            var r = (stWpx - stGrPx) / 2;
+            // Draw a full fan/scallop: semicircle on top, flat base
+            cx.arc(px, py, r, Math.PI, 0, false);
+            cx.closePath();
+        } else if (subShape === 'diamond') {
+            var hw = (stWpx - stGrPx) / 2, hh = (stHpx - stGrPx) / 2;
+            cx.moveTo(px, py - hh);
+            cx.lineTo(px + hw, py);
+            cx.lineTo(px, py + hh);
+            cx.lineTo(px - hw, py);
+            cx.closePath();
+        } else {
+            // square
+            var hw = (stWpx - stGrPx) / 2;
+            var hh = (stHpx - stGrPx) / 2;
+            cx.rect(px - hw, py - hh, hw * 2, hh * 2);
+        }
+    }
+
+    // Iterate over all sub-tile positions
+    for (var row = startRow; row <= endRow; row++) {
+        for (var col = startCol; col <= endCol; col++) {
+            // Sub-tile center in pixels
+            var px = ox + col * stColPx + patternOx;
+            var py = oy + row * stRowPx + patternOy;
+
+            // Apply hex/fishscale row offset
+            if (subShape === 'hex') {
+                if (orient === 'pointy' && ((row % 2 + 2) % 2) === 1) {
+                    px += stColPx / 2;
+                }
+                if (orient === 'flat' && ((col % 2 + 2) % 2) === 1) {
+                    py += stRowPx / 2;
+                }
+            } else if (subShape === 'fishscale') {
+                if (((row % 2 + 2) % 2) === 1) {
+                    px += stColPx / 2;
+                }
+            }
+
+            // Quick bounding box cull
+            if (px < wallMinX || px > wallMaxX || py < wallMinY || py > wallMaxY) continue;
+
+            // Hit test: is this sub-tile's center inside the wall?
+            var center = [px, py];
+            var centerInWall = inPoly(center, wall);
+
+            // Check if center is in a void
+            var centerInVoid = false;
+            for (var vpi = 0; vpi < voidPolys.length; vpi++) {
+                if (inPoly(center, voidPolys[vpi])) { centerInVoid = true; break; }
+            }
+
+            if (!centerInWall && !centerInVoid) {
+                // Check if any vertex is inside the wall (partial overlap)
+                var verts = getSubTileVerts(px, py);
+                var anyVertIn = false;
+                for (var vi = 0; vi < verts.length; vi++) {
+                    if (inPoly(verts[vi], wall)) { anyVertIn = true; break; }
+                }
+                if (!anyVertIn) continue; // Completely outside
+            }
+
+            if (centerInVoid) continue; // Sub-tile center is in a void, skip
+
+            // Determine if this sub-tile is "full" or "cut"
+            var isCut = !centerInWall;
+            // Also check if any vertex is outside the wall (edge cut)
+            if (!isCut) {
+                var verts = getSubTileVerts(px, py);
+                for (var vi = 0; vi < verts.length; vi++) {
+                    if (!inPoly(verts[vi], wall)) { isCut = true; break; }
+                }
+                // Check void intersection
+                if (!isCut) {
+                    for (var vpi = 0; vpi < voidPolys.length; vpi++) {
+                        for (var vi = 0; vi < verts.length; vi++) {
+                            if (inPoly(verts[vi], voidPolys[vpi])) { isCut = true; break; }
+                        }
+                        if (isCut) break;
+                    }
+                }
+            }
+
+            // Track sheet status
+            var stXin = col * stColIn;
+            var stYin = row * stRowIn;
+            if (subShape === 'hex') {
+                if (orient === 'pointy' && ((row % 2 + 2) % 2) === 1) stXin += stColIn / 2;
+                if (orient === 'flat' && ((col % 2 + 2) % 2) === 1) stYin += stRowIn / 2;
+            } else if (subShape === 'fishscale') {
+                if (((row % 2 + 2) % 2) === 1) stXin += stColIn / 2;
+            }
+            var sk = getSheetKey(stXin, stYin);
+            if (!sheetStatus[sk]) sheetStatus[sk] = { anyIn: false, allFull: true };
+            sheetStatus[sk].anyIn = true;
+            if (isCut) sheetStatus[sk].allFull = false;
+
+            // Set colors
+            if (projMode && !window.segmentProjMode) {
+                cx.fillStyle = '#ffffff';
+            } else if (isCut) {
+                cx.fillStyle = '#FF9800';
+            } else {
+                cx.fillStyle = '#4CAF50';
+            }
+
+            // Draw the sub-tile
+            drawSubTilePath(px, py);
+            cx.fill();
+        }
+    }
+
+    // Draw subtle sheet boundary lines (non-projector mode only)
+    if (!projMode) {
+        cx.save();
+        cx.strokeStyle = 'rgba(0, 0, 0, 0.15)';
+        cx.lineWidth = 0.75;
+        cx.setLineDash([4, 4]);
+
+        var sheetColPx = sheetColIn * s;
+        var sheetRowPx = sheetRowIn * s;
+
+        // Vertical sheet lines
+        var sStartCol = Math.floor((wallMinX - ox - patternOx) / sheetColPx) - 1;
+        var sEndCol = Math.ceil((wallMaxX - ox - patternOx) / sheetColPx) + 1;
+        for (var sc = sStartCol; sc <= sEndCol; sc++) {
+            var lx = ox + sc * sheetColPx + patternOx;
+            cx.beginPath();
+            cx.moveTo(lx, wallMinY);
+            cx.lineTo(lx, wallMaxY);
+            cx.stroke();
+        }
+        // Horizontal sheet lines
+        var sStartRow = Math.floor((wallMinY - oy - patternOy) / sheetRowPx) - 1;
+        var sEndRow = Math.ceil((wallMaxY - oy - patternOy) / sheetRowPx) + 1;
+        for (var sr = sStartRow; sr <= sEndRow; sr++) {
+            var ly = oy + sr * sheetRowPx + patternOy;
+            cx.beginPath();
+            cx.moveTo(wallMinX, ly);
+            cx.lineTo(wallMaxX, ly);
+            cx.stroke();
+        }
+        cx.setLineDash([]);
+        cx.restore();
+    }
+
+    // Count sheets
+    var fullSheets = 0, cutSheets = 0;
+    for (var sk in sheetStatus) {
+        if (sheetStatus[sk].anyIn) {
+            if (sheetStatus[sk].allFull) fullSheets++;
+            else cutSheets++;
+        }
+    }
+
+    return { full: fullSheets, part: cutSheets };
 }
 
 function inPoly(pt, poly) {
