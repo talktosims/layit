@@ -3304,8 +3304,6 @@ var pendingUncutKey = null;
 var detailTileData = null; // Store tile data for detail view
 
 function handleCanvasTap(e) {
-    // Only allow cut tile tap interactions in segment projection mode
-    if (!window.segmentProjMode) return;
     
     var rect = cv.getBoundingClientRect();
     var scaleX = cv.width / rect.width;
