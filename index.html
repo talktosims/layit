@@ -418,17 +418,6 @@
         .modal-confirm { background:linear-gradient(135deg, #ef4444, #dc2626); color:#fff; box-shadow:0 4px 14px rgba(239,68,68,0.35); }
 
         /* ---- OPTIMIZE MENU ---- */
-        .optimize-option {
-            padding:14px 18px;
-            color:var(--text-primary);
-            cursor:pointer;
-            border-bottom:1px solid rgba(148,163,184,0.08);
-            font-size:15px;
-            font-weight:500;
-            transition:all 0.12s ease;
-        }
-        .optimize-option:last-child { border-bottom:none; }
-        .optimize-option:hover { background:var(--success); color:#fff; }
 
         /* ---- TILE DETAIL VIEW ---- */
         .detail-overlay {
@@ -1395,18 +1384,6 @@
         </div>
     </div>
 
-    <!-- Room Scan Preview Modal -->
-    <div class="modal-overlay" id="roomScanModal">
-        <div class="modal-box" style="max-width:400px;">
-            <h3 style="color:var(--success);">📱 Room Scan Imported</h3>
-            <canvas id="roomScanPreviewCanvas" width="360" height="250" style="width:100%;background:var(--bg-recessed);border-radius:var(--radius-sm);margin:12px 0;"></canvas>
-            <div id="roomScanInfo" style="text-align:left;font-size:13px;color:var(--text-secondary);line-height:1.6;margin-bottom:16px;"></div>
-            <div class="modal-buttons">
-                <button class="modal-cancel" onclick="closeRoomScanModal(false)">Cancel</button>
-                <button class="btn-success" onclick="closeRoomScanModal(true)" style="padding:12px 24px;">Apply</button>
-            </div>
-        </div>
-    </div>
 
     <div class="tabs" id="tabBar">
         <button class="tab active" data-tab="diagram"><span class="tab-icon">📐</span><span class="tab-label">Layout</span></button>
@@ -1436,14 +1413,7 @@
         <div class="hint mb-3" id="controlsHint">📱 One finger: pattern • Two fingers: pan & zoom | 💻 Drag: pattern • Shift+drag: pan • Scroll: zoom</div>
         <div class="row">
             <button class="btn-secondary" onclick="resetView()">📍 Reset View</button>
-            <div style="position:relative;flex:1;">
-                <button class="btn-success" onclick="toggleOptimizeMenu()" style="width:100%;" id="optimizeBtn">🎯 Optimize</button>
-                <div id="optimizeMenu" style="display:none;position:absolute;bottom:100%;left:0;right:0;background:var(--bg-surface);border:1px solid var(--border-success);border-radius:var(--radius-md);margin-bottom:5px;overflow:hidden;z-index:100;box-shadow:var(--shadow-md);">
-                    <div class="optimize-option" onclick="runOptimize('fullTiles')">📦 Maximize Full Tiles</div>
-                    <div class="optimize-option" onclick="runOptimize('minSmallCuts')">🔪 Avoid Small Slivers</div>
-                    <div class="optimize-option" onclick="runOptimize('balanced')">⚖️ Balanced (Both)</div>
-                </div>
-            </div>
+            <button class="btn-success" onclick="runOptimize('balanced')" style="flex:1;" id="optimizeBtn">🎯 Optimize</button>
         </div>
         <button id="restoreBtn" class="btn-primary" onclick="restorePattern()" style="display:none;margin-bottom:10px;background:#ff9800;">⚠️ Restore Saved Pattern Position</button>
         <div id="canvasContainer"><canvas id="canvas"></canvas></div>
@@ -1528,15 +1498,6 @@
             </button>
         </div>
 
-        <!-- Room Scan Import -->
-        <div class="section">
-            <h3>📱 Import Room Scan</h3>
-            <p class="hint mb-3" style="text-align:left;">Import a room scan from Apple Measure app to auto-fill wall dimensions. Scan a room with LiDAR, export the .usdz file, then import it here.</p>
-            <button class="btn-secondary" onclick="document.getElementById('roomScanFile').click()" style="width:100%;">
-                📱 Import Room Scan (.usdz)
-            </button>
-            <input type="file" id="roomScanFile" accept=".usdz,.usda" style="display:none" onchange="handleRoomScanImport(event)">
-        </div>
     </div>
 
     <div id="tile" class="panel">
@@ -1622,8 +1583,8 @@
     <div id="voids" class="panel">
         <div class="section"><h3>Cutouts</h3>
             <div class="field"><label>Label</label><input type="text" id="voidLabel" placeholder="Niche"></div>
-            <div class="row"><div class="field"><label>Center from Left (in)</label><input type="number" id="voidX"></div><div class="field"><label>Center from Bottom (in)</label><input type="number" id="voidY"></div></div>
-            <div style="font-size:11px;color:var(--text-muted);margin:-4px 0 8px 0;">Measure to the center of the cutout</div>
+            <div style="font-size:11px;color:var(--text-muted);margin-bottom:6px;">📏 Position — measure from wall edges to the center of the cutout</div>
+            <div class="row"><div class="field"><label>From Left Edge (in)</label><input type="number" id="voidX"></div><div class="field"><label>From Bottom Edge (in)</label><input type="number" id="voidY"></div></div>
             <div class="row"><div class="field"><label>Width</label><input type="number" id="voidW"></div><div class="field"><label>Height</label><input type="number" id="voidH"></div></div>
             <button class="btn-success" onclick="addVoid()">+ Add</button>
             <div id="voidList"></div>
@@ -4840,21 +4801,12 @@ document.addEventListener('wheel', function(e) {
     }
 }, { passive: true });
 
-// Close optimize menu when clicking outside
-document.addEventListener('click', function(e) {
-    var menu = document.getElementById('optimizeMenu');
-    var btn = document.getElementById('optimizeBtn');
-    if (optimizeMenuOpen && !menu.contains(e.target) && e.target !== btn) {
-        closeOptimizeMenu();
-    }
-});
-
 // ==================== TAB INFO POPUPS ====================
 var TAB_INFO = {
     diagram: { title: 'Layout', desc: 'See your complete tile layout rendered in real-time. Use pinch to zoom, drag to pan. Tap Optimize to find the best pattern placement with minimal cuts and waste.' },
     wall:    { title: 'Wall', desc: 'Enter your wall or floor measurements in inches. The app supports rectangular spaces with optional height/width variations for non-square walls.' },
     tile:    { title: 'Tile', desc: 'Choose from preset tiles or enter custom dimensions. Toggle Nominal to enter box label sizes — grout is auto-subtracted. Supports hex, square, rectangle, herringbone, and mosaic patterns.' },
-    voids:   { title: 'Cutouts', desc: 'Add niches, windows, outlets, or any obstacle. Measure to the center of the cutout and enter its dimensions. The layout automatically tiles around them.' },
+    voids:   { title: 'Cutouts', desc: 'Add niches, windows, outlets, or any obstacle. Enter the position (from wall edges to the center) and the size. The layout automatically tiles around them.' },
     calc:    { title: 'Calculator', desc: 'See exactly how many tiles you need, estimate costs, and generate a material shopping list. Accounts for waste percentage so you never come up short.' },
     projects:{ title: 'Files', desc: 'Save and load projects, export/import backups, and share professional layout pages with clients. Set up your company branding for shared pages.' },
     proj:    { title: 'Laser', desc: 'LayIt Laser is coming soon — a WiFi laser projector that beams your tile pattern onto walls and floors at 1:1 scale. Join the waitlist to be first in line.' },
@@ -7466,21 +7418,7 @@ function updateVoidList() {
     document.getElementById('voidList').innerHTML = html;
 }
 
-var optimizeMenuOpen = false;
-
-function toggleOptimizeMenu() {
-    var menu = document.getElementById('optimizeMenu');
-    optimizeMenuOpen = !optimizeMenuOpen;
-    menu.style.display = optimizeMenuOpen ? 'block' : 'none';
-}
-
-function closeOptimizeMenu() {
-    optimizeMenuOpen = false;
-    document.getElementById('optimizeMenu').style.display = 'none';
-}
-
 function runOptimize(mode) {
-    closeOptimizeMenu();
     
     // Show loading state
     var btn = document.getElementById('optimizeBtn');
@@ -9189,7 +9127,7 @@ var onboardingSteps = [
         icon: '📐',
         label: 'Step 1',
         title: 'Measure Your Wall',
-        text: 'Start by entering your wall or floor dimensions. Measure the height and width in inches.',
+        text: 'Start by entering your wall or floor dimensions. Or draw your room perimeter if uniquely shaped and add measurements after.',
         nextLabel: 'Next'
     },
     {
