@@ -1722,7 +1722,7 @@
             <h3>⭐ LayIt Pro</h3>
             <div class="pro-status-card" id="proStatusCard">
                 <div class="pro-status-label">Subscription</div>
-                <div class="pro-status-value" id="proStatusValue">Free</div>
+                <div class="pro-status-value" id="proStatusValue" onclick="devProTap()">Free</div>
             </div>
             <button class="btn-pro" id="proUpgradeBtn" onclick="showUpgradeModal()" style="margin-top:12px;">Upgrade to Pro</button>
             <button class="btn-secondary" id="proManageBtn" onclick="deactivateProDev()" style="margin-top:12px;display:none;width:100%;">Revert to Free (Dev)</button>
@@ -1851,6 +1851,19 @@ function restoreProPurchases() {
     } else {
         closeUpgradeModal();
         showToast('Purchase restoration is available in the LayIt iOS app.', 3000);
+    }
+}
+
+var _devProTaps = 0;
+var _devProTimer = null;
+function devProTap() {
+    _devProTaps++;
+    clearTimeout(_devProTimer);
+    if (_devProTaps >= 5) {
+        _devProTaps = 0;
+        if (isProUser()) { deactivateProDev(); } else { activateProDev(); }
+    } else {
+        _devProTimer = setTimeout(function() { _devProTaps = 0; }, 2000);
     }
 }
 
