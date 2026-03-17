@@ -36,6 +36,7 @@
             --text-primary:  #f1f5f9;
             --text-secondary:#94a3b8;
             --text-tertiary: #475569;
+            --text-muted:    #64748b;
             --text-on-accent:#ffffff;
             --border-default:rgba(148,163,184,0.12);
             --border-accent: rgba(239,68,68,0.50);
@@ -1151,11 +1152,11 @@
                         <div class="wiz-input-row">
                             <div>
                                 <label style="color:#f59e0b;">Width (inches)</label>
-                                <input type="number" id="wizWidth" placeholder="58" inputmode="decimal" autocomplete="off">
+                                <input type="number" id="wizWidth" placeholder="58" inputmode="decimal" autocomplete="off" min="0">
                             </div>
                             <div>
                                 <label style="color:#3b82f6;">Height (inches)</label>
-                                <input type="number" id="wizHeight" placeholder="70" inputmode="decimal" autocomplete="off">
+                                <input type="number" id="wizHeight" placeholder="70" inputmode="decimal" autocomplete="off" min="0">
                             </div>
                         </div>
                     </div>
@@ -1164,22 +1165,22 @@
                         <label style="color:#f59e0b;">Width</label>
                         <div class="wiz-input-row">
                             <div>
-                                <input type="number" id="wizWidthFt" placeholder="4" inputmode="numeric" autocomplete="off">
+                                <input type="number" id="wizWidthFt" placeholder="4" inputmode="numeric" autocomplete="off" min="0">
                                 <div style="text-align:center;font-size:10px;color:var(--text-tertiary);margin-top:2px;">feet</div>
                             </div>
                             <div>
-                                <input type="number" id="wizWidthIn" placeholder="10" inputmode="decimal" autocomplete="off">
+                                <input type="number" id="wizWidthIn" placeholder="10" inputmode="decimal" autocomplete="off" min="0">
                                 <div style="text-align:center;font-size:10px;color:var(--text-tertiary);margin-top:2px;">inches</div>
                             </div>
                         </div>
                         <label style="color:#3b82f6;">Height</label>
                         <div class="wiz-input-row">
                             <div>
-                                <input type="number" id="wizHeightFt" placeholder="5" inputmode="numeric" autocomplete="off">
+                                <input type="number" id="wizHeightFt" placeholder="5" inputmode="numeric" autocomplete="off" min="0">
                                 <div style="text-align:center;font-size:10px;color:var(--text-tertiary);margin-top:2px;">feet</div>
                             </div>
                             <div>
-                                <input type="number" id="wizHeightIn" placeholder="10" inputmode="decimal" autocomplete="off">
+                                <input type="number" id="wizHeightIn" placeholder="10" inputmode="decimal" autocomplete="off" min="0">
                                 <div style="text-align:center;font-size:10px;color:var(--text-tertiary);margin-top:2px;">inches</div>
                             </div>
                         </div>
@@ -1334,8 +1335,8 @@
                 </select>
             </div>
             <div class="row">
-                <div class="field"><label>Nominal W (in)</label><input type="number" id="contribNomW" step="any"></div>
-                <div class="field"><label>Nominal H (in)</label><input type="number" id="contribNomH" step="any"></div>
+                <div class="field"><label>Nominal W (in)</label><input type="number" id="contribNomW" step="any" min="0"></div>
+                <div class="field"><label>Nominal H (in)</label><input type="number" id="contribNomH" step="any" min="0"></div>
             </div>
             <div class="field"><label>Grout Joint</label>
                 <select id="contribGrout">
@@ -1364,8 +1365,8 @@
                     </select>
                 </div>
                 <div class="row">
-                    <div class="field"><label>Sub W (in)</label><input type="number" id="contribSubW" step="any"></div>
-                    <div class="field"><label>Sub H (in)</label><input type="number" id="contribSubH" step="any"></div>
+                    <div class="field"><label>Sub W (in)</label><input type="number" id="contribSubW" step="any" min="0"></div>
+                    <div class="field"><label>Sub H (in)</label><input type="number" id="contribSubH" step="any" min="0"></div>
                 </div>
                 <div class="field"><label>Sub-Tile Grout</label>
                     <select id="contribSubGr">
@@ -1408,7 +1409,7 @@
                 <span id="lockIcon">🔓</span> <span id="lockText">Unlocked</span>
             </button>
         </div>
-        <div class="hint mb-3" id="controlsHint">📱 One finger: pattern • Two fingers: pan & zoom | 💻 Drag: pattern • Shift+drag: pan • Scroll: zoom</div>
+        <div class="hint mb-3" id="controlsHint">📱 One finger: move pattern • Two fingers: pan & zoom<br>💻 Drag: move pattern • Shift+drag: pan • Scroll: zoom</div>
         <div class="row">
             <button class="btn-secondary" onclick="resetView()">📍 Reset View</button>
             <button class="btn-success" onclick="runOptimize('balanced')" style="flex:1;" id="optimizeBtn">🎯 Optimize</button>
@@ -1488,8 +1489,8 @@
             <h3>⚡ Quick Rectangle</h3>
             <p class="hint mb-3" style="text-align:left;">For simple rectangular areas</p>
             <div class="row">
-                <div class="field"><label>Width (in)</label><input type="number" id="quickWidth" placeholder="58"></div>
-                <div class="field"><label>Height (in)</label><input type="number" id="quickHeight" placeholder="70"></div>
+                <div class="field"><label>Width (in)</label><input type="number" id="quickWidth" placeholder="58" min="0"></div>
+                <div class="field"><label>Height (in)</label><input type="number" id="quickHeight" placeholder="70" min="0"></div>
             </div>
             <button class="btn-secondary" onclick="applyQuickRectangle()" style="width:100%;">
                 Apply Rectangle
@@ -1511,7 +1512,7 @@
                 </div>
             </button>
         </div>
-        <div class="section"><h3>Tile Settings</h3>
+        <div class="section"><h3>🔷 Tile Settings</h3>
             <div class="field"><label>Preset</label>
                 <div style="display:flex;gap:6px;">
                     <select id="tilePreset" onchange="applyPreset()" style="flex:1;"><option value="custom">Custom (enter below)</option></select>
@@ -1536,8 +1537,8 @@
                     </select>
                 </div>
                 <div class="row">
-                    <div class="field"><label>Sub-Tile Width (in)</label><input type="number" id="subW" value="2" step="any"></div>
-                    <div class="field"><label>Sub-Tile Height (in)</label><input type="number" id="subH" value="2.25" step="any"></div>
+                    <div class="field"><label>Sub-Tile Width (in)</label><input type="number" id="subW" value="2" step="any" min="0"></div>
+                    <div class="field"><label>Sub-Tile Height (in)</label><input type="number" id="subH" value="2.25" step="any" min="0"></div>
                 </div>
                 <div class="field">
                     <label>Sub-Tile Grout</label>
@@ -1566,8 +1567,8 @@
                 </label>
             </div>
             <div class="row">
-                <div class="field"><label id="tileWLabel">Actual Width (in)</label><input type="number" id="tileW" value="2" step="any"></div>
-                <div class="field"><label id="tileHLabel">Actual Height (in)</label><input type="number" id="tileH" value="4" step="any"></div>
+                <div class="field"><label id="tileWLabel">Actual Width (in)</label><input type="number" id="tileW" value="2" step="any" min="0"></div>
+                <div class="field"><label id="tileHLabel">Actual Height (in)</label><input type="number" id="tileH" value="4" step="any" min="0"></div>
             </div>
             <div id="nominalHint" style="display:none;font-size:var(--text-xs);color:var(--success);margin:-4px 0 6px 2px;">✓ Actual size will be calculated: nominal − grout joint</div>
             <div id="actualReadout" style="display:none;font-size:var(--text-sm);color:var(--info);background:rgba(59,130,246,0.1);padding:6px 8px;border-radius:4px;margin-bottom:8px;"></div>
@@ -1579,19 +1580,22 @@
     </div>
 
     <div id="voids" class="panel">
-        <div class="section"><h3>Cutouts</h3>
+        <div class="section"><h3>⬛ Cutouts</h3>
             <div class="field"><label>Label</label><input type="text" id="voidLabel" placeholder="Niche"></div>
             <div style="font-size:11px;color:var(--text-muted);margin-bottom:6px;">📏 Position — measure from wall edges to the center of the cutout</div>
             <div class="row"><div class="field"><label>From Left Edge (in)</label><input type="number" id="voidX"></div><div class="field"><label>From Bottom Edge (in)</label><input type="number" id="voidY"></div></div>
-            <div class="row"><div class="field"><label>Width</label><input type="number" id="voidW"></div><div class="field"><label>Height</label><input type="number" id="voidH"></div></div>
-            <button class="btn-success" onclick="addVoid()">+ Add</button>
+            <div class="row"><div class="field"><label>Width (in)</label><input type="number" id="voidW" min="0"></div><div class="field"><label>Height (in)</label><input type="number" id="voidH" min="0"></div></div>
+            <button class="btn-success" onclick="addVoid()">+ Add Cutout</button>
             <div id="voidList"></div>
+            <div id="noVoids" class="hint" style="padding:16px;">
+                No cutouts added yet. Add windows, outlets, niches, or other obstacles above.
+            </div>
         </div>
     </div>
 
     <div id="calc" class="panel">
         <div class="section"><h3>🧮 Tile Calculator</h3>
-            <div class="field"><label>Waste % (recommended 10-15%)</label><input type="number" id="waste" value="10"></div>
+            <div class="field"><label>Waste % (recommended 10-15%)</label><input type="number" id="waste" value="10" min="0" max="100"></div>
             <button class="btn-primary" onclick="updateTileCount()" style="margin-bottom:10px;">🔢 Calculate Tiles</button>
             <div class="calc-result" id="tilesNeeded">0 tiles</div>
             <div class="hint mt-3">
@@ -1599,11 +1603,11 @@
             </div>
         </div>
         <div class="section"><h3>💰 Cost Estimate</h3>
-            <div class="field"><label>Price per Tile ($)</label><input type="number" id="tilePrice" value="5" step="0.01"></div>
+            <div class="field"><label>Price per Tile ($)</label><input type="number" id="tilePrice" value="5" step="0.01" min="0"></div>
             <div class="field"><label>Price per Box (optional)</label>
                 <div class="grid-2">
-                    <input type="number" id="boxPrice" placeholder="Box $" step="0.01">
-                    <input type="number" id="tilesPerBox" placeholder="Tiles/box">
+                    <input type="number" id="boxPrice" placeholder="Box $" step="0.01" min="0">
+                    <input type="number" id="tilesPerBox" placeholder="Tiles/box" min="0">
                 </div>
             </div>
             <button class="btn-primary" onclick="updateCostEstimate()" style="margin-bottom:10px;">💰 Calculate Cost</button>
@@ -1631,7 +1635,7 @@
             <div style="margin-top:12px;">
                 <button class="btn-success" onclick="shareProject()" style="width:100%;display:flex;align-items:center;justify-content:center;gap:8px;padding:14px;">
                     <span style="font-size:18px;">📤</span> Share Project with Client
-                    <span style="background:rgba(255,255,255,0.2);font-size:10px;padding:2px 6px;border-radius:4px;font-weight:700;">PRO</span>
+                    <span style="background:rgba(255,255,255,0.25);color:#fff;font-size:9px;padding:2px 6px;border-radius:4px;font-weight:700;letter-spacing:0.5px;">PRO</span>
                 </button>
             </div>
         </div>
@@ -1767,7 +1771,7 @@
                 <div class="guide-item">
                     <div class="guide-header" onclick="toggleGuide(this)" style="display:flex;align-items:center;gap:8px;padding:10px 8px;cursor:pointer;border-radius:var(--radius-sm);transition:background 0.15s;">
                         <span class="guide-arrow" style="font-size:12px;color:var(--text-secondary);transition:transform 0.2s;display:inline-block;width:12px;">&#9656;</span>
-                        <span style="font-weight:600;font-size:13px;color:var(--text-primary);">Cut Tracking <span style="background:var(--success);color:#fff;font-size:9px;padding:1px 5px;border-radius:3px;font-weight:700;margin-left:4px;">PRO</span></span>
+                        <span style="font-weight:600;font-size:13px;color:var(--text-primary);">Cut Tracking <span style="background:var(--success);color:#fff;font-size:9px;padding:2px 6px;border-radius:4px;font-weight:700;letter-spacing:0.5px;margin-left:4px;">PRO</span></span>
                     </div>
                     <div class="guide-body" style="display:none;padding:4px 8px 12px 28px;font-size:12px;color:var(--text-secondary);line-height:1.6;">
                         See all your cuts measured for you! Tap any orange cut tile to see exact dimensions instantly. Mark each one done as you go — it turns red. Track your progress with the Full/Cuts/Done counter.
@@ -1776,7 +1780,7 @@
                 <div class="guide-item">
                     <div class="guide-header" onclick="toggleGuide(this)" style="display:flex;align-items:center;gap:8px;padding:10px 8px;cursor:pointer;border-radius:var(--radius-sm);transition:background 0.15s;">
                         <span class="guide-arrow" style="font-size:12px;color:var(--text-secondary);transition:transform 0.2s;display:inline-block;width:12px;">&#9656;</span>
-                        <span style="font-weight:600;font-size:13px;color:var(--text-primary);">Barcode Scanner <span style="background:var(--success);color:#fff;font-size:9px;padding:1px 5px;border-radius:3px;font-weight:700;margin-left:4px;">PRO</span></span>
+                        <span style="font-weight:600;font-size:13px;color:var(--text-primary);">Barcode Scanner <span style="background:var(--success);color:#fff;font-size:9px;padding:2px 6px;border-radius:4px;font-weight:700;letter-spacing:0.5px;margin-left:4px;">PRO</span></span>
                     </div>
                     <div class="guide-body" style="display:none;padding:4px 8px 12px 28px;font-size:12px;color:var(--text-secondary);line-height:1.6;">
                         Scan the barcode on any tile box to auto-populate tile specs. Saves time and reduces measurement errors.
@@ -1785,7 +1789,7 @@
                 <div class="guide-item">
                     <div class="guide-header" onclick="toggleGuide(this)" style="display:flex;align-items:center;gap:8px;padding:10px 8px;cursor:pointer;border-radius:var(--radius-sm);transition:background 0.15s;">
                         <span class="guide-arrow" style="font-size:12px;color:var(--text-secondary);transition:transform 0.2s;display:inline-block;width:12px;">&#9656;</span>
-                        <span style="font-weight:600;font-size:13px;color:var(--text-primary);">Project Sharing <span style="background:var(--success);color:#fff;font-size:9px;padding:1px 5px;border-radius:3px;font-weight:700;margin-left:4px;">PRO</span></span>
+                        <span style="font-weight:600;font-size:13px;color:var(--text-primary);">Project Sharing <span style="background:var(--success);color:#fff;font-size:9px;padding:2px 6px;border-radius:4px;font-weight:700;letter-spacing:0.5px;margin-left:4px;">PRO</span></span>
                     </div>
                     <div class="guide-body" style="display:none;padding:4px 8px 12px 28px;font-size:12px;color:var(--text-secondary);line-height:1.6;">
                         Generate a clean, branded project page to share with clients. Shows layout visual, dimensions, tile specs, and waste %.
@@ -2032,6 +2036,10 @@ function wizApply() {
         showToast('Please enter both width and height');
         return;
     }
+    if (dims.width > 9999 || dims.height > 9999) {
+        showToast('Dimensions too large (max 9999 inches)');
+        return;
+    }
 
     // Set perimeter mode
     setPerimeterMode(wizState.surface);
@@ -2146,22 +2154,22 @@ function setPerimeterMode(mode) {
 
 // Handle click on perimeter canvas
 function handlePerimeterClick(e) {
-    if (perimeterState.closed) {
-        // Check if clicking on a segment
-        handleSegmentClick(e);
-        return;
-    }
-    
     var rect = perimeterState.canvas.getBoundingClientRect();
     var x = e.clientX - rect.left;
     var y = e.clientY - rect.top;
-    
+
     // Scale for actual canvas size
     var scaleX = perimeterState.canvas.width / rect.width;
     var scaleY = perimeterState.canvas.height / rect.height;
     x *= scaleX;
     y *= scaleY;
-    
+
+    if (perimeterState.closed) {
+        // Check if clicking on a segment
+        handleSegmentClickAt(x, y);
+        return;
+    }
+
     addPerimeterPoint(x, y);
 }
 
@@ -2607,7 +2615,11 @@ function applyQuickRectangle() {
         showToast('Enter valid width and height');
         return;
     }
-    
+    if (width > 9999 || height > 9999) {
+        showToast('Dimensions too large (max 9999 inches)');
+        return;
+    }
+
     // Clear any drawn perimeter
     clearPerimeter();
     
@@ -5161,6 +5173,10 @@ function updateTile() {
             showToast('⚠️ Herringbone works best with 2:1 ratio or longer (e.g., 2"×8")');
         }
     }
+    if (w <= 0 || h <= 0) {
+        showToast('Tile width and height must be greater than zero');
+        return;
+    }
     C.tile.w = w;
     C.tile.h = h;
     // Read mosaic sub-tile fields
@@ -5409,10 +5425,22 @@ function draw() {
     
     // Check if we have valid dimensions
     if (!C.wall.lH || !C.wall.tW || !C.tile.w || !C.tile.h) {
-        cx.fillStyle = '#666666';
-        cx.font = '16px sans-serif';
+        cx.fillStyle = '#999999';
+        cx.font = 'bold 16px sans-serif';
         cx.textAlign = 'center';
-        cx.fillText('Enter wall and tile dimensions', cv.width / 4, cv.height / 4);
+        var centerX = cv.width / 4;
+        var centerY = cv.height / 4;
+        if (!C.wall.lH || !C.wall.tW) {
+            cx.fillText('Set your wall dimensions first', centerX, centerY - 12);
+            cx.font = '13px sans-serif';
+            cx.fillStyle = '#aaaaaa';
+            cx.fillText('Go to the Wall tab to enter measurements', centerX, centerY + 14);
+        } else {
+            cx.fillText('Set your tile size', centerX, centerY - 12);
+            cx.font = '13px sans-serif';
+            cx.fillStyle = '#aaaaaa';
+            cx.fillText('Go to the Tile tab to configure tile settings', centerX, centerY + 14);
+        }
         return;
     }
     
@@ -7177,11 +7205,19 @@ function addVoid() {
         w: w,
         h: h
     };
-    if (v.w && v.h) {
+    if (v.w > 0 && v.h > 0) {
         C.voids.push(v);
         markUnsaved();
         updateVoidList();
         draw();
+        // Clear form inputs after adding
+        document.getElementById('voidLabel').value = '';
+        document.getElementById('voidX').value = '';
+        document.getElementById('voidY').value = '';
+        document.getElementById('voidW').value = '';
+        document.getElementById('voidH').value = '';
+    } else {
+        showToast('Enter cutout width and height');
     }
 }
 
@@ -7201,6 +7237,8 @@ function updateVoidList() {
         html += '<div class="void-item"><span>' + v.l + ': ' + v.w + '"×' + v.h + '" at (' + cx + '", ' + cy + '")</span><button class="btn-primary" onclick="removeVoid(' + i + ')">✕</button></div>';
     }
     document.getElementById('voidList').innerHTML = html;
+    var noVoidsEl = document.getElementById('noVoids');
+    if (noVoidsEl) noVoidsEl.style.display = C.voids.length > 0 ? 'none' : 'block';
 }
 
 function runOptimize(mode) {
@@ -8157,7 +8195,7 @@ function calculateShoppingList() {
     items.push({ name: 'Grout (25lb)', qty: groutBags + ' bag' + (groutBags > 1 ? 's' : ''), note: Math.round(areaSqFt) + ' sq ft ÷ 80 sq ft/bag' });
 
     // Spacers
-    var groutSize = C.tile.grout || 0.125;
+    var groutSize = C.tile.gr || 0.125;
     var spacerLabel = groutSize <= 0.0625 ? '1/16"' : groutSize <= 0.125 ? '1/8"' : '1/4"';
     items.push({ name: 'Spacers', qty: spacerLabel, note: 'Match your grout width setting' });
 
