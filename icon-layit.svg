@@ -1,0 +1,75 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <filter id="glowWide" x="-80%" y="-80%" width="260%" height="260%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="45" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="b"/><feMergeNode in="b"/></feMerge>
+    </filter>
+    <filter id="glowMed" x="-60%" y="-60%" width="220%" height="220%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="20" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="b"/><feMergeNode in="b"/></feMerge>
+    </filter>
+    <filter id="glowTight" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="9" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="b"/></feMerge>
+    </filter>
+    <filter id="glowCore" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="4" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+
+  <rect width="1024" height="1024" fill="#080b12" rx="180" ry="180"/>
+
+  <!-- Hex side=210, pointy-top, tessellated: 2 top + 1 bottom
+       TL center (330.1, 395)  TR center (693.9, 395)  B center (512.0, 710) -->
+
+  <!-- Wide ambient glow -->
+  <g filter="url(#glowWide)" opacity="0.7">
+    <polygon points="330.1,185 512.0,290 512.0,500 330.1,605 148.2,500 148.2,290"
+      fill="none" stroke="#16a34a" stroke-width="20" stroke-linejoin="round"/>
+    <polygon points="693.9,185 875.8,290 875.8,500 693.9,605 512.0,500 512.0,290"
+      fill="none" stroke="#16a34a" stroke-width="20" stroke-linejoin="round"/>
+    <polygon points="512.0,500 693.9,605 693.9,815 512.0,920 330.1,815 330.1,605"
+      fill="none" stroke="#16a34a" stroke-width="20" stroke-linejoin="round"/>
+  </g>
+
+  <!-- Medium glow -->
+  <g filter="url(#glowMed)">
+    <polygon points="330.1,185 512.0,290 512.0,500 330.1,605 148.2,500 148.2,290"
+      fill="none" stroke="#22c55e" stroke-width="14" stroke-linejoin="round"/>
+    <polygon points="693.9,185 875.8,290 875.8,500 693.9,605 512.0,500 512.0,290"
+      fill="none" stroke="#22c55e" stroke-width="14" stroke-linejoin="round"/>
+    <polygon points="512.0,500 693.9,605 693.9,815 512.0,920 330.1,815 330.1,605"
+      fill="none" stroke="#22c55e" stroke-width="14" stroke-linejoin="round"/>
+  </g>
+
+  <!-- Tight glow -->
+  <g filter="url(#glowTight)">
+    <polygon points="330.1,185 512.0,290 512.0,500 330.1,605 148.2,500 148.2,290"
+      fill="none" stroke="#4ade80" stroke-width="10" stroke-linejoin="round"/>
+    <polygon points="693.9,185 875.8,290 875.8,500 693.9,605 512.0,500 512.0,290"
+      fill="none" stroke="#4ade80" stroke-width="10" stroke-linejoin="round"/>
+    <polygon points="512.0,500 693.9,605 693.9,815 512.0,920 330.1,815 330.1,605"
+      fill="none" stroke="#4ade80" stroke-width="10" stroke-linejoin="round"/>
+  </g>
+
+  <!-- Core bright line -->
+  <g filter="url(#glowCore)">
+    <polygon points="330.1,185 512.0,290 512.0,500 330.1,605 148.2,500 148.2,290"
+      fill="none" stroke="#86efac" stroke-width="6" stroke-linejoin="round"/>
+    <polygon points="693.9,185 875.8,290 875.8,500 693.9,605 512.0,500 512.0,290"
+      fill="none" stroke="#86efac" stroke-width="6" stroke-linejoin="round"/>
+    <polygon points="512.0,500 693.9,605 693.9,815 512.0,920 330.1,815 330.1,605"
+      fill="none" stroke="#86efac" stroke-width="6" stroke-linejoin="round"/>
+  </g>
+
+  <!-- Hot white-green center -->
+  <g>
+    <polygon points="330.1,185 512.0,290 512.0,500 330.1,605 148.2,500 148.2,290"
+      fill="none" stroke="#e0fff0" stroke-width="3" stroke-linejoin="round"/>
+    <polygon points="693.9,185 875.8,290 875.8,500 693.9,605 512.0,500 512.0,290"
+      fill="none" stroke="#e0fff0" stroke-width="3" stroke-linejoin="round"/>
+    <polygon points="512.0,500 693.9,605 693.9,815 512.0,920 330.1,815 330.1,605"
+      fill="none" stroke="#e0fff0" stroke-width="3" stroke-linejoin="round"/>
+  </g>
+</svg>

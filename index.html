@@ -1290,8 +1290,9 @@
     <!-- Barcode Scanner Overlay -->
     <div class="scanner-overlay" id="scannerOverlay">
         <div class="scanner-header">
-            <span style="color:#fff;font-weight:700;font-size:16px;">Scan Tile Barcode</span>
-            <button class="scan-btn" onclick="closeBarcodeScanner()" style="font-size:20px;background:rgba(255,255,255,0.1);border-color:rgba(255,255,255,0.2);color:#fff;">✕</button>
+            <button onclick="closeBarcodeScanner()" style="font-size:18px;background:rgba(0,0,0,0.4);border:none;color:#fff;width:36px;height:36px;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;">‹</button>
+            <span style="color:#fff;font-weight:700;font-size:16px;position:absolute;left:50%;transform:translateX(-50%);">Scan Tile Barcode</span>
+            <div style="width:36px;"></div>
         </div>
         <video class="scanner-video" id="scannerVideo" autoplay playsinline></video>
         <div class="scanner-viewfinder" id="scannerViewfinder"></div>
@@ -1383,6 +1384,29 @@
         </div>
     </div>
 
+
+    <!-- Pro Upgrade Modal -->
+    <div class="modal-overlay" id="proUpgradeModal">
+        <div class="pro-upgrade-box">
+            <h3>LayIt Pro</h3>
+            <ul class="pro-feature-list">
+                <li><span class="pf-icon">📷</span> Barcode scanner + auto-populate</li>
+                <li><span class="pf-icon">☁️</span> Cloud sync across devices</li>
+                <li><span class="pf-icon">📐</span> AI room scan <span class="pf-soon">SOON</span></li>
+                <li><span class="pf-icon">📤</span> Project sharing <span class="pf-soon">SOON</span></li>
+                <li><span class="pf-icon">💼</span> Job costing + invoicing <span class="pf-soon">SOON</span></li>
+            </ul>
+            <div id="proSubscribeButtons">
+                <button class="btn-pro" onclick="handleProPurchase('monthly')" style="width:100%;">$4.99 / month</button>
+                <button class="btn-pro" onclick="handleProPurchase('annual')" style="width:100%; margin-top:8px; background:linear-gradient(135deg,#f5a623,#f7c948);">$39.99 / year <span style="font-size:0.8em; opacity:0.9;">(Save 33%)</span></button>
+                <button class="pro-dismiss" onclick="handleRestorePurchases()" style="margin-top:8px; font-size:0.85em;">Restore Purchases</button>
+            </div>
+            <div id="proWebFallback" style="display:none; text-align:center; padding:12px 0;">
+                <p style="color:#aaa; font-size:0.95em;">Download the LayIt app from the App Store to subscribe.</p>
+            </div>
+            <button class="pro-dismiss" onclick="closeUpgradeModal()">Maybe Later</button>
+        </div>
+    </div>
 
     <div class="tabs" id="tabBar">
         <button class="tab active" data-tab="diagram"><span class="tab-icon">📐</span><span class="tab-label">Layout</span></button>
@@ -1682,6 +1706,18 @@
                 </div>
             </div>
         </div>
+
+        <div class="section">
+            <h3>☁️ Cloud Sync <span class="pro-badge" id="cloudSyncProBadge">PRO</span></h3>
+            <p class="hint mb-3" style="text-align:left;">Sync projects across all your devices automatically.</p>
+            <button class="btn-secondary" onclick="requirePro('Cloud Sync')" style="width:100%;" id="cloudSyncBtn">☁️ Enable Cloud Sync</button>
+        </div>
+
+        <div class="section">
+            <h3>📤 Share with Team <span class="pro-badge" id="shareProBadge">PRO</span></h3>
+            <p class="hint mb-3" style="text-align:left;">Send layouts to clients and crew members.</p>
+            <button class="btn-secondary" onclick="requirePro('Project Sharing')" style="width:100%;" id="shareBtn">📤 Share Project</button>
+        </div>
     </div>
 
     <div id="proj" class="panel">
@@ -1704,6 +1740,8 @@
             <div id="waitlistConfirm" style="display:none;color:var(--success);margin-top:12px;font-weight:600;">
                 ✓ You're on the list! We'll notify you.
             </div>
+            <button class="btn-pro" id="proUpgradeBtn" onclick="showUpgradeModal()" style="margin-top:12px;">Upgrade to Pro</button>
+            <button class="btn-secondary" id="proManageBtn" onclick="deactivateProDev()" style="margin-top:12px;display:none;width:100%;">Revert to Free (Dev)</button>
         </div>
 
         <div class="section">
@@ -4797,8 +4835,9 @@ function openBarcodeScanner() {
     var videoEl = document.getElementById('scannerVideo');
     var vfEl = document.getElementById('scannerViewfinder');
 
-    if (!hasBarcodeSupport() || !navigator.mediaDevices) {
-        statusEl.textContent = 'Camera scanning not supported on this device — use manual entry below';
+    // Always try camera first, regardless of BarcodeDetector support
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        statusEl.textContent = 'Camera not available — enter UPC/SKU below';
         videoEl.style.display = 'none';
         vfEl.style.display = 'none';
         return;
@@ -4808,7 +4847,10 @@ function openBarcodeScanner() {
     vfEl.style.display = 'block';
     statusEl.textContent = 'Starting camera...';
 
-    barcodeDetector = new BarcodeDetector({ formats: ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128'] });
+    // Set up BarcodeDetector if available (Chrome/Android)
+    if (hasBarcodeSupport()) {
+        barcodeDetector = new BarcodeDetector({ formats: ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128'] });
+    }
 
     navigator.mediaDevices.getUserMedia({
         video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } },
@@ -4817,19 +4859,24 @@ function openBarcodeScanner() {
         scannerStream = stream;
         videoEl.srcObject = stream;
         videoEl.play();
-        statusEl.textContent = 'Point camera at barcode on tile box';
 
-        scannerInterval = setInterval(function() {
-            if (!barcodeDetector || videoEl.readyState < 2) return;
-            barcodeDetector.detect(videoEl).then(function(barcodes) {
-                if (barcodes.length > 0) {
-                    onBarcodeDetected(barcodes[0].rawValue);
-                }
-            }).catch(function() {});
-        }, 250);
+        if (barcodeDetector) {
+            statusEl.textContent = 'Point camera at barcode on tile box';
+            scannerInterval = setInterval(function() {
+                if (!barcodeDetector || videoEl.readyState < 2) return;
+                barcodeDetector.detect(videoEl).then(function(barcodes) {
+                    if (barcodes.length > 0) {
+                        onBarcodeDetected(barcodes[0].rawValue);
+                    }
+                }).catch(function() {});
+            }, 250);
+        } else {
+            // Camera works but no native barcode detection — prompt manual entry
+            statusEl.textContent = 'Camera ready — auto-detect not available on this device. Enter UPC/SKU below or take a photo for reference.';
+        }
     }).catch(function(err) {
         console.warn('Camera error:', err);
-        statusEl.textContent = 'Camera access denied — use manual entry below';
+        statusEl.textContent = 'Camera access denied — enter UPC/SKU below';
         videoEl.style.display = 'none';
         vfEl.style.display = 'none';
     });
@@ -4873,8 +4920,14 @@ function closeBarcodeScanner() {
 }
 
 function lookupManualUPC() {
-    var code = document.getElementById('manualUPC').value.trim();
-    if (!code) { showToast('Enter a UPC code'); return; }
+    var input = document.getElementById('manualUPC');
+    var code = input.value.trim();
+    if (!code) {
+        input.focus();
+        input.setAttribute('placeholder', 'Enter UPC or SKU number');
+        showToast('⚠️ Enter a UPC or SKU code first');
+        return;
+    }
     closeBarcodeScanner();
     lookupBarcode(code);
 }
@@ -7248,49 +7301,34 @@ function runOptimize(mode) {
     var originalText = btn.innerHTML;
     btn.innerHTML = '⏳ Optimizing...';
     btn.disabled = true;
-    
+
     // Run optimization after a brief delay to show the loading state
     setTimeout(function() {
-        doOptimize(mode);
+        doOptimize();
         btn.innerHTML = originalText;
         btn.disabled = false;
     }, 50);
 }
 
-function doOptimize(mode) {
+function doOptimize() {
     var best = { score: -Infinity, x: 0, y: 0 };
     var tileW = C.tile.w;
     var tileH = C.tile.h;
-    var smallCutThreshold = 0.25; // 25% of tile dimension = small cut
-    
-    // Save current position
-    var origX = C.view.oxInches || 0;
-    var origY = C.view.oyInches || 0;
-    
+
     // Try different offsets (in inches)
     var stepX = tileW / 8;
     var stepY = tileH / 8;
-    
+
     for (var ox = 0; ox < tileW; ox += stepX) {
         for (var oy = 0; oy < tileH; oy += stepY) {
             C.view.oxInches = ox;
             C.view.oyInches = oy;
-            
+
             // Count tiles and analyze cuts
             var results = countTilesForOptimize();
-            var score = 0;
-            
-            if (mode === 'fullTiles') {
-                // Maximize full tiles, penalize cut tiles
-                score = results.full * 100 - results.cut * 10;
-            } else if (mode === 'minSmallCuts') {
-                // Minimize small cuts (< 25% of tile)
-                score = -results.smallCuts * 100 + results.full * 10;
-            } else {
-                // Balanced - maximize full tiles AND minimize small cuts
-                score = results.full * 50 - results.cut * 5 - results.smallCuts * 100;
-            }
-            
+            // Maximize full tiles, minimize total cuts, heavily penalize small slivers
+            var score = results.full * 50 - results.cut * 5 - results.smallCuts * 100;
+
             if (score > best.score) {
                 best = { score: score, x: ox, y: oy, results: results };
             }
@@ -7633,14 +7671,7 @@ function saveCurrentProject() {
     updateProjectList();
     
     // Brief visual feedback
-    var btn = event.target;
-    var originalText = btn.innerHTML;
-    btn.innerHTML = '✓ Saved!';
-    btn.style.background = '#46a758';
-    setTimeout(function() {
-        btn.innerHTML = originalText;
-        btn.style.background = '';
-    }, 1500);
+    showToast('✓ Project saved', 1500);
 }
 
 // Load a project
@@ -8549,6 +8580,32 @@ function joinWaitlist() {
     showToast('You\'re on the list!');
 }
 
+function joinWaitlist() {
+    var email = document.getElementById('waitlistEmail').value.trim();
+    if (!email || !email.includes('@')) {
+        showToast('⚠️ Enter a valid email address');
+        return;
+    }
+    // Save to Firebase if available
+    if (typeof firebase !== 'undefined' && firebase.database) {
+        try {
+            firebase.database().ref('waitlist').push({
+                email: email,
+                timestamp: Date.now()
+            });
+        } catch(e) { console.warn('Waitlist save error:', e); }
+    }
+    // Save locally too
+    var list = JSON.parse(localStorage.getItem('layit_waitlist') || '[]');
+    list.push({ email: email, date: new Date().toISOString() });
+    localStorage.setItem('layit_waitlist', JSON.stringify(list));
+
+    document.getElementById('waitlistEmail').style.display = 'none';
+    document.querySelector('#proj .btn-success').style.display = 'none';
+    document.getElementById('waitlistConfirm').style.display = 'block';
+    showToast('✓ You\'re on the list!');
+}
+
 function exportLaser() {
     var format = document.getElementById('laserFormat').value;
     var area = 'wall'; // Always export wall area only
@@ -8971,6 +9028,90 @@ draw = function() {
 };
 
 // ==================== END AUTO-SAVE ====================
+
+// ==================== LAYIT PRO SUBSCRIPTION ====================
+var proUser = localStorage.getItem('layit_pro') === 'true';
+var _isNativeApp = !!(window._nativeApp || (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.purchase));
+
+function requirePro(featureName) {
+    if (proUser) return true;
+    showUpgradeModal(featureName);
+    return false;
+}
+
+function showUpgradeModal(featureName) {
+    // Detect native app vs web browser
+    var isNative = _isNativeApp || !!(window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.purchase);
+    var subBtns = document.getElementById('proSubscribeButtons');
+    var webFallback = document.getElementById('proWebFallback');
+    if (subBtns && webFallback) {
+        subBtns.style.display = isNative ? '' : 'none';
+        webFallback.style.display = isNative ? 'none' : '';
+    }
+    document.getElementById('proUpgradeModal').classList.add('active');
+}
+
+function closeUpgradeModal() {
+    document.getElementById('proUpgradeModal').classList.remove('active');
+}
+
+function handleProPurchase(plan) {
+    if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.purchase) {
+        window.webkit.messageHandlers.purchase.postMessage(plan);
+    } else {
+        // Fallback for dev/testing
+        activateProDev();
+    }
+}
+
+function handleRestorePurchases() {
+    if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.restorePurchases) {
+        window.webkit.messageHandlers.restorePurchases.postMessage('restore');
+    }
+}
+
+function activateProDev() {
+    proUser = true;
+    localStorage.setItem('layit_pro', 'true');
+    closeUpgradeModal();
+    updateProUI();
+    showToast('✓ LayIt Pro activated', 2000);
+}
+
+function deactivateProDev() {
+    proUser = false;
+    localStorage.removeItem('layit_pro');
+    updateProUI();
+    showToast('Reverted to Free tier', 2000);
+}
+
+function updateProUI() {
+    // PRO badges: hide when pro, show when free
+    var badges = document.querySelectorAll('#scanProBadge, #roomScanProBadge, #cloudSyncProBadge, #shareProBadge, #jobCostProBadge');
+    badges.forEach(function(b) { b.style.display = proUser ? 'none' : ''; });
+
+    // Settings tab status
+    var statusCard = document.getElementById('proStatusCard');
+    var statusValue = document.getElementById('proStatusValue');
+    var upgradeBtn = document.getElementById('proUpgradeBtn');
+    var manageBtn = document.getElementById('proManageBtn');
+    if (statusCard && statusValue) {
+        if (proUser) {
+            statusCard.classList.add('active');
+            statusValue.textContent = 'Pro Active';
+            statusValue.classList.add('is-pro');
+            upgradeBtn.style.display = 'none';
+            manageBtn.style.display = '';
+        } else {
+            statusCard.classList.remove('active');
+            statusValue.textContent = 'Free';
+            statusValue.classList.remove('is-pro');
+            upgradeBtn.style.display = '';
+            manageBtn.style.display = 'none';
+        }
+    }
+}
+// ==================== END LAYIT PRO ====================
 
 // Initialize
 initTabs();
