@@ -8360,10 +8360,67 @@ function shareProject() {
         '<div class="footer">Powered by <a href="https://layit.app" target="_blank">LayIt</a> \u2014 Tile layout + laser projection</div>' +
         '</div></body></html>';
 
-    var blob = new Blob([html], { type: 'text/html' });
-    var url = URL.createObjectURL(blob);
-    window.open(url, '_blank');
-    showToast('\u2713 Share page opened in new tab');
+    // Show in-app preview instead of new tab (WKWebView blocks window.open)
+    showSharePreview(html);
+}
+
+function showSharePreview(html) {
+    // Create overlay
+    var overlay = document.createElement('div');
+    overlay.id = 'sharePreviewOverlay';
+    overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:10000;background:rgba(0,0,0,0.85);display:flex;flex-direction:column;animation:fadeIn 0.2s ease;';
+
+    // Top bar with close and share buttons
+    var topBar = document.createElement('div');
+    topBar.style.cssText = 'display:flex;justify-content:space-between;align-items:center;padding:12px 16px;background:rgba(15,23,42,0.95);border-bottom:1px solid rgba(255,255,255,0.1);flex-shrink:0;';
+    topBar.innerHTML = '<button onclick="closeSharePreview()" style="background:none;border:none;color:#94a3b8;font-size:16px;cursor:pointer;padding:8px;">✕ Close</button>' +
+        '<span style="color:#f1f5f9;font-weight:600;font-size:15px;">Client Preview</span>' +
+        '<button onclick="nativeShareProject()" style="background:var(--success);border:none;color:#fff;font-size:14px;cursor:pointer;padding:8px 16px;border-radius:8px;font-weight:600;">📤 Share</button>';
+
+    // iframe to render the share page
+    var iframe = document.createElement('iframe');
+    iframe.id = 'sharePreviewFrame';
+    iframe.style.cssText = 'flex:1;border:none;width:100%;background:#f8fafc;';
+    iframe.sandbox = 'allow-same-origin';
+
+    overlay.appendChild(topBar);
+    overlay.appendChild(iframe);
+    document.body.appendChild(overlay);
+
+    // Write HTML to iframe
+    iframe.onload = function() {
+        iframe.contentDocument.open();
+        iframe.contentDocument.write(html);
+        iframe.contentDocument.close();
+    };
+    // Trigger load
+    iframe.src = 'about:blank';
+
+    // Store HTML for sharing
+    window._shareHtml = html;
+}
+
+function closeSharePreview() {
+    var overlay = document.getElementById('sharePreviewOverlay');
+    if (overlay) overlay.remove();
+    window._shareHtml = null;
+}
+
+function nativeShareProject() {
+    // Try native share sheet via webkit bridge
+    if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.shareHtml) {
+        window.webkit.messageHandlers.shareHtml.postMessage(window._shareHtml);
+    } else {
+        // Fallback: download as HTML file
+        var blob = new Blob([window._shareHtml], { type: 'text/html' });
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement('a');
+        a.href = url;
+        a.download = (document.getElementById('projName').value.trim() || 'Tile Layout') + '.html';
+        a.click();
+        URL.revokeObjectURL(url);
+        showToast('✓ Downloaded share page');
+    }
 }
 
 // Import project from file
