@@ -5934,18 +5934,17 @@ function draw() {
         colSpInches = C.tile.w + g;
         rowSpInches = C.tile.h + g;
     } else if (C.tile.sh === 'mosaic') {
-        // Mosaic sheets: grid based on sheet size.
-        // Use sub-tile grout/2 for spacing so that the visible gap between sheets
-        // equals subGr (half from each adjacent sheet), matching within-sheet grout.
-        var mosaicGr = (C.tile.subGr || g) / 2;
-        colSpInches = C.tile.w + mosaicGr;
-        rowSpInches = C.tile.h + mosaicGr;
+        // Mosaic sheets: step = sheet size + one sub-tile grout gap.
+        // The gap between drawn sheets equals subGr, matching within-sheet grout.
+        var mosaicGap = C.tile.subGr || g;
+        colSpInches = C.tile.w + mosaicGap;
+        rowSpInches = C.tile.h + mosaicGap;
         // Hex sub-tiles: adjacent sheets interlock, reducing effective spacing
         if (C.tile.subShape === 'hex') {
             var interlockH = (C.tile.or === 'pointy') ? C.tile.subW / 2 : 0;
             var interlockV = (C.tile.or === 'pointy') ? 0 : C.tile.subH / 2;
-            colSpInches = C.tile.w - interlockH + mosaicGr;
-            rowSpInches = C.tile.h - interlockV + mosaicGr;
+            colSpInches = C.tile.w - interlockH + mosaicGap;
+            rowSpInches = C.tile.h - interlockV + mosaicGap;
         }
         colSp = colSpInches * s;
         rowSp = rowSpInches * s;
@@ -6711,11 +6710,9 @@ function getHexMosaicBoundary(x, y, tw, th, forExport) {
 function drawTile(x, y, tw, th, g, row, col) {
     cx.beginPath();
     if (C.tile.sh === 'mosaic') {
-        // Use half the sub-tile grout on each side so the between-sheet gap = subGr,
-        // matching the within-sheet grout line width exactly.
-        var mosaicGrPx = (C.tile.subGr || C.tile.gr) * (tw / C.tile.w);
-        var halfGr = mosaicGrPx / 2;
-        var mVerts = getMosaicSheetVerts(x, y, tw - halfGr, th - halfGr, false);
+        // Draw the sheet at its full tile size; the gap between sheets comes
+        // entirely from the step spacing (tileSize + subGr).
+        var mVerts = getMosaicSheetVerts(x, y, tw, th, false);
         cx.moveTo(mVerts[0][0], mVerts[0][1]);
         for (var mi = 1; mi < mVerts.length; mi++) {
             cx.lineTo(mVerts[mi][0], mVerts[mi][1]);
@@ -6781,12 +6778,10 @@ function drawMosaicSubTiles(x, y, tw, th, scale) {
     var subW = (C.tile.subW || 1) * scale;
     var subH = (C.tile.subH || 1) * scale;
     var subGr = (C.tile.subGr || 0.0625) * scale;
-    var mosaicGrPx = (C.tile.subGr || C.tile.gr) * scale;
-
-    // Sheet drawable area (matches drawTile: half grout on each side)
-    var halfGr = mosaicGrPx / 2;
-    var sheetW = tw - halfGr;
-    var sheetH = th - halfGr;
+    // Sheet drawable area matches drawTile: full tile size.
+    // Gap between sheets comes from the step spacing, not from shrinking the sheet.
+    var sheetW = tw;
+    var sheetH = th;
     var left = x - sheetW / 2;
     var top = y - sheetH / 2;
 
@@ -8720,14 +8715,15 @@ function getTilesForExport(area) {
     var colSpInches, rowSpInches;
     
     if (C.tile.sh === 'mosaic') {
-        colSpInches = tw + g;
-        rowSpInches = th + g;
+        var mosaicGap = C.tile.subGr || g;
+        colSpInches = tw + mosaicGap;
+        rowSpInches = th + mosaicGap;
         // Hex sub-tiles: adjacent sheets interlock
         if (C.tile.subShape === 'hex') {
             var interlockH = (C.tile.or === 'pointy') ? C.tile.subW / 2 : 0;
             var interlockV = (C.tile.or === 'pointy') ? 0 : C.tile.subH / 2;
-            colSpInches = tw - interlockH + g;
-            rowSpInches = th - interlockV + g;
+            colSpInches = tw - interlockH + mosaicGap;
+            rowSpInches = th - interlockV + mosaicGap;
         }
     } else if (C.tile.sh === 'herringbone') {
         colSpInches = lg * 0.5 * sqrt2;
