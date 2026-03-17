@@ -1811,7 +1811,7 @@
                         <span style="font-weight:600;font-size:13px;color:var(--text-primary);">Cut Tracking <span style="background:var(--success);color:#fff;font-size:9px;padding:1px 5px;border-radius:3px;font-weight:700;margin-left:4px;">PRO</span></span>
                     </div>
                     <div class="guide-body" style="display:none;padding:4px 8px 12px 28px;font-size:12px;color:var(--text-secondary);line-height:1.6;">
-                        Tap orange cut tiles on the layout to see exact dimensions. Mark them as cut when done — they turn red. Track your progress with the Full/Cuts/Done counter.
+                        See all your cuts measured for you! Tap any orange cut tile to see exact dimensions instantly. Mark each one done as you go — it turns red. Track your progress with the Full/Cuts/Done counter.
                     </div>
                 </div>
                 <div class="guide-item">
@@ -1829,7 +1829,7 @@
                         <span style="font-weight:600;font-size:13px;color:var(--text-primary);">Project Sharing <span style="background:var(--success);color:#fff;font-size:9px;padding:1px 5px;border-radius:3px;font-weight:700;margin-left:4px;">PRO</span></span>
                     </div>
                     <div class="guide-body" style="display:none;padding:4px 8px 12px 28px;font-size:12px;color:var(--text-secondary);line-height:1.6;">
-                        Generate a clean, branded project page to share with clients. Shows layout visual, dimensions, tile specs, and waste % — no pricing.
+                        Generate a clean, branded project page to share with clients. Shows layout visual, dimensions, tile specs, and waste %.
                     </div>
                 </div>
             </div>
@@ -1847,8 +1847,8 @@
 // ==================== PRO SUBSCRIPTION SYSTEM ====================
 
 var proFeatureDescriptions = {
-    'Cut Tracking': 'Track your cutting progress in real-time. Tap any cut tile to see exact dimensions, then mark it done. Never lose your place on a complex job.',
-    'Share Project': 'Send a professional, branded layout page to your client. Shows the tile pattern, dimensions, specs, and your company branding \u2014 no pricing.',
+    'Cut Tracking': 'See all your cuts measured for you! Tap any cut tile to see exact dimensions instantly. Mark each one done as you go — never lose your place on a complex job.',
+    'Share Project': 'Send a professional, branded layout page to your client. Shows the tile pattern, dimensions, specs, and your company branding.',
     'Barcode Scanner': 'Scan the barcode on any tile box to auto-populate tile specs instantly. No more measuring or guessing sizes.',
     'Scan Tile Box': 'Scan the barcode on any tile box to auto-populate tile specs instantly. Save time on every job.'
 };
@@ -5969,15 +5969,18 @@ function draw() {
         colSpInches = C.tile.w + g;
         rowSpInches = C.tile.h + g;
     } else if (C.tile.sh === 'mosaic') {
-        // Mosaic sheets: grid based on sheet size
-        colSpInches = C.tile.w + g;
-        rowSpInches = C.tile.h + g;
+        // Mosaic sheets: grid based on sheet size.
+        // Use sub-tile grout/2 for spacing so that the visible gap between sheets
+        // equals subGr (half from each adjacent sheet), matching within-sheet grout.
+        var mosaicGr = (C.tile.subGr || g) / 2;
+        colSpInches = C.tile.w + mosaicGr;
+        rowSpInches = C.tile.h + mosaicGr;
         // Hex sub-tiles: adjacent sheets interlock, reducing effective spacing
         if (C.tile.subShape === 'hex') {
             var interlockH = (C.tile.or === 'pointy') ? C.tile.subW / 2 : 0;
             var interlockV = (C.tile.or === 'pointy') ? 0 : C.tile.subH / 2;
-            colSpInches = C.tile.w - interlockH + g;
-            rowSpInches = C.tile.h - interlockV + g;
+            colSpInches = C.tile.w - interlockH + mosaicGr;
+            rowSpInches = C.tile.h - interlockV + mosaicGr;
         }
         colSp = colSpInches * s;
         rowSp = rowSpInches * s;
@@ -6163,8 +6166,17 @@ function draw() {
                 
                 drawTile(x, y, tw, th, g * s, row, col);
                 cx.fill();
-                cx.stroke();
-                
+                // For mosaic: skip the heavy sheet outline so sheets blend seamlessly.
+                // The sub-tile grout lines will define the visual grid instead.
+                if (C.tile.sh !== 'mosaic' || projMode) {
+                    cx.stroke();
+                }
+
+                // Draw sub-tile pattern inside mosaic sheets
+                if (C.tile.sh === 'mosaic' && C.tile.subShape && !projMode) {
+                    drawMosaicSubTiles(x, y, tw, th, s);
+                }
+
                 // Store cut tile data for tap detection and dimensions
                 if (isCut && (!projMode || window.segmentProjMode)) {
                     var cutDims = getCutDimensions(verts, wall, voidPolys, s);
@@ -6734,7 +6746,11 @@ function getHexMosaicBoundary(x, y, tw, th, forExport) {
 function drawTile(x, y, tw, th, g, row, col) {
     cx.beginPath();
     if (C.tile.sh === 'mosaic') {
-        var mVerts = getMosaicSheetVerts(x, y, tw - g, th - g, false);
+        // Use half the sub-tile grout on each side so the between-sheet gap = subGr,
+        // matching the within-sheet grout line width exactly.
+        var mosaicGrPx = (C.tile.subGr || C.tile.gr) * (tw / C.tile.w);
+        var halfGr = mosaicGrPx / 2;
+        var mVerts = getMosaicSheetVerts(x, y, tw - halfGr, th - halfGr, false);
         cx.moveTo(mVerts[0][0], mVerts[0][1]);
         for (var mi = 1; mi < mVerts.length; mi++) {
             cx.lineTo(mVerts[mi][0], mVerts[mi][1]);
@@ -6790,6 +6806,155 @@ function drawTile(x, y, tw, th, g, row, col) {
         cx.rect(x - w/2, y - h/2, w, h);
     }
     cx.closePath();
+}
+
+// Draw sub-tile grout pattern inside a mosaic sheet to show individual tiles.
+// Uses grout-colored lines so the within-sheet grout visually matches the
+// sheet-to-sheet gaps (both are the same colour and width).
+function drawMosaicSubTiles(x, y, tw, th, scale) {
+    var subShape = C.tile.subShape;
+    var subW = (C.tile.subW || 1) * scale;
+    var subH = (C.tile.subH || 1) * scale;
+    var subGr = (C.tile.subGr || 0.0625) * scale;
+    var mosaicGrPx = (C.tile.subGr || C.tile.gr) * scale;
+
+    // Sheet drawable area (matches drawTile: half grout on each side)
+    var halfGr = mosaicGrPx / 2;
+    var sheetW = tw - halfGr;
+    var sheetH = th - halfGr;
+    var left = x - sheetW / 2;
+    var top = y - sheetH / 2;
+
+    // Save context and clip to sheet boundary
+    cx.save();
+    cx.beginPath();
+    if (subShape === 'hex') {
+        var mVerts = getMosaicSheetVerts(x, y, sheetW, sheetH, false);
+        cx.moveTo(mVerts[0][0], mVerts[0][1]);
+        for (var mi = 1; mi < mVerts.length; mi++) cx.lineTo(mVerts[mi][0], mVerts[mi][1]);
+    } else {
+        cx.rect(left, top, sheetW, sheetH);
+    }
+    cx.closePath();
+    cx.clip();
+
+    // Grout lines match the background (white) so they look like real grout gaps.
+    // Line width = subGr so the gap width matches the sheet-to-sheet gap exactly.
+    var groutLineW = Math.max(1, subGr);
+    cx.strokeStyle = '#ffffff';
+    cx.lineWidth = groutLineW;
+
+    if (subShape === 'square') {
+        var cellW = subW + subGr;
+        var cellH = subH + subGr;
+        // Vertical grout lines
+        for (var gx = cellW; gx < sheetW; gx += cellW) {
+            cx.beginPath();
+            cx.moveTo(left + gx - subGr / 2, top);
+            cx.lineTo(left + gx - subGr / 2, top + sheetH);
+            cx.stroke();
+        }
+        // Horizontal grout lines
+        for (var gy = cellH; gy < sheetH; gy += cellH) {
+            cx.beginPath();
+            cx.moveTo(left, top + gy - subGr / 2);
+            cx.lineTo(left + sheetW, top + gy - subGr / 2);
+            cx.stroke();
+        }
+
+    } else if (subShape === 'hex') {
+        var orient = C.tile.or || 'pointy';
+        var colStep, rowStep;
+        if (orient === 'pointy') {
+            colStep = (C.tile.subW + C.tile.subGr) * scale;
+            rowStep = (C.tile.subH + C.tile.subGr) * 0.75 * scale;
+        } else {
+            colStep = (C.tile.subW + C.tile.subGr) * 0.75 * scale;
+            rowStep = (C.tile.subH + C.tile.subGr) * scale;
+        }
+        var nCols = Math.ceil(sheetW / colStep) + 1;
+        var nRows = Math.ceil(sheetH / rowStep) + 1;
+
+        for (var r = 0; r < nRows; r++) {
+            for (var c = 0; c < nCols; c++) {
+                var hx, hy;
+                if (orient === 'pointy') {
+                    hx = left + c * colStep + subW / 2;
+                    hy = top + r * rowStep + subH / 2;
+                    if (r % 2 === 1) hx += colStep / 2;
+                } else {
+                    hx = left + c * colStep + subW / 2;
+                    hy = top + r * rowStep + subH / 2;
+                    if (c % 2 === 1) hy += rowStep / 2;
+                }
+                cx.beginPath();
+                if (orient === 'pointy') {
+                    var hw = subW / 2, hh = subH / 2;
+                    cx.moveTo(hx, hy - hh);
+                    cx.lineTo(hx + hw, hy - hh / 2);
+                    cx.lineTo(hx + hw, hy + hh / 2);
+                    cx.lineTo(hx, hy + hh);
+                    cx.lineTo(hx - hw, hy + hh / 2);
+                    cx.lineTo(hx - hw, hy - hh / 2);
+                } else {
+                    var hw = subW / 2, hh = subH / 2;
+                    cx.moveTo(hx + hw, hy);
+                    cx.lineTo(hx + hw / 2, hy + hh);
+                    cx.lineTo(hx - hw / 2, hy + hh);
+                    cx.lineTo(hx - hw, hy);
+                    cx.lineTo(hx - hw / 2, hy - hh);
+                    cx.lineTo(hx + hw / 2, hy - hh);
+                }
+                cx.closePath();
+                cx.stroke();
+            }
+        }
+
+    } else if (subShape === 'penny') {
+        var cellW = subW + subGr;
+        var cellH = subH + subGr;
+        var radius = subW / 2;
+        for (var py = cellH / 2; py < sheetH + cellH / 2; py += cellH) {
+            for (var px = cellW / 2; px < sheetW + cellW / 2; px += cellW) {
+                cx.beginPath();
+                cx.arc(left + px, top + py, radius, 0, Math.PI * 2);
+                cx.stroke();
+            }
+        }
+
+    } else if (subShape === 'fishscale') {
+        var cellW = subW + subGr;
+        var cellH = (subH + subGr) * 0.75;
+        var radius = subW / 2;
+        var nRows_fs = Math.ceil(sheetH / cellH) + 2;
+        var nCols_fs = Math.ceil(sheetW / cellW) + 2;
+        for (var r = -1; r < nRows_fs; r++) {
+            for (var c = -1; c < nCols_fs; c++) {
+                var fx = left + c * cellW + cellW / 2;
+                var fy = top + r * cellH + cellH / 2;
+                if (r % 2 !== 0) fx += cellW / 2;
+                cx.beginPath();
+                cx.arc(fx, fy, radius, 0, Math.PI, false);
+                cx.stroke();
+            }
+        }
+
+    } else if (subShape === 'diamond') {
+        var cellW = subW + subGr;
+        var cellH = subH + subGr;
+        for (var dx = -sheetH; dx < sheetW + sheetH; dx += cellW) {
+            cx.beginPath();
+            cx.moveTo(left + dx, top);
+            cx.lineTo(left + dx + sheetH, top + sheetH);
+            cx.stroke();
+            cx.beginPath();
+            cx.moveTo(left + dx, top + sheetH);
+            cx.lineTo(left + dx + sheetH, top);
+            cx.stroke();
+        }
+    }
+
+    cx.restore();
 }
 
 function inPoly(pt, poly) {
