@@ -6588,14 +6588,19 @@ function drawMosaicField(ox, oy, s, wall, voidPolys, patternOx, patternOy, projM
             }
             return pts;
         } else if (subShape === 'fishscale') {
-            // Fan shape - approximate with semicircle points + base
-            var r = stWpx / 2;
+            // Match the bezier fan shape for hit testing
+            var rw = stWpx / 2, rh = stHpx / 2;
             var pts = [];
-            // Top semicircle
+            pts.push([px - rw * 0.25, py + rh]);  // bottom-left
+            pts.push([px - rw * 0.6, py + rh * 0.3]);
+            pts.push([px - rw, py - rh * 0.1]);   // top-left
+            // Top arc points
             for (var a = 0; a <= 6; a++) {
                 var angle = Math.PI + (a / 6) * Math.PI;
-                pts.push([px + r * Math.cos(angle), py + r * Math.sin(angle)]);
+                pts.push([px + rw * Math.cos(angle), py - rh * 0.1 + rw * Math.sin(angle)]);
             }
+            pts.push([px + rw * 0.6, py + rh * 0.3]);
+            pts.push([px + rw * 0.25, py + rh]);  // bottom-right
             return pts;
         } else if (subShape === 'diamond') {
             // Rotated 45-degree square
@@ -6634,9 +6639,26 @@ function drawMosaicField(ox, oy, s, wall, voidPolys, patternOx, patternOy, projM
             var r = (stWpx - stGrPx) / 2;
             cx.arc(px, py, r, 0, Math.PI * 2);
         } else if (subShape === 'fishscale') {
-            var r = (stWpx - stGrPx) / 2;
-            // Draw a full fan/scallop: semicircle on top, flat base
-            cx.arc(px, py, r, Math.PI, 0, false);
+            // Proper interlocking fishscale: wide arc top tapering to narrow base
+            var rw = (stWpx - stGrPx) / 2;  // half-width at widest point
+            var rh = (stHpx - stGrPx) / 2;  // half-height
+            // Draw as an elliptical arc (wide top) tapering to a point at bottom
+            // The top is a semicircular arc, sides curve inward to a narrow base
+            cx.moveTo(px - rw * 0.25, py + rh);  // bottom-left (narrow base)
+            // Left side curve up
+            cx.bezierCurveTo(
+                px - rw * 0.6, py + rh * 0.3,   // control: pulls left side inward
+                px - rw, py - rh * 0.3,          // control: flares out toward top
+                px - rw, py - rh * 0.1           // top-left approach
+            );
+            // Top arc (wide semicircle)
+            cx.arc(px, py - rh * 0.1, rw, Math.PI, 0, false);
+            // Right side curve down
+            cx.bezierCurveTo(
+                px + rw, py - rh * 0.3,          // control: starts wide
+                px + rw * 0.6, py + rh * 0.3,   // control: narrows
+                px + rw * 0.25, py + rh           // bottom-right (narrow base)
+            );
             cx.closePath();
         } else if (subShape === 'diamond') {
             var hw = (stWpx - stGrPx) / 2, hh = (stHpx - stGrPx) / 2;
