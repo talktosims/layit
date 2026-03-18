@@ -1561,7 +1561,7 @@
             <div id="mosaicFields" style="display:none;">
                 <div class="field">
                     <label>Sub-Tile Shape</label>
-                    <select id="subShape">
+                    <select id="subShape" onchange="onSubShapeChange()">
                         <option value="square">◻ Square</option>
                         <option value="hex" selected>⬡ Hexagon</option>
                         <option value="penny">● Penny Round</option>
@@ -4707,7 +4707,10 @@ function applyPreset() {
         document.getElementById('subH').value = preset.subH;
         document.getElementById('subGr').value = preset.subGr;
         document.getElementById('mosaicFields').style.display = 'block';
+        onSubShapeChange();  // Update orientation visibility for this sub-shape
     }
+    // Set orientation value
+    document.getElementById('tileOrient').value = 'pointy';
     onNominalToggle();
     updateTile();
 }
@@ -5319,6 +5322,8 @@ function onShape() {
         document.getElementById('tileOrient').innerHTML = '<option value="pointy">Vertical</option><option value="flat">Horizontal</option>';
     } else if (s === 'mosaic') {
         document.getElementById('tileOrient').innerHTML = '<option value="pointy">Vertical</option><option value="flat">Horizontal</option>';
+        // Update orientation visibility based on current sub-shape
+        onSubShapeChange();
         // Update labels for sheet dimensions
         if (!nom) {
             wLabel.textContent = 'Sheet Width (in)';
@@ -5345,6 +5350,17 @@ function onShape() {
             wLabel.textContent = 'Actual Width (in)';
             hLabel.textContent = 'Actual Height (in)';
         }
+    }
+}
+
+function onSubShapeChange() {
+    var sub = document.getElementById('subShape').value;
+    var orientDiv = document.getElementById('orientDiv');
+    // Hide orientation for shapes that don't use it
+    if (sub === 'fishscale' || sub === 'penny' || sub === 'square' || sub === 'diamond') {
+        orientDiv.style.display = 'none';
+    } else {
+        orientDiv.style.display = 'block';
     }
 }
 
