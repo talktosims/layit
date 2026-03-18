@@ -6655,25 +6655,37 @@ function drawMosaicField(ox, oy, s, wall, voidPolys, patternOx, patternOy, projM
             var r = (stWpx - stGrPx) / 2;
             cx.arc(px, py, r, 0, Math.PI * 2);
         } else if (subShape === 'fishscale') {
-            // Proper interlocking fishscale: wide arc top tapering to narrow base
-            var rw = (stWpx - stGrPx) / 2;  // half-width at widest point
-            var rh = (stHpx - stGrPx) / 2;  // half-height
-            // Draw as an elliptical arc (wide top) tapering to a point at bottom
-            // The top is a semicircular arc, sides curve inward to a narrow base
-            cx.moveTo(px - rw * 0.25, py + rh);  // bottom-left (narrow base)
-            // Left side curve up
+            // Proper interlocking fishscale — ALL bezier, no arc mixing
+            // Teardrop/fan: wide rounded top tapering to a point at bottom
+            var rw = (stWpx - stGrPx) / 2;
+            var rh = (stHpx - stGrPx) / 2;
+            var topY = py - rh;   // top of tile
+            var botY = py + rh;   // bottom point
+            // Start at bottom point
+            cx.moveTo(px, botY);
+            // Left side: curve out from point to wide top-left
             cx.bezierCurveTo(
-                px - rw * 0.6, py + rh * 0.3,   // control: pulls left side inward
-                px - rw, py - rh * 0.3,          // control: flares out toward top
-                px - rw, py - rh * 0.1           // top-left approach
+                px - rw * 0.1, py,          // control 1: slightly left of center
+                px - rw, py - rh * 0.15,    // control 2: full width, slightly below top
+                px - rw, topY + rh * 0.35   // endpoint: left side, upper area
             );
-            // Top arc (wide semicircle)
-            cx.arc(px, py - rh * 0.1, rw, Math.PI, 0, false);
-            // Right side curve down
+            // Top-left to top-center: round the top
             cx.bezierCurveTo(
-                px + rw, py - rh * 0.3,          // control: starts wide
-                px + rw * 0.6, py + rh * 0.3,   // control: narrows
-                px + rw * 0.25, py + rh           // bottom-right (narrow base)
+                px - rw, topY - rh * 0.1,   // control 1: left side, above top (overshoot for roundness)
+                px - rw * 0.5, topY - rh * 0.2, // control 2: between left and center, above
+                px, topY                     // endpoint: top center
+            );
+            // Top-center to top-right: mirror
+            cx.bezierCurveTo(
+                px + rw * 0.5, topY - rh * 0.2, // control 1: between center and right, above
+                px + rw, topY - rh * 0.1,   // control 2: right side, above top
+                px + rw, topY + rh * 0.35   // endpoint: right side, upper area
+            );
+            // Right side: curve back in to bottom point
+            cx.bezierCurveTo(
+                px + rw, py - rh * 0.15,    // control 1: full width, slightly below top
+                px + rw * 0.1, py,          // control 2: slightly right of center
+                px, botY                     // endpoint: bottom point
             );
             cx.closePath();
         } else if (subShape === 'diamond') {
