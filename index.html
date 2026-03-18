@@ -1392,9 +1392,9 @@
             <ul class="pro-feature-list">
                 <li><span class="pf-icon">📷</span> Barcode scanner + auto-populate</li>
                 <li><span class="pf-icon">☁️</span> Cloud sync across devices</li>
+                <li><span class="pf-icon">🎬</span> CutScene — animated cut guides</li>
                 <li><span class="pf-icon">📐</span> AI room scan <span class="pf-soon">SOON</span></li>
-                <li><span class="pf-icon">📤</span> Project sharing <span class="pf-soon">SOON</span></li>
-                <li><span class="pf-icon">💼</span> Job costing + invoicing <span class="pf-soon">SOON</span></li>
+                <li><span class="pf-icon">🔦</span> Laser projection <span class="pf-soon">SOON</span></li>
             </ul>
             <div id="proSubscribeButtons">
                 <button class="btn-pro" onclick="handleProPurchase('monthly')" style="width:100%;">$4.99 / month</button>
@@ -1423,10 +1423,7 @@
         <div class="info-bar">
             <span class="full">● Full: <b id="fullCount">0</b></span> &nbsp;
             <span style="color:#FF9800">● Cuts: <b id="cutCount">0</b></span> &nbsp;
-            <span style="color:var(--text-secondary)">📦 Waste: <b id="wastePercent">0%</b></span>
-        </div>
-        <div class="flex-row mb-3">
-            <span>🔍</span><input type="range" id="zoom" min="4" max="100" value="5" step="1" oninput="updateZoom()" style="flex:1"><span id="zoomVal">5x</span>
+            <span id="wastePercentWrap" style="display:none"><span style="color:var(--text-secondary)">📦 Waste: <b id="wastePercent">0%</b></span></span>
         </div>
         <div class="mb-3">
             <button id="lockBtn" class="btn-secondary" onclick="toggleLock()" style="display:flex;align-items:center;justify-content:center;gap:6px;">
@@ -1508,17 +1505,32 @@
             </div>
         </div>
         
-        <!-- Quick Rectangle Mode (for simple shapes) -->
+        <!-- Quick Room Dimensions -->
         <div class="section">
-            <h3>⚡ Quick Rectangle</h3>
-            <p class="hint mb-3" style="text-align:left;">For simple rectangular areas</p>
+            <h3>📐 Quick Room Dimensions</h3>
+            <p class="hint mb-3" style="text-align:left;">Enter 4 wall measurements for out-of-square rooms, or just width &amp; height for rectangles.</p>
             <div class="row">
-                <div class="field"><label>Width (in)</label><input type="number" id="quickWidth" placeholder="58" min="0"></div>
-                <div class="field"><label>Height (in)</label><input type="number" id="quickHeight" placeholder="70" min="0"></div>
+                <div class="field"><label>Left Wall (in)</label><input type="number" id="leftH" placeholder="70" min="0" value="70"></div>
+                <div class="field"><label>Right Variance</label><input type="number" id="rightVar" placeholder="0.5" min="0" step="0.25" value="0.5"></div>
             </div>
-            <button class="btn-secondary" onclick="applyQuickRectangle()" style="width:100%;">
-                Apply Rectangle
+            <div class="row">
+                <div class="field"><label>Top Wall (in)</label><input type="number" id="topW" placeholder="58" min="0" value="58"></div>
+                <div class="field"><label>Bottom Variance</label><input type="number" id="botVar" placeholder="0.25" min="0" step="0.25" value="0.25"></div>
+            </div>
+            <p class="hint mb-3" style="text-align:left;font-size:11px;">Variance = how much longer the opposite wall is (0 = perfectly square)</p>
+            <button class="btn-primary" onclick="updateWall()" style="width:100%;">
+                ✓ Apply Dimensions
             </button>
+            <div style="margin-top:12px;border-top:1px solid var(--border-default);padding-top:12px;">
+                <p class="hint mb-3" style="text-align:left;font-size:12px;font-weight:600;">⚡ Quick Rectangle</p>
+                <div class="row">
+                    <div class="field"><label>Width (in)</label><input type="number" id="quickWidth" placeholder="58" min="0"></div>
+                    <div class="field"><label>Height (in)</label><input type="number" id="quickHeight" placeholder="70" min="0"></div>
+                </div>
+                <button class="btn-secondary" onclick="applyQuickRectangle()" style="width:100%;">
+                    Apply Rectangle
+                </button>
+            </div>
         </div>
 
     </div>
@@ -1543,7 +1555,7 @@
                 </div>
             </div>
             <div class="row">
-                <div class="field"><label>Shape</label><select id="tileShape" onchange="onShape()"><option value="hexagon">Hexagon</option><option value="square">Square</option><option value="rectangle">Rectangle</option><option value="herringbone" selected>Herringbone</option><option value="mosaic">Mosaic Sheet</option></select></div>
+                <div class="field"><label>Shape</label><select id="tileShape" onchange="onShape()"><option value="hexagon" selected>Hexagon</option><option value="square">Square</option><option value="rectangle">Rectangle</option><option value="herringbone">Herringbone</option><option value="mosaic">Mosaic Sheet</option></select></div>
                 <div class="field" id="orientDiv"><label>Orientation</label><select id="tileOrient"><option value="pointy">45° Right</option><option value="flat">45° Left</option></select></div>
             </div>
             <div id="mosaicFields" style="display:none;">
@@ -1597,7 +1609,7 @@
             <div id="nominalHint" style="display:none;font-size:var(--text-xs);color:var(--success);margin:-4px 0 6px 2px;">✓ Actual size will be calculated: nominal − grout joint</div>
             <div id="actualReadout" style="display:none;font-size:var(--text-sm);color:var(--info);background:rgba(59,130,246,0.1);padding:6px 8px;border-radius:4px;margin-bottom:8px;"></div>
             <div class="field"><label>Grout</label><select id="grout" onchange="onNominalToggle()"><option value="0.0625">1/16"</option><option value="0.125" selected>1/8"</option><option value="0.25">1/4"</option></select></div>
-            <button class="btn-primary" onclick="updateTile()">🔄 Update</button>
+            <button class="btn-primary" onclick="updateTile(); showTab('diagram');">🔄 Update</button>
             <button class="btn-secondary" onclick="saveCustomPreset()" style="margin-top:4px;width:100%;font-size:11px;">💾 Save as Preset</button>
             <p class="hint" style="margin-top:6px;text-align:left;">💡 Measure the tile face, not the box label. Or check "Nominal" to enter the box size and let the app calculate actual.</p>
         </div>
@@ -1835,6 +1847,14 @@
                 </div>
             </div>
         </div>
+        <div class="section">
+            <h3>💬 Feedback & Support</h3>
+            <p class="hint" style="text-align:left;line-height:1.7;margin-bottom:12px;">
+                Have a suggestion, found a bug, or just want to say hi? We'd love to hear from you.
+            </p>
+            <a href="mailto:layitapp@gmail.com?subject=LayIt%20Feedback" style="display:block;width:100%;padding:14px;background:var(--bg-elevated);border:2px solid var(--border-default);border-radius:var(--radius-sm);color:var(--text-primary);font-size:14px;font-weight:600;text-align:center;text-decoration:none;cursor:pointer;">✉️ Send Feedback</a>
+        </div>
+
         <div class="section">
             <h3>📖 Tutorial</h3>
             <p class="hint" style="text-align:left;line-height:1.7;margin-bottom:12px;">
@@ -2351,6 +2371,36 @@ function drawPerimeter() {
         ctx.stroke();
     }
     
+    // Draw reference outline from current layout dimensions (if set)
+    if (C.wall.lH > 0 && C.wall.tW > 0) {
+        var rH = C.wall.lH + C.wall.rV;
+        var bW = C.wall.tW + C.wall.bV;
+        var maxDim = Math.max(bW, rH, C.wall.tW, C.wall.lH);
+        var refScale = Math.min((canvas.width - 80) / maxDim, (canvas.height - 80) / maxDim, 4);
+        var refOx = (canvas.width - C.wall.tW * refScale) / 2;
+        var refOy = (canvas.height - C.wall.lH * refScale) / 2;
+        // Draw the trapezoid (out-of-square shape)
+        ctx.beginPath();
+        ctx.moveTo(refOx, refOy);
+        ctx.lineTo(refOx + C.wall.tW * refScale, refOy);
+        ctx.lineTo(refOx + bW * refScale, refOy + rH * refScale);
+        ctx.lineTo(refOx, refOy + C.wall.lH * refScale);
+        ctx.closePath();
+        ctx.strokeStyle = 'rgba(79, 139, 255, 0.25)';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([6, 4]);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        // Dimension labels
+        ctx.fillStyle = 'rgba(79, 139, 255, 0.4)';
+        ctx.font = '10px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(C.wall.tW + '"', refOx + (C.wall.tW * refScale) / 2, refOy - 6);
+        ctx.fillText(C.wall.lH + '"', refOx - 14, refOy + (C.wall.lH * refScale) / 2);
+        if (C.wall.rV > 0) ctx.fillText('+' + C.wall.rV + '"', refOx + bW * refScale + 18, refOy + rH * refScale / 2);
+        if (C.wall.bV > 0) ctx.fillText('+' + C.wall.bV + '"', refOx + (bW * refScale) / 2, refOy + rH * refScale + 14);
+    }
+
     var points = perimeterState.points;
     if (points.length === 0) return;
     
@@ -2693,7 +2743,7 @@ function setSection(sec) {
 
 let C = {
     wall: { lH: 70, rV: 0.5, tW: 58, bV: 0.25 },
-    tile: { sh: 'herringbone', or: 'pointy', w: 2, h: 4, gr: 0.125, pattern: 0 },
+    tile: { sh: 'hexagon', or: 'pointy', w: 7, h: 8, gr: 0.125, pattern: 0 },
     voids: [{ l: 'Niche', x: 27.75, y: 37, w: 13.25, h: 12 }],
     view: { z: 5, ox: 0, oy: 0 }
 };
@@ -5242,7 +5292,6 @@ function updateTile() {
     onNominalToggle(); // Update the readout
     markUnsaved();
     draw();
-    showTab('diagram');
 }
 
 function onShape() {
@@ -5437,8 +5486,6 @@ function resetView() {
 }
 
 function updateZoom() {
-    C.view.z = parseFloat(document.getElementById('zoom').value);
-    document.getElementById('zoomVal').textContent = C.view.z + 'x';
     draw();
 }
 
@@ -5756,7 +5803,17 @@ function draw() {
                 var key = stableKey; // Use stable key based on position in inches
                 var tileState = cutTileStates[key] || 0; // 0=pending, 1=selected, 2=cut
                 
-                if (projMode && !window.segmentProjMode) {
+                if (window._printMode) {
+                    // B&W print mode for client share pages
+                    if (isCut) {
+                        cx.fillStyle = '#e8e8e8';
+                        cx.strokeStyle = '#aaaaaa';
+                    } else {
+                        cx.fillStyle = '#f5f5f5';
+                        cx.strokeStyle = '#aaaaaa';
+                    }
+                    cx.lineWidth = 0.5;
+                } else if (projMode && !window.segmentProjMode) {
                     // Regular projector mode - all white for laser projection
                     cx.fillStyle = '#ffffff';
                     cx.strokeStyle = '#000000';
@@ -5836,8 +5893,8 @@ function draw() {
     }
     
     // Draw wall border
-    cx.strokeStyle = projMode ? '#000000' : '#0D47A1';
-    cx.lineWidth = projMode ? 4 : 3;
+    cx.strokeStyle = window._printMode ? '#333333' : (projMode ? '#000000' : '#0D47A1');
+    cx.lineWidth = window._printMode ? 1.5 : (projMode ? 4 : 3);
     cx.beginPath();
     cx.moveTo(wall[0][0], wall[0][1]);
     for (var i = 1; i < wall.length; i++) {
@@ -6690,8 +6747,8 @@ function drawMosaicField(ox, oy, s, wall, voidPolys, patternOx, patternOy, projM
         }
     }
 
-    // Draw subtle sheet boundary lines (non-projector mode only)
-    if (!projMode) {
+    // Draw subtle sheet boundary lines (non-projector mode only, hidden in print mode)
+    if (!projMode && !window._printMode) {
         cx.save();
         cx.strokeStyle = 'rgba(0, 0, 0, 0.15)';
         cx.lineWidth = 0.75;
@@ -7046,11 +7103,8 @@ cv.addEventListener('touchmove', function(e) {
             
             C.view.z = newZoom;
             
-            // Update slider
-            document.getElementById('zoom').value = Math.min(100, newZoom);
-            document.getElementById('zoomVal').textContent = newZoom.toFixed(1) + 'x';
         }
-        
+
         // Handle pan
         if (pan.on) {
             var center = getTouchCenter(e.touches);
@@ -7170,10 +7224,6 @@ cv.addEventListener('wheel', function(e) {
     C.view.panY = cy - newScreenY;
     
     C.view.z = newZoom;
-    
-    // Update slider
-    document.getElementById('zoom').value = Math.min(100, newZoom);
-    document.getElementById('zoomVal').textContent = newZoom.toFixed(1) + 'x';
     
     draw();
 }, { passive: false });
@@ -7938,7 +7988,12 @@ function escapeShareHtml(str) {
 function shareProject() {
     if (!requirePro('Share Project')) return;
 
+    // Temporarily render in B&W print mode for clean client output
+    window._printMode = true;
+    draw();
     var canvasImg = cv.toDataURL('image/png');
+    window._printMode = false;
+    draw();
 
     var projName = document.getElementById('projName').value.trim() || 'Tile Layout';
     var compName = (document.getElementById('companyName').value || '').trim();
@@ -8367,9 +8422,7 @@ function exitProj() {
 
 function projZoom(factor) {
     C.view.z *= factor;
-    C.view.z = Math.max(4, Math.min(100, C.view.z)); // Clamp 1-100
-    document.getElementById('zoom').value = Math.min(100, C.view.z);
-    document.getElementById('zoomVal').textContent = C.view.z.toFixed(1) + 'x';
+    C.view.z = Math.max(4, Math.min(100, C.view.z));
     draw();
 }
 
@@ -8538,8 +8591,6 @@ function applySyncState(state) {
         document.getElementById('tilePreset').value = 'custom';
         document.getElementById('nominalMode').checked = false;
         onNominalToggle();
-        document.getElementById('zoom').value = Math.min(100, C.view.z);
-        document.getElementById('zoomVal').textContent = C.view.z.toFixed(1) + 'x';
         onShape();
         // Restore mosaic sub-tile fields if applicable
         if (C.tile.sh === 'mosaic' && C.tile.subShape) {
