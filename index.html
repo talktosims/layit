@@ -1642,6 +1642,15 @@
                         <option value="arabesque">❋ Arabesque</option>
                         <option value="picket">⬬ Picket</option>
                         <option value="octdot">⬡ Octagon + Dot</option>
+                        <option value="rhombus">◇ Rhombus / 3D Cube</option>
+                        <option value="triangle">△ Triangle</option>
+                        <option value="capsule">⬭ Capsule / Pill</option>
+                        <option value="quatrefoil">✤ Quatrefoil</option>
+                        <option value="ogee">❧ Ogee / Provenzal</option>
+                        <option value="starcross">✦ Star & Cross</option>
+                        <option value="kite">◆ Kite</option>
+                        <option value="leaf">🍃 Leaf / Teardrop</option>
+                        <option value="dragonscale">🐉 Dragon Scale</option>
                     </select>
                 </div>
                 <div class="row">
@@ -4539,6 +4548,75 @@ function drawMosaicSheetDetail(tile) {
             ctx.lineTo(dx - r, dy - sideHalf);
             ctx.lineTo(dx - sideHalf, dy - r);
             ctx.closePath();
+        } else if (subShape === 'rhombus') {
+            var hw = (subWd - subGrd) / 2, hh = (subHd - subGrd) / 2;
+            ctx.moveTo(dx, dy - hh);
+            ctx.lineTo(dx + hw, dy - hh * 0.25);
+            ctx.lineTo(dx, dy + hh * 0.5);
+            ctx.lineTo(dx - hw, dy + hh * 0.25);
+            ctx.closePath();
+        } else if (subShape === 'triangle') {
+            var hw = (subWd - subGrd) / 2, hh = (subHd - subGrd) / 2;
+            ctx.moveTo(dx - hw, dy + hh);
+            ctx.lineTo(dx + hw, dy + hh);
+            ctx.lineTo(dx, dy - hh);
+            ctx.closePath();
+        } else if (subShape === 'capsule') {
+            var hw = (subWd - subGrd) / 2, hh = (subHd - subGrd) / 2;
+            var cr = Math.min(hw, hh * 0.4);
+            ctx.moveTo(dx + hw, dy - hh + cr);
+            ctx.arc(dx, dy - hh + cr, hw, 0, Math.PI, true);
+            ctx.lineTo(dx - hw, dy + hh - cr);
+            ctx.arc(dx, dy + hh - cr, hw, Math.PI, 2 * Math.PI, true);
+            ctx.closePath();
+        } else if (subShape === 'quatrefoil') {
+            var hw = (subWd - subGrd) / 2, hh = (subHd - subGrd) / 2;
+            var lx = hw * 0.85, ly = hh * 0.85;
+            ctx.moveTo(dx, dy - hh);
+            ctx.bezierCurveTo(dx + lx, dy - hh, dx + hw, dy - ly, dx + hw, dy);
+            ctx.bezierCurveTo(dx + hw, dy + ly, dx + lx, dy + hh, dx, dy + hh);
+            ctx.bezierCurveTo(dx - lx, dy + hh, dx - hw, dy + ly, dx - hw, dy);
+            ctx.bezierCurveTo(dx - hw, dy - ly, dx - lx, dy - hh, dx, dy - hh);
+            ctx.closePath();
+        } else if (subShape === 'ogee') {
+            var hw = (subWd - subGrd) / 2, hh = (subHd - subGrd) / 2;
+            ctx.moveTo(dx, dy - hh);
+            ctx.bezierCurveTo(dx + hw * 0.8, dy - hh * 0.5, dx + hw, dy, dx + hw * 0.3, dy + hh * 0.5);
+            ctx.bezierCurveTo(dx + hw * 0.1, dy + hh * 0.8, dx, dy + hh, dx, dy + hh);
+            ctx.bezierCurveTo(dx, dy + hh, dx - hw * 0.1, dy + hh * 0.8, dx - hw * 0.3, dy + hh * 0.5);
+            ctx.bezierCurveTo(dx - hw, dy, dx - hw * 0.8, dy - hh * 0.5, dx, dy - hh);
+            ctx.closePath();
+        } else if (subShape === 'starcross') {
+            var r = (subWd - subGrd) / 2;
+            var ri = r * 0.4;
+            for (var i = 0; i < 16; i++) {
+                var angle = (i / 16) * Math.PI * 2 - Math.PI / 2;
+                var rad = (i % 2 === 0) ? r : ri;
+                if (i === 0) ctx.moveTo(dx + rad * Math.cos(angle), dy + rad * Math.sin(angle));
+                else ctx.lineTo(dx + rad * Math.cos(angle), dy + rad * Math.sin(angle));
+            }
+            ctx.closePath();
+        } else if (subShape === 'kite') {
+            var hw = (subWd - subGrd) / 2, hh = (subHd - subGrd) / 2;
+            var topH = hh * 0.3;
+            ctx.moveTo(dx, dy - hh);
+            ctx.lineTo(dx + hw, dy - hh + topH + hh * 0.4);
+            ctx.lineTo(dx, dy + hh);
+            ctx.lineTo(dx - hw, dy - hh + topH + hh * 0.4);
+            ctx.closePath();
+        } else if (subShape === 'leaf') {
+            var hw = (subWd - subGrd) / 2, hh = (subHd - subGrd) / 2;
+            ctx.moveTo(dx, dy + hh);
+            ctx.bezierCurveTo(dx + hw * 1.2, dy + hh * 0.2, dx + hw * 1.2, dy - hh * 0.6, dx, dy - hh);
+            ctx.bezierCurveTo(dx - hw * 1.2, dy - hh * 0.6, dx - hw * 1.2, dy + hh * 0.2, dx, dy + hh);
+            ctx.closePath();
+        } else if (subShape === 'dragonscale') {
+            var hw = (subWd - subGrd) / 2, hh = (subHd - subGrd) / 2;
+            ctx.moveTo(dx, dy - hh);
+            ctx.lineTo(dx + hw, dy - hh * 0.2);
+            ctx.quadraticCurveTo(dx + hw * 0.1, dy + hh * 0.3, dx, dy + hh);
+            ctx.quadraticCurveTo(dx - hw * 0.1, dy + hh * 0.3, dx - hw, dy - hh * 0.2);
+            ctx.closePath();
         } else {
             // square
             var hw = (subWd - subGrd) / 2;
@@ -5169,7 +5247,26 @@ var TILE_PRESETS = [
      subShape:'octdot', subW:2, subH:2, subGr:0.0625},
     // Diamond mosaic
     {name:'1" Diamond Mosaic (12×12)', shape:'mosaic', nomW:12, nomH:12, actW:11.75, actH:11.75, grout:0.125,
-     subShape:'diamond', subW:1, subH:1, subGr:0.0625}
+     subShape:'diamond', subW:1, subH:1, subGr:0.0625},
+    // Exotic shapes
+    {name:'Rhombus 3D Cube (11×10)', shape:'mosaic', nomW:11, nomH:10, actW:11, actH:10, grout:0.125,
+     subShape:'rhombus', subW:2, subH:3, subGr:0.0625},
+    {name:'Triangle Mosaic (12×12)', shape:'mosaic', nomW:12, nomH:12, actW:12, actH:12, grout:0.125,
+     subShape:'triangle', subW:2, subH:1.73, subGr:0.0625},
+    {name:'Capsule / Pill (12×12)', shape:'mosaic', nomW:12, nomH:12, actW:12, actH:12, grout:0.125,
+     subShape:'capsule', subW:1, subH:3, subGr:0.0625},
+    {name:'Quatrefoil Clover (12×12)', shape:'mosaic', nomW:12, nomH:12, actW:12, actH:12, grout:0.125,
+     subShape:'quatrefoil', subW:4, subH:4, subGr:0.125},
+    {name:'Ogee Provenzal (10×12)', shape:'mosaic', nomW:10, nomH:12, actW:10, actH:12, grout:0.125,
+     subShape:'ogee', subW:3.5, subH:6.5, subGr:0.125},
+    {name:'Star & Cross (12×12)', shape:'mosaic', nomW:12, nomH:12, actW:12, actH:12, grout:0.125,
+     subShape:'starcross', subW:4, subH:4, subGr:0.0625},
+    {name:'Kite Mosaic (11×12)', shape:'mosaic', nomW:11, nomH:12, actW:11, actH:12, grout:0.125,
+     subShape:'kite', subW:2, subH:4, subGr:0.0625},
+    {name:'Leaf / Teardrop (10×12)', shape:'mosaic', nomW:10, nomH:12, actW:10, actH:12, grout:0.125,
+     subShape:'leaf', subW:1.5, subH:4, subGr:0.0625},
+    {name:'Dragon Scale (12×12)', shape:'mosaic', nomW:12, nomH:12, actW:12, actH:12, grout:0.125,
+     subShape:'dragonscale', subW:2, subH:2.5, subGr:0.0625}
 ];
 
 var CUSTOM_PRESETS_KEY = 'layit-custom-presets';
@@ -6280,7 +6377,7 @@ function onSubShapeChange() {
     var sub = document.getElementById('subShape').value;
     var orientDiv = document.getElementById('orientDiv');
     // Hide orientation for shapes that don't use it
-    if (sub === 'fishscale' || sub === 'penny' || sub === 'square' || sub === 'diamond' || sub === 'arabesque' || sub === 'picket' || sub === 'octdot' || sub === 'chevron') {
+    if (sub === 'fishscale' || sub === 'penny' || sub === 'square' || sub === 'diamond' || sub === 'arabesque' || sub === 'picket' || sub === 'octdot' || sub === 'chevron' || sub === 'rhombus' || sub === 'triangle' || sub === 'capsule' || sub === 'quatrefoil' || sub === 'ogee' || sub === 'starcross' || sub === 'kite' || sub === 'leaf' || sub === 'dragonscale') {
         orientDiv.style.display = 'none';
     } else {
         orientDiv.style.display = 'block';
@@ -7532,10 +7629,43 @@ function drawMosaicField(ox, oy, s, wall, voidPolys, patternOx, patternOy, projM
         stColIn = subW + subGr;
         stRowIn = subH * 0.75 + subGr;
     } else if (subShape === 'octdot') {
-        // Octagon + dot: octagon grid spacing
-        // Each octagon occupies subW + subGr, dots fill the corners
         stColIn = subW + subGr;
         stRowIn = subH + subGr;
+    } else if (subShape === 'rhombus') {
+        // 60-degree rhombus for 3D cube effect
+        stColIn = subW + subGr;
+        stRowIn = subH * 0.75 + subGr;
+    } else if (subShape === 'triangle') {
+        // Equilateral triangles alternate up/down
+        stColIn = subW + subGr;
+        stRowIn = subH * 0.5 + subGr;
+    } else if (subShape === 'capsule') {
+        // Rounded rectangle (pill shape)
+        stColIn = subW + subGr;
+        stRowIn = subH + subGr;
+    } else if (subShape === 'quatrefoil') {
+        // 4-lobed clover
+        stColIn = subW + subGr;
+        stRowIn = subH + subGr;
+    } else if (subShape === 'ogee') {
+        // Ogee/provenzal — staggered like arabesque
+        stColIn = subW + subGr;
+        stRowIn = subH * 0.5 + subGr;
+    } else if (subShape === 'starcross') {
+        // Star and cross pattern
+        stColIn = subW + subGr;
+        stRowIn = subH + subGr;
+    } else if (subShape === 'kite') {
+        stColIn = subW + subGr;
+        stRowIn = subH * 0.75 + subGr;
+    } else if (subShape === 'leaf') {
+        stColIn = subW + subGr;
+        stRowIn = subH * 0.75 + subGr;
+    } else if (subShape === 'dragonscale') {
+        // Like fishscale but pointed top
+        stColIn = subW + subGr;
+        var dsRw = subW / 2;
+        stRowIn = dsRw * 0.5 + subGr;
     } else {
         // square
         stColIn = subW + subGr;
@@ -7657,6 +7787,64 @@ function drawMosaicField(ox, oy, s, wall, voidPolys, patternOx, patternOy, projM
                     [px + r, py + s], [px + s, py + r],
                     [px - s, py + r], [px - r, py + s],
                     [px - r, py - s], [px - s, py - r]];
+        } else if (subShape === 'rhombus') {
+            var hw = stWpx / 2, hh = stHpx / 2;
+            return [[px, py - hh], [px + hw, py - hh * 0.25],
+                    [px, py + hh * 0.5], [px - hw, py + hh * 0.25]];
+        } else if (subShape === 'triangle') {
+            var hw = stWpx / 2, hh = stHpx / 2;
+            return [[px - hw, py + hh], [px + hw, py + hh], [px, py - hh]];
+        } else if (subShape === 'capsule') {
+            // Approximate pill with 8 points
+            var hw = stWpx / 2, hh = stHpx / 2;
+            var cr = Math.min(hw, hh * 0.4);
+            return [[px + hw, py - hh + cr], [px + hw * 0.7, py - hh],
+                    [px - hw * 0.7, py - hh], [px - hw, py - hh + cr],
+                    [px - hw, py + hh - cr], [px - hw * 0.7, py + hh],
+                    [px + hw * 0.7, py + hh], [px + hw, py + hh - cr]];
+        } else if (subShape === 'quatrefoil') {
+            // Approximate clover with 8 points
+            var hw = stWpx / 2, hh = stHpx / 2;
+            return [[px, py - hh], [px + hw * 0.6, py - hh * 0.6],
+                    [px + hw, py], [px + hw * 0.6, py + hh * 0.6],
+                    [px, py + hh], [px - hw * 0.6, py + hh * 0.6],
+                    [px - hw, py], [px - hw * 0.6, py - hh * 0.6]];
+        } else if (subShape === 'ogee') {
+            // Approximate ogee with 8 points
+            var hw = stWpx / 2, hh = stHpx / 2;
+            return [[px, py - hh], [px + hw * 0.7, py - hh * 0.3],
+                    [px + hw * 0.5, py + hh * 0.2], [px + hw * 0.2, py + hh * 0.6],
+                    [px, py + hh], [px - hw * 0.2, py + hh * 0.6],
+                    [px - hw * 0.5, py + hh * 0.2], [px - hw * 0.7, py - hh * 0.3]];
+        } else if (subShape === 'starcross') {
+            // 16-point star polygon
+            var r = stWpx / 2;
+            var ri = r * 0.4;
+            var pts = [];
+            for (var i = 0; i < 16; i++) {
+                var angle = (i / 16) * Math.PI * 2 - Math.PI / 2;
+                var rad = (i % 2 === 0) ? r : ri;
+                pts.push([px + rad * Math.cos(angle), py + rad * Math.sin(angle)]);
+            }
+            return pts;
+        } else if (subShape === 'kite') {
+            var hw = stWpx / 2, hh = stHpx / 2;
+            var topH = hh * 0.3;
+            return [[px, py - hh], [px + hw, py - hh + topH + hh * 0.4],
+                    [px, py + hh], [px - hw, py - hh + topH + hh * 0.4]];
+        } else if (subShape === 'leaf') {
+            // Approximate leaf with 8 points
+            var hw = stWpx / 2, hh = stHpx / 2;
+            return [[px, py + hh], [px + hw * 0.9, py + hh * 0.3],
+                    [px + hw, py - hh * 0.3], [px + hw * 0.5, py - hh * 0.8],
+                    [px, py - hh], [px - hw * 0.5, py - hh * 0.8],
+                    [px - hw, py - hh * 0.3], [px - hw * 0.9, py + hh * 0.3]];
+        } else if (subShape === 'dragonscale') {
+            // Approximate dragonscale with 6 points
+            var hw = stWpx / 2, hh = stHpx / 2;
+            return [[px, py - hh], [px + hw, py - hh * 0.2],
+                    [px + hw * 0.3, py + hh * 0.4], [px, py + hh],
+                    [px - hw * 0.3, py + hh * 0.4], [px - hw, py - hh * 0.2]];
         } else {
             // square
             var hw = stWpx / 2 - stGrPx / 2;
@@ -7760,6 +7948,84 @@ function drawMosaicField(ox, oy, s, wall, voidPolys, patternOx, patternOy, projM
             cx.lineTo(px - r, py - sideHalf);
             cx.lineTo(px - sideHalf, py - r);
             cx.closePath();
+        } else if (subShape === 'rhombus') {
+            // 60°/120° parallelogram for 3D cube illusion
+            var hw = (stWpx - stGrPx) / 2, hh = (stHpx - stGrPx) / 2;
+            cx.moveTo(px, py - hh);
+            cx.lineTo(px + hw, py - hh * 0.25);
+            cx.lineTo(px, py + hh * 0.5);
+            cx.lineTo(px - hw, py + hh * 0.25);
+            cx.closePath();
+        } else if (subShape === 'triangle') {
+            // Equilateral triangle (up-pointing)
+            var hw = (stWpx - stGrPx) / 2, hh = (stHpx - stGrPx) / 2;
+            cx.moveTo(px - hw, py + hh);
+            cx.lineTo(px + hw, py + hh);
+            cx.lineTo(px, py - hh);
+            cx.closePath();
+        } else if (subShape === 'capsule') {
+            // Rounded rectangle (pill/stadium shape)
+            var hw = (stWpx - stGrPx) / 2, hh = (stHpx - stGrPx) / 2;
+            var cr = Math.min(hw, hh * 0.4); // cap radius
+            cx.moveTo(px + hw, py - hh + cr);
+            cx.arc(px, py - hh + cr, hw, 0, Math.PI, true); // top dome
+            cx.lineTo(px - hw, py + hh - cr);
+            cx.arc(px, py + hh - cr, hw, Math.PI, 2 * Math.PI, true); // bottom dome
+            cx.closePath();
+        } else if (subShape === 'quatrefoil') {
+            // 4-lobed clover using bezier curves
+            var hw = (stWpx - stGrPx) / 2, hh = (stHpx - stGrPx) / 2;
+            var lx = hw * 0.85, ly = hh * 0.85;
+            cx.moveTo(px, py - hh);
+            cx.bezierCurveTo(px + lx, py - hh, px + hw, py - ly, px + hw, py);
+            cx.bezierCurveTo(px + hw, py + ly, px + lx, py + hh, px, py + hh);
+            cx.bezierCurveTo(px - lx, py + hh, px - hw, py + ly, px - hw, py);
+            cx.bezierCurveTo(px - hw, py - ly, px - lx, py - hh, px, py - hh);
+            cx.closePath();
+        } else if (subShape === 'ogee') {
+            // Gothic arch / provenzal — pointed top and bottom with convex curves
+            var hw = (stWpx - stGrPx) / 2, hh = (stHpx - stGrPx) / 2;
+            cx.moveTo(px, py - hh);
+            cx.bezierCurveTo(px + hw * 0.8, py - hh * 0.5, px + hw, py, px + hw * 0.3, py + hh * 0.5);
+            cx.bezierCurveTo(px + hw * 0.1, py + hh * 0.8, px, py + hh, px, py + hh);
+            cx.bezierCurveTo(px, py + hh, px - hw * 0.1, py + hh * 0.8, px - hw * 0.3, py + hh * 0.5);
+            cx.bezierCurveTo(px - hw, py, px - hw * 0.8, py - hh * 0.5, px, py - hh);
+            cx.closePath();
+        } else if (subShape === 'starcross') {
+            // 8-pointed star (regular octagram)
+            var r = (stWpx - stGrPx) / 2;
+            var ri = r * 0.4;
+            for (var i = 0; i < 16; i++) {
+                var angle = (i / 16) * Math.PI * 2 - Math.PI / 2;
+                var rad = (i % 2 === 0) ? r : ri;
+                if (i === 0) cx.moveTo(px + rad * Math.cos(angle), py + rad * Math.sin(angle));
+                else cx.lineTo(px + rad * Math.cos(angle), py + rad * Math.sin(angle));
+            }
+            cx.closePath();
+        } else if (subShape === 'kite') {
+            // 4-sided kite: narrow top, wide middle, pointed bottom
+            var hw = (stWpx - stGrPx) / 2, hh = (stHpx - stGrPx) / 2;
+            var topH = hh * 0.3;
+            cx.moveTo(px, py - hh);
+            cx.lineTo(px + hw, py - hh + topH + hh * 0.4);
+            cx.lineTo(px, py + hh);
+            cx.lineTo(px - hw, py - hh + topH + hh * 0.4);
+            cx.closePath();
+        } else if (subShape === 'leaf') {
+            // Teardrop/leaf: pointed bottom, rounded top
+            var hw = (stWpx - stGrPx) / 2, hh = (stHpx - stGrPx) / 2;
+            cx.moveTo(px, py + hh);
+            cx.bezierCurveTo(px + hw * 1.2, py + hh * 0.2, px + hw * 1.2, py - hh * 0.6, px, py - hh);
+            cx.bezierCurveTo(px - hw * 1.2, py - hh * 0.6, px - hw * 1.2, py + hh * 0.2, px, py + hh);
+            cx.closePath();
+        } else if (subShape === 'dragonscale') {
+            // Pointed top, concave sides to stem
+            var hw = (stWpx - stGrPx) / 2, hh = (stHpx - stGrPx) / 2;
+            cx.moveTo(px, py - hh);
+            cx.lineTo(px + hw, py - hh * 0.2);
+            cx.quadraticCurveTo(px + hw * 0.1, py + hh * 0.3, px, py + hh);
+            cx.quadraticCurveTo(px - hw * 0.1, py + hh * 0.3, px - hw, py - hh * 0.2);
+            cx.closePath();
         } else {
             // square
             var hw = (stWpx - stGrPx) / 2;
@@ -7792,9 +8058,19 @@ function drawMosaicField(ox, oy, s, wall, voidPolys, patternOx, patternOy, projM
                     px += stColPx / 2;
                 }
             } else if (subShape === 'picket') {
-                if (((row % 2 + 2) % 2) === 1) {
-                    px += stColPx / 2;
-                }
+                if (((row % 2 + 2) % 2) === 1) px += stColPx / 2;
+            } else if (subShape === 'rhombus') {
+                if (((row % 2 + 2) % 2) === 1) px += stColPx / 2;
+            } else if (subShape === 'ogee') {
+                if (((row % 2 + 2) % 2) === 1) px += stColPx / 2;
+            } else if (subShape === 'kite') {
+                if (((row % 2 + 2) % 2) === 1) px += stColPx / 2;
+            } else if (subShape === 'leaf') {
+                if (((row % 2 + 2) % 2) === 1) px += stColPx / 2;
+            } else if (subShape === 'dragonscale') {
+                if (((row % 2 + 2) % 2) === 1) px += stColPx / 2;
+            } else if (subShape === 'capsule') {
+                if (((row % 2 + 2) % 2) === 1) px += stColPx / 2;
             }
 
             // Quick bounding box cull
