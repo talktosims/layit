@@ -1340,59 +1340,85 @@
         <div class="modal-box" style="max-width:400px;text-align:left;max-height:85vh;overflow-y:auto;">
             <h3 style="color:var(--warning);">Product Not Found</h3>
             <p style="font-size:13px;color:var(--text-muted);margin-bottom:12px;">
-                Barcode <b id="notFoundBarcode"></b> isn't in our database yet.<br>Help other installers by adding it!
+                Barcode <b id="notFoundBarcode"></b> isn't in our database yet.
             </p>
-            <div class="field"><label>Product Name</label><input type="text" id="contribName" placeholder='e.g. 2" Hex Marble Mosaic'></div>
-            <div class="field"><label>Brand</label><input type="text" id="contribBrand" placeholder="e.g. Daltile"></div>
-            <div class="field"><label>Shape</label>
-                <select id="contribShape" onchange="document.getElementById('contribMosaicFields').style.display=(this.value==='mosaic')?'block':'none'">
-                    <option value="square">Square</option>
-                    <option value="rectangle">Rectangle</option>
-                    <option value="hexagon">Hexagon</option>
-                    <option value="herringbone">Herringbone</option>
-                    <option value="mosaic">Mosaic Sheet</option>
-                </select>
-            </div>
-            <div class="row">
-                <div class="field"><label>Nominal W (in)</label><input type="number" id="contribNomW" step="any" min="0"></div>
-                <div class="field"><label>Nominal H (in)</label><input type="number" id="contribNomH" step="any" min="0"></div>
-            </div>
-            <div class="field"><label>Grout Joint</label>
-                <select id="contribGrout">
-                    <option value="0.0625">1/16"</option>
-                    <option value="0.125" selected>1/8"</option>
-                    <option value="0.25">1/4"</option>
-                </select>
-            </div>
-            <div class="field">
-                <label>📸 Photo of Box Label <span style="font-weight:normal;color:var(--warning);">(required)</span></label>
-                <div style="display:flex;gap:8px;align-items:center;">
-                    <input type="file" id="contribPhoto" accept="image/*" capture="environment" onchange="previewLabelPhoto(this)" style="font-size:13px;flex:1;">
-                    <img id="contribPhotoPreview" style="display:none;width:60px;height:60px;object-fit:cover;border-radius:6px;border:1px solid var(--border-default);">
+
+            <!-- AI Photo Scan (primary option) -->
+            <div id="aiScanSection" style="margin-bottom:16px;">
+                <div onclick="document.getElementById('aiLabelPhoto').click()" style="padding:20px;background:var(--bg-recessed);border:2px dashed var(--success);border-radius:var(--radius-md);cursor:pointer;text-align:center;">
+                    <div id="aiPhotoPreview" style="display:none;margin-bottom:8px;">
+                        <img id="aiPhotoPreviewImg" style="max-height:100px;max-width:100%;border-radius:8px;">
+                    </div>
+                    <div id="aiPhotoPrompt">
+                        <span style="font-size:32px;">📸</span>
+                        <div style="font-size:15px;font-weight:700;color:var(--success);margin-top:6px;">Snap Photo of Box Label</div>
+                        <div style="font-size:12px;color:var(--text-muted);margin-top:4px;">AI reads the label and fills everything automatically</div>
+                    </div>
                 </div>
+                <input type="file" id="aiLabelPhoto" accept="image/*" capture="environment" style="display:none" onchange="handleAILabelScan(this)">
+                <div id="aiScanStatus" style="display:none;text-align:center;padding:12px;font-size:13px;color:var(--text-secondary);"></div>
             </div>
-            <div id="contribMosaicFields" style="display:none;">
-                <div class="field"><label>Sub-Tile Shape</label>
-                    <select id="contribSubShape">
+
+            <!-- Divider -->
+            <div style="text-align:center;color:var(--text-tertiary);font-size:11px;margin:12px 0;position:relative;">
+                <span style="background:var(--bg-surface);padding:0 12px;position:relative;z-index:1;">or enter manually</span>
+                <div style="position:absolute;top:50%;left:0;right:0;height:1px;background:var(--border-default);z-index:0;"></div>
+            </div>
+
+            <!-- Manual entry (fallback) -->
+            <div id="manualEntrySection">
+                <div class="field"><label>Product Name</label><input type="text" id="contribName" placeholder='e.g. 2" Hex Marble Mosaic'></div>
+                <div class="field"><label>Brand</label><input type="text" id="contribBrand" placeholder="e.g. Daltile"></div>
+                <div class="field"><label>Shape</label>
+                    <select id="contribShape" onchange="document.getElementById('contribMosaicFields').style.display=(this.value==='mosaic')?'block':'none'">
                         <option value="square">Square</option>
-                        <option value="hex">Hexagon</option>
-                        <option value="penny">Penny Round</option>
-                        <option value="fishscale">Fish Scale</option>
-                        <option value="linear">Linear Strip</option>
-                        <option value="diamond">Diamond</option>
-                        <option value="chevron">Chevron</option>
+                        <option value="rectangle">Rectangle</option>
+                        <option value="hexagon">Hexagon</option>
+                        <option value="herringbone">Herringbone</option>
+                        <option value="mosaic">Mosaic Sheet</option>
                     </select>
                 </div>
                 <div class="row">
-                    <div class="field"><label>Sub W (in)</label><input type="number" id="contribSubW" step="any" min="0"></div>
-                    <div class="field"><label>Sub H (in)</label><input type="number" id="contribSubH" step="any" min="0"></div>
+                    <div class="field"><label>Nominal W (in)</label><input type="number" id="contribNomW" step="any" min="0"></div>
+                    <div class="field"><label>Nominal H (in)</label><input type="number" id="contribNomH" step="any" min="0"></div>
                 </div>
-                <div class="field"><label>Sub-Tile Grout</label>
-                    <select id="contribSubGr">
-                        <option value="0.03125">1/32"</option>
-                        <option value="0.0625" selected>1/16"</option>
-                        <option value="0.125">1/8"</option>
+                <div class="field"><label>Grout Joint</label>
+                    <select id="contribGrout">
+                        <option value="0.0625">1/16"</option>
+                        <option value="0.125" selected>1/8"</option>
+                        <option value="0.25">1/4"</option>
                     </select>
+                </div>
+                <div class="field">
+                    <label>📸 Photo of Box Label <span style="font-weight:normal;color:var(--warning);">(required)</span></label>
+                    <div style="display:flex;gap:8px;align-items:center;">
+                        <input type="file" id="contribPhoto" accept="image/*" capture="environment" onchange="previewLabelPhoto(this)" style="font-size:13px;flex:1;">
+                        <img id="contribPhotoPreview" style="display:none;width:60px;height:60px;object-fit:cover;border-radius:6px;border:1px solid var(--border-default);">
+                    </div>
+                </div>
+                <div id="contribMosaicFields" style="display:none;">
+                    <div class="field"><label>Sub-Tile Shape</label>
+                        <select id="contribSubShape">
+                            <option value="square">Square</option>
+                            <option value="hex">Hexagon</option>
+                            <option value="penny">Penny Round</option>
+                            <option value="fishscale">Fish Scale</option>
+                            <option value="linear">Linear Strip</option>
+                            <option value="diamond">Diamond</option>
+                            <option value="chevron">Chevron</option>
+                        </select>
+                    </div>
+                    <div class="row">
+                        <div class="field"><label>Sub W (in)</label><input type="number" id="contribSubW" step="any" min="0"></div>
+                        <div class="field"><label>Sub H (in)</label><input type="number" id="contribSubH" step="any" min="0"></div>
+                    </div>
+                    <div class="field"><label>Sub-Tile Grout</label>
+                        <select id="contribSubGr">
+                            <option value="0.03125">1/32"</option>
+                            <option value="0.0625" selected>1/16"</option>
+                            <option value="0.125">1/8"</option>
+                        </select>
+                    </div>
                 </div>
             </div>
             <div class="modal-buttons" style="margin-top:16px;">
@@ -1559,16 +1585,39 @@
 
     <div id="tile" class="panel">
         <div class="section" style="margin-bottom:16px;">
-            <button onclick="openBarcodeScanner()" style="width:100%;padding:18px 16px;background:linear-gradient(135deg,rgba(34,197,94,0.08),rgba(34,197,94,0.02));border:2px dashed var(--success);border-radius:var(--radius-md);cursor:pointer;display:flex;align-items:center;gap:14px;text-align:left;color:var(--text-primary);">
-                <span style="font-size:32px;line-height:1;">📦</span>
+            <button onclick="openTileScanner()" style="width:100%;padding:18px 16px;background:linear-gradient(135deg,rgba(34,197,94,0.08),rgba(34,197,94,0.02));border:2px dashed var(--success);border-radius:var(--radius-md);cursor:pointer;display:flex;align-items:center;gap:14px;text-align:left;color:var(--text-primary);">
+                <span style="font-size:32px;line-height:1;">📸</span>
                 <div style="flex:1;">
                     <div style="display:flex;align-items:center;gap:8px;">
-                        <span style="font-size:17px;font-weight:700;color:var(--success);">Scan Tile Box</span>
+                        <span style="font-size:17px;font-weight:700;color:var(--success);">Identify Tile</span>
                         <span style="background:var(--success);color:#fff;font-size:9px;padding:2px 6px;border-radius:4px;font-weight:700;letter-spacing:0.5px;">PRO</span>
                     </div>
-                    <div style="font-size:12px;color:var(--text-muted);margin-top:3px;">Scan barcode or SKU on box to auto-fill tile specs</div>
+                    <div style="font-size:12px;color:var(--text-muted);margin-top:3px;">Photo the spec sticker on the box — AI fills everything for you</div>
                 </div>
             </button>
+            <input type="file" id="tileScanPhoto" accept="image/*" capture="environment" style="display:none" onchange="handleTileScanPhoto(this)">
+            <!-- Scan instruction overlay -->
+            <div class="modal-overlay" id="scanInstructionModal" style="display:none;">
+                <div class="modal-box" style="max-width:340px;text-align:center;">
+                    <div style="font-size:40px;margin-bottom:8px;">📦</div>
+                    <h3 style="margin-bottom:8px;">Find the Spec Sticker</h3>
+                    <p style="font-size:13px;color:var(--text-secondary);line-height:1.6;margin-bottom:16px;">
+                        Look for the <b>white sticker on the side of the box</b> that shows tile dimensions, material type, and pieces per box.
+                    </p>
+                    <div style="background:var(--bg-recessed);border-radius:var(--radius-sm);padding:12px;margin-bottom:16px;text-align:left;font-size:12px;line-height:1.8;">
+                        <div><b>What to capture:</b></div>
+                        <div>&#10003; Size (e.g. 17.5 x 20.5 cm)</div>
+                        <div>&#10003; Material (porcelain, ceramic, etc.)</div>
+                        <div>&#10003; Pieces per box</div>
+                        <div>&#10003; Brand name</div>
+                        <div style="color:var(--text-muted);margin-top:4px;">Tip: Get the whole sticker in frame</div>
+                    </div>
+                    <button class="btn-success" onclick="document.getElementById('scanInstructionModal').style.display='none';document.getElementById('tileScanPhoto').click();" style="width:100%;padding:14px;font-size:15px;">
+                        📸 Open Camera
+                    </button>
+                    <button class="modal-cancel" onclick="document.getElementById('scanInstructionModal').style.display='none'" style="margin-top:8px;width:100%;">Cancel</button>
+                </div>
+            </div>
         </div>
         <div class="section"><h3>🔷 Tile Settings</h3>
             <div class="field"><label>Preset</label>
@@ -1936,7 +1985,7 @@ var proFeatureDescriptions = {
     'Cut Tracking': 'See all your cuts measured for you! Tap any cut tile to see exact dimensions instantly. Mark each one done as you go — never lose your place on a complex job.',
     'Share Project': 'Send a professional, branded layout page to your client. Shows the tile pattern, dimensions, specs, and your company branding.',
     'Barcode Scanner': 'Scan the barcode on any tile box to auto-populate tile specs instantly. No more measuring or guessing sizes.',
-    'Scan Tile Box': 'Scan the barcode on any tile box to auto-populate tile specs instantly. Save time on every job.'
+    'Identify Tile': 'Photograph any tile box label — AI reads the specs and fills everything instantly. No manual entry needed.'
 };
 
 function isProUser() {
@@ -5374,7 +5423,20 @@ var TILE_DB_LOCAL = {
     '092076027003': {name:'Penny Round Porcelain (12×12)', brand:'Jeffrey Court', shape:'mosaic', nomW:12, nomH:12, actW:11.75, actH:11.75, grout:0.125, subShape:'penny', subW:0.75, subH:0.75, subGr:0.0625},
     '207089042': {name:'Retro Octagon Black Dot (11½×11½)', brand:'Jeffrey Court', shape:'mosaic', nomW:12, nomH:12, actW:11.5, actH:11.5, grout:0.125, subShape:'octdot', subW:2, subH:2, subGr:0.0625},
     // ─── FLORIDA TILE ───
-    '041296550012': {name:'3×12 Subway', brand:'Florida Tile', shape:'rectangle', nomW:3, nomH:12, actW:2.875, actH:11.875, grout:0.125}
+    '041296550012': {name:'3×12 Subway', brand:'Florida Tile', shape:'rectangle', nomW:3, nomH:12, actW:2.875, actH:11.875, grout:0.125},
+    // ─── VERIFIED UPC BARCODES (from physical boxes) ───
+    '081516779918': {name:'Restore Penny Round White (11×13)', brand:'Daltile', shape:'mosaic', nomW:11, nomH:13, actW:11, actH:13, grout:0.125, subShape:'penny', subW:0.75, subH:0.75, subGr:0.0625},
+    '730576907594': {name:'Octagon & Dot Matte White (12×12)', brand:'Daltile', shape:'mosaic', nomW:12, nomH:12, actW:12, actH:12, grout:0.125, subShape:'octdot', subW:2, subH:2, subGr:0.0625},
+    '747583035684': {name:'Greecian White 1" Hex (12×12)', brand:'MSI', shape:'mosaic', nomW:12, nomH:12, actW:12, actH:12, grout:0.125, subShape:'hex', subW:1, subH:1.125, subGr:0.0625},
+    '747583044037': {name:'Carrara White Hex Polished (12×12)', brand:'MSI', shape:'mosaic', nomW:12, nomH:12, actW:12, actH:12, grout:0.125, subShape:'hex', subW:2, subH:2.25, subGr:0.0625},
+    '747583061959': {name:'White Glossy Penny Round (12×12)', brand:'MSI', shape:'mosaic', nomW:12, nomH:12, actW:12, actH:12, grout:0.125, subShape:'penny', subW:0.75, subH:0.75, subGr:0.0625},
+    '747583076823': {name:'Black Glossy Penny Round (12×12)', brand:'MSI', shape:'mosaic', nomW:12, nomH:12, actW:12, actH:12, grout:0.125, subShape:'penny', subW:0.75, subH:0.75, subGr:0.0625},
+    '732763204660': {name:'Metro 2" Hex Matte White (11×12⅝)', brand:'Merola', shape:'mosaic', nomW:12, nomH:12, actW:11.125, actH:12.625, grout:0.125, subShape:'hex', subW:2, subH:2.25, subGr:0.0625},
+    '732763222374': {name:'Hudson Penny Round Stillwater (12×12⅝)', brand:'Merola', shape:'mosaic', nomW:12, nomH:12, actW:12, actH:12.625, grout:0.125, subShape:'penny', subW:0.8, subH:0.8, subGr:0.0625},
+    '734647958034': {name:'Echo Hex White (10⅜×10⅞)', brand:'Jeffrey Court', shape:'mosaic', nomW:10, nomH:11, actW:10.375, actH:10.875, grout:0.125, subShape:'hex', subW:2, subH:2.25, subGr:0.0625},
+    '734647979343': {name:'Shadow Mtn Gray Penny Round (12¼×11⅜)', brand:'Jeffrey Court', shape:'mosaic', nomW:12, nomH:11, actW:12.25, actH:11.375, grout:0.125, subShape:'penny', subW:0.75, subH:0.75, subGr:0.0625},
+    '081516575343': {name:'Satinglo Hex Ice White (12×12)', brand:'American Olean', shape:'mosaic', nomW:12, nomH:12, actW:12, actH:12, grout:0.125, subShape:'hex', subW:2, subH:2.25, subGr:0.0625},
+    '689195561260': {name:'Le Cafe 2×2 Hex White (12×12)', brand:'Bedrosians', shape:'mosaic', nomW:12, nomH:12, actW:12, actH:12, grout:0.125, subShape:'hex', subW:2, subH:2.25, subGr:0.0625}
 };
 
 // Firebase Tile Database
@@ -5411,6 +5473,125 @@ function hasBarcodeSupport() {
     return typeof BarcodeDetector !== 'undefined';
 }
 
+// ── PRIMARY: AI Label Scanner (photo → AI → auto-populate) ──
+function openTileScanner() {
+    if (!requirePro('Identify Tile')) return;
+    // Show instruction modal telling user what to photograph
+    document.getElementById('scanInstructionModal').style.display = '';
+    document.getElementById('scanInstructionModal').classList.add('active');
+}
+
+// DB threshold: when we have enough real UPC matches, offer barcode scan too
+var _DB_BARCODE_THRESHOLD = 500;
+
+function handleTileScanPhoto(input) {
+    if (!input.files || !input.files[0]) return;
+    var file = input.files[0];
+
+    showToast('Reading tile label...', 5000);
+
+    var reader = new FileReader();
+    reader.onload = function(e) {
+        var img = new Image();
+        img.onload = function() {
+            var canvas = document.createElement('canvas');
+            var maxDim = 1024;
+            var scale = Math.min(maxDim / img.width, maxDim / img.height, 1);
+            canvas.width = img.width * scale;
+            canvas.height = img.height * scale;
+            var ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+            var base64 = canvas.toDataURL('image/jpeg', 0.85);
+            var imageData = base64.split(',')[1];
+
+            fetch('https://api.anthropic.com/v1/messages', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'x-api-key': _AI_API_KEY,
+                    'anthropic-version': '2023-06-01',
+                    'anthropic-dangerous-direct-browser-access': 'true'
+                },
+                body: JSON.stringify({
+                    model: 'claude-sonnet-4-20250514',
+                    max_tokens: 1000,
+                    messages: [{
+                        role: 'user',
+                        content: [
+                            { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: imageData } },
+                            { type: 'text', text: 'Extract tile specifications from this box label photo. Return ONLY a JSON object:\n' +
+                                '- name: product name (string)\n- brand: manufacturer (string)\n' +
+                                '- shape: "square", "rectangle", "hexagon", "herringbone", or "mosaic"\n' +
+                                '- nomW: nominal width in INCHES (convert from cm÷2.54 or mm÷25.4)\n' +
+                                '- nomH: nominal height in INCHES\n' +
+                                '- actW: actual width in INCHES if listed (or nomW - 0.125)\n' +
+                                '- actH: actual height in INCHES if listed (or nomH - 0.125)\n' +
+                                '- grout: grout joint in inches (default 0.125)\n' +
+                                '- material: "porcelain", "ceramic", "glass", "marble", "stone"\n' +
+                                '- piecesPerBox: pieces per box if listed (number or null)\n' +
+                                '- coverageSqFt: coverage per box in sq ft (number or null)\n' +
+                                '- barcode: UPC/EAN barcode number if visible (string or null)\n' +
+                                'For mosaic sheets also: subShape ("hex","penny","fishscale","square","diamond","octdot","arabesque","picket"), subW, subH, subGr\n' +
+                                'ONLY return valid JSON, no markdown.' }
+                        ]
+                    }]
+                })
+            })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (data.error) { showToast('AI error: ' + (data.error.message || 'Try again'), 3000); return; }
+                var text = data.content && data.content[0] && data.content[0].text;
+                if (!text) { showToast('No response — try again', 2000); return; }
+                var jsonMatch = text.match(/\{[\s\S]*\}/);
+                if (!jsonMatch) { showToast('Could not read label — try again', 2000); return; }
+
+                var specs = JSON.parse(jsonMatch[0]);
+                var product = {
+                    name: specs.name || 'Tile',
+                    brand: specs.brand || '',
+                    shape: specs.shape || 'square',
+                    nomW: specs.nomW || 12,
+                    nomH: specs.nomH || 12,
+                    actW: specs.actW || (specs.nomW ? specs.nomW - 0.125 : 11.875),
+                    actH: specs.actH || (specs.nomH ? specs.nomH - 0.125 : 11.875),
+                    grout: specs.grout || 0.125,
+                    material: specs.material,
+                    piecesPerBox: specs.piecesPerBox,
+                    coverageSqFt: specs.coverageSqFt
+                };
+                if (specs.subShape) {
+                    product.subShape = specs.subShape;
+                    product.subW = specs.subW;
+                    product.subH = specs.subH;
+                    product.subGr = specs.subGr || 0.0625;
+                }
+
+                // Show the product found modal
+                showProductFound(specs.barcode || 'AI-' + Date.now(), product);
+
+                // Save to Firebase for future barcode matches
+                if (specs.barcode && _tileDbReady && _tileDbRef) {
+                    var dbEntry = Object.assign({}, product, {
+                        addedAt: new Date().toISOString(),
+                        verified: false,
+                        source: 'ai-vision',
+                        labelPhoto: base64
+                    });
+                    _tileDbRef.child(specs.barcode).set(dbEntry);
+                }
+            })
+            .catch(function(err) {
+                showToast('Error: ' + err.message, 3000);
+            });
+        };
+        img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+    // Reset input so same file can be re-selected
+    input.value = '';
+}
+
+// ── LEGACY: Barcode Scanner (kept for when DB is full enough) ──
 function openBarcodeScanner() {
     if (!requirePro('Barcode Scanner')) return;
 
@@ -5705,6 +5886,177 @@ function previewLabelPhoto(input) {
 }
 
 // Crowdsource — Product Not Found
+// AI Label Scan — sends photo to Claude Vision API to extract tile specs
+var _AI_API_KEY = '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';
+
+function handleAILabelScan(input) {
+    if (!input.files || !input.files[0]) return;
+    var file = input.files[0];
+    var statusEl = document.getElementById('aiScanStatus');
+    var previewEl = document.getElementById('aiPhotoPreview');
+    var previewImg = document.getElementById('aiPhotoPreviewImg');
+    var promptEl = document.getElementById('aiPhotoPrompt');
+
+    // Show preview
+    var reader = new FileReader();
+    reader.onload = function(e) {
+        // Compress image
+        var img = new Image();
+        img.onload = function() {
+            var canvas = document.createElement('canvas');
+            var maxDim = 1024;
+            var scale = Math.min(maxDim / img.width, maxDim / img.height, 1);
+            canvas.width = img.width * scale;
+            canvas.height = img.height * scale;
+            var ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+            var base64 = canvas.toDataURL('image/jpeg', 0.85);
+
+            previewImg.src = base64;
+            previewEl.style.display = 'block';
+            promptEl.innerHTML = '<div style="font-size:13px;color:var(--success);font-weight:600;">Analyzing label...</div>';
+            statusEl.style.display = 'block';
+            statusEl.innerHTML = '<div style="font-size:20px;margin-bottom:4px;">🤖</div>Reading tile specs from photo...';
+
+            // Send to Claude Vision API
+            var imageData = base64.split(',')[1]; // Remove data:image/jpeg;base64, prefix
+            fetch('https://api.anthropic.com/v1/messages', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'x-api-key': _AI_API_KEY,
+                    'anthropic-version': '2023-06-01',
+                    'anthropic-dangerous-direct-browser-access': 'true'
+                },
+                body: JSON.stringify({
+                    model: 'claude-sonnet-4-20250514',
+                    max_tokens: 1000,
+                    messages: [{
+                        role: 'user',
+                        content: [
+                            {
+                                type: 'image',
+                                source: { type: 'base64', media_type: 'image/jpeg', data: imageData }
+                            },
+                            {
+                                type: 'text',
+                                text: 'Extract tile specifications from this box label photo. Return ONLY a JSON object with these fields:\n' +
+                                    '- name: product name (string)\n' +
+                                    '- brand: manufacturer (string)\n' +
+                                    '- shape: "square", "rectangle", "hexagon", "herringbone", or "mosaic" (string)\n' +
+                                    '- nomW: nominal width in INCHES (number, convert from cm/mm if needed: 1 inch = 2.54 cm = 25.4 mm)\n' +
+                                    '- nomH: nominal height in INCHES (number)\n' +
+                                    '- actW: actual width in INCHES if listed (number, or null)\n' +
+                                    '- actH: actual height in INCHES if listed (number, or null)\n' +
+                                    '- grout: recommended grout joint in inches (default 0.125)\n' +
+                                    '- material: "porcelain", "ceramic", "glass", "marble", "stone" etc (string)\n' +
+                                    '- piecesPerBox: number of tiles per box if listed (number or null)\n' +
+                                    '- coverageSqFt: coverage per box in sq ft if listed (number or null)\n' +
+                                    '- thickness: tile thickness in mm if listed (number or null)\n' +
+                                    'For mosaic sheets, also include: subShape, subW, subH, subGr\n' +
+                                    'If dimensions are in cm, divide by 2.54 for inches. If in mm, divide by 25.4.\n' +
+                                    'Return ONLY valid JSON, no markdown.'
+                            }
+                        ]
+                    }]
+                })
+            })
+            .then(function(resp) { return resp.json(); })
+            .then(function(data) {
+                if (data.error) {
+                    statusEl.innerHTML = 'AI error: ' + (data.error.message || 'Unknown error');
+                    promptEl.innerHTML = '<div style="font-size:13px;color:var(--warning);">Try again or enter manually below</div>';
+                    return;
+                }
+                var text = data.content && data.content[0] && data.content[0].text;
+                if (!text) {
+                    statusEl.innerHTML = 'No response from AI';
+                    return;
+                }
+                // Parse JSON from response
+                var jsonMatch = text.match(/\{[\s\S]*\}/);
+                if (!jsonMatch) {
+                    statusEl.innerHTML = 'Could not parse specs';
+                    return;
+                }
+                var specs = JSON.parse(jsonMatch[0]);
+
+                // Auto-fill the form fields
+                if (specs.name) document.getElementById('contribName').value = specs.name;
+                if (specs.brand) document.getElementById('contribBrand').value = specs.brand;
+                if (specs.shape) {
+                    var shapeMap = { hexagon: 'hexagon', hex: 'hexagon', square: 'square', rectangle: 'rectangle', herringbone: 'herringbone', mosaic: 'mosaic' };
+                    document.getElementById('contribShape').value = shapeMap[specs.shape] || 'square';
+                    if (specs.shape === 'mosaic') document.getElementById('contribMosaicFields').style.display = 'block';
+                }
+                if (specs.nomW) document.getElementById('contribNomW').value = specs.nomW.toFixed(2);
+                if (specs.nomH) document.getElementById('contribNomH').value = specs.nomH.toFixed(2);
+                if (specs.grout) document.getElementById('contribGrout').value = specs.grout;
+
+                // Mosaic sub-fields
+                if (specs.subShape) document.getElementById('contribSubShape').value = specs.subShape;
+                if (specs.subW) document.getElementById('contribSubW').value = specs.subW;
+                if (specs.subH) document.getElementById('contribSubH').value = specs.subH;
+
+                // Also build a product object for direct apply
+                window._aiScannedProduct = {
+                    name: specs.name || 'Unknown',
+                    brand: specs.brand || '',
+                    shape: specs.shape || 'square',
+                    nomW: specs.nomW || 0,
+                    nomH: specs.nomH || 0,
+                    actW: specs.actW || (specs.nomW ? specs.nomW - 0.125 : 0),
+                    actH: specs.actH || (specs.nomH ? specs.nomH - 0.125 : 0),
+                    grout: specs.grout || 0.125,
+                    subShape: specs.subShape,
+                    subW: specs.subW,
+                    subH: specs.subH,
+                    subGr: specs.subGr || 0.0625,
+                    material: specs.material,
+                    piecesPerBox: specs.piecesPerBox,
+                    coverageSqFt: specs.coverageSqFt
+                };
+
+                statusEl.innerHTML = '<div style="color:var(--success);font-weight:600;">AI detected: ' +
+                    (specs.brand || '') + ' ' + (specs.name || '') + '</div>' +
+                    '<div style="font-size:12px;margin-top:4px;">' +
+                    (specs.nomW ? specs.nomW.toFixed(2) + '" × ' + specs.nomH.toFixed(2) + '"' : '') +
+                    (specs.material ? ' • ' + specs.material : '') +
+                    (specs.piecesPerBox ? ' • ' + specs.piecesPerBox + '/box' : '') +
+                    '</div>' +
+                    '<button onclick="applyAIScannedProduct()" class="btn-success" style="margin-top:8px;padding:10px 20px;width:100%;">Apply & Use This Tile</button>';
+                promptEl.innerHTML = '<div style="font-size:12px;color:var(--text-muted);">Tap to retake photo</div>';
+
+                // Store photo for contribution
+                _pendingLabelPhoto = base64;
+            })
+            .catch(function(err) {
+                statusEl.innerHTML = 'Error: ' + err.message + '<br><span style="font-size:11px;">Enter specs manually below</span>';
+                promptEl.innerHTML = '<div style="font-size:13px;color:var(--warning);">Try again or enter manually</div>';
+            });
+        };
+        img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+}
+
+function applyAIScannedProduct() {
+    if (!window._aiScannedProduct) return;
+    closeProductNotFound();
+    applyScannedProduct(window._aiScannedProduct);
+    // Also save to Firebase for other users
+    if (_pendingBarcode && _tileDbReady && _tileDbRef) {
+        var product = Object.assign({}, window._aiScannedProduct, {
+            addedAt: new Date().toISOString(),
+            verified: false,
+            source: 'ai-vision',
+            labelPhoto: _pendingLabelPhoto
+        });
+        _tileDbRef.child(_pendingBarcode).set(product);
+    }
+    window._aiScannedProduct = null;
+}
+
 function showProductNotFound(barcode) {
     _pendingBarcode = barcode;
     document.getElementById('notFoundBarcode').textContent = barcode;
