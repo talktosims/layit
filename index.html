@@ -3105,18 +3105,24 @@ var pendingUncutKey = null;
 var detailTileData = null; // Store tile data for detail view
 
 function handleCanvasTap(e) {
-    
+
     var rect = cv.getBoundingClientRect();
     var scaleX = cv.width / rect.width;
     var scaleY = cv.height / rect.height;
     var tapX = (e.clientX - rect.left) * scaleX / 2; // Divide by 2 for retina scale
     var tapY = (e.clientY - rect.top) * scaleY / 2;
-    
+
     // Check if tap is on any cut tile
     for (var i = 0; i < cutTilesData.length; i++) {
         var tile = cutTilesData[i];
         if (isPointInTile(tapX, tapY, tile.x, tile.y, tile.tw, tile.th, tile.verts)) {
+            // Pro check first
             if (!requirePro('Cut Tracking')) return;
+            // Then lock check
+            if (!patternLocked) {
+                showToast('Lock the pattern first to track cuts', 2000);
+                return;
+            }
             var key = tile.key;
             var currentState = cutTileStates[key] || 0;
 
