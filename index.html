@@ -988,47 +988,65 @@
         }
         .btn-pro:active { transform:scale(0.97); }
 
-        /* ---- TAB INFO POPUP ---- */
-        @keyframes tabInfoSlideIn {
-            from { opacity:0; transform:translateY(-12px); }
-            to { opacity:1; transform:translateY(0); }
+        /* ---- TAB INFO OVERLAY MODAL ---- */
+        @keyframes tabInfoFadeIn {
+            from { opacity:0; }
+            to { opacity:1; }
         }
-        .tab-info-popup {
+        @keyframes tabInfoModalIn {
+            from { opacity:0; transform:scale(0.92) translateY(12px); }
+            to { opacity:1; transform:scale(1) translateY(0); }
+        }
+        .tab-info-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0, 0, 0, 0.6);
+            z-index: 200;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            animation: tabInfoFadeIn 0.25s ease both;
+        }
+        .tab-info-modal {
             background: var(--bg-surface);
-            border-left: 3px solid var(--success);
-            border-radius: var(--radius-sm);
-            padding: 14px 16px;
-            margin: 10px 12px 6px;
-            box-shadow: var(--shadow-md);
-            animation: tabInfoSlideIn 0.3s var(--ease-out) both;
-            position: relative;
-            z-index: 50;
+            border-radius: var(--radius-md);
+            padding: 28px 24px 20px;
+            max-width: 320px;
+            width: 85%;
+            text-align: center;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+            animation: tabInfoModalIn 0.3s var(--ease-out) both;
         }
-        .tab-info-popup-title {
-            font-size: var(--text-md);
-            font-weight: 700;
-            color: var(--text-primary);
-            margin-bottom: 6px;
-        }
-        .tab-info-popup-desc {
-            font-size: var(--text-sm);
-            color: var(--text-secondary);
-            line-height: var(--leading-relaxed);
+        .tab-info-modal-icon {
+            font-size: 36px;
             margin-bottom: 12px;
         }
-        .tab-info-popup .btn-dismiss {
+        .tab-info-modal-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 10px;
+        }
+        .tab-info-modal-desc {
+            font-size: 14px;
+            color: var(--text-secondary);
+            line-height: 1.6;
+            margin-bottom: 20px;
+        }
+        .tab-info-modal .btn-dismiss {
             background: var(--success);
             color: #fff;
             border: none;
             border-radius: var(--radius-sm);
-            padding: 6px 18px;
-            font-size: var(--text-sm);
+            padding: 12px 32px;
+            font-size: 15px;
             font-weight: 600;
             cursor: pointer;
             font-family: var(--font-family);
             transition: background 0.15s;
+            width: 100%;
         }
-        .tab-info-popup .btn-dismiss:active {
+        .tab-info-modal .btn-dismiss:active {
             background: var(--success-hover);
             transform: scale(0.97);
         }
@@ -1440,6 +1458,21 @@
     </div>
 
     <div id="wall" class="panel">
+        <!-- Workspace Photo -->
+        <div class="section" id="workspacePhotoSection">
+            <div onclick="document.getElementById('workspacePhotoInput').click()" style="padding:16px;background:var(--bg-recessed);border:2px dashed var(--border-default);border-radius:var(--radius-md);cursor:pointer;text-align:center;">
+                <div id="workspacePhotoPreview" style="display:none;margin-bottom:8px;">
+                    <img id="workspacePhotoImg" style="max-height:120px;max-width:100%;border-radius:8px;">
+                </div>
+                <div id="workspacePhotoPrompt">
+                    <span style="font-size:24px;">📸</span>
+                    <div style="font-size:13px;font-weight:600;color:var(--text-primary);margin-top:4px;">Take Photo of Workspace</div>
+                    <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">Used in client reports &amp; helps train AI measurement</div>
+                </div>
+            </div>
+            <input type="file" id="workspacePhotoInput" accept="image/*" capture="environment" style="display:none" onchange="handleWorkspacePhoto(event)">
+        </div>
+
         <div class="section">
             <h3>📐 Surface Perimeter</h3>
             <p class="hint mb-3" style="text-align:left;">Draw the outline of your wall or floor. Tap corners to create shape, then enter exact measurements.</p>
@@ -1460,6 +1493,8 @@
                 <div id="perimeterHint" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;color:var(--text-tertiary);font-size:12px;pointer-events:none;">
                     Tap to add corners<br>Tap first point to close shape
                 </div>
+                <!-- Overlay inputs positioned at segment midpoints -->
+                <div id="segmentOverlayInputs" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:10;"></div>
             </div>
             
             <!-- Drawing Controls -->
@@ -1481,21 +1516,27 @@
             </div>
         </div>
         
-        <!-- Wall Segments List (appears after shape is closed) -->
-        <div class="section" id="segmentMeasurements" style="display:none;">
-            <h3>📏 Enter Measurements</h3>
-            <p class="hint mb-3" style="text-align:left;">Tap a wall segment below or on the drawing to enter its length.</p>
-            
-            <div id="wallSegmentsList">
-                <!-- Filled by JS -->
+        <!-- Quick Rectangle (prominent, first option) -->
+        <div class="section">
+            <h3>⚡ Quick Rectangle</h3>
+            <p class="hint mb-3" style="text-align:left;font-size:12px;">Enter width and height for a simple rectangular space.</p>
+            <div class="row">
+                <div class="field"><label>Width (in)</label><input type="number" id="quickWidth" placeholder="58" min="0"></div>
+                <div class="field"><label>Height (in)</label><input type="number" id="quickHeight" placeholder="70" min="0"></div>
             </div>
-            
-            <div id="measurementStatus" class="stat-box mt-4">
+            <button class="btn-primary" onclick="applyQuickRectangle()" style="width:100%;">
+                Apply Rectangle
+            </button>
+        </div>
+
+        <!-- Measurement status (appears after shape is closed) -->
+        <div class="section" id="segmentMeasurements" style="display:none;">
+            <div id="measurementStatus" class="stat-box">
                 <div class="stat-label">Segments measured</div>
                 <div class="stat-value" id="measuredCount">0 / 0</div>
             </div>
-
-            <div class="grid-2 mt-4">
+            <p class="hint mb-3" style="text-align:left;font-size:12px;">Tap the measurement labels on each wall line above to enter dimensions. Layout updates in real time.</p>
+            <div class="grid-2">
                 <button class="btn-secondary" onclick="undoLastMeasurement()" id="undoMeasureBtn" disabled>
                     ↩ Undo Last
                 </button>
@@ -1503,34 +1544,15 @@
                     ✓ Apply Dimensions
                 </button>
             </div>
+            <div id="wallSegmentsList" style="display:none;"></div>
         </div>
-        
-        <!-- Quick Room Dimensions -->
-        <div class="section">
-            <h3>📐 Quick Room Dimensions</h3>
-            <p class="hint mb-3" style="text-align:left;">Enter 4 wall measurements for out-of-square rooms, or just width &amp; height for rectangles.</p>
-            <div class="row">
-                <div class="field"><label>Left Wall (in)</label><input type="number" id="leftH" placeholder="70" min="0" value="70"></div>
-                <div class="field"><label>Right Variance</label><input type="number" id="rightVar" placeholder="0.5" min="0" step="0.25" value="0.5"></div>
-            </div>
-            <div class="row">
-                <div class="field"><label>Top Wall (in)</label><input type="number" id="topW" placeholder="58" min="0" value="58"></div>
-                <div class="field"><label>Bottom Variance</label><input type="number" id="botVar" placeholder="0.25" min="0" step="0.25" value="0.25"></div>
-            </div>
-            <p class="hint mb-3" style="text-align:left;font-size:11px;">Variance = how much longer the opposite wall is (0 = perfectly square)</p>
-            <button class="btn-primary" onclick="updateWall()" style="width:100%;">
-                ✓ Apply Dimensions
-            </button>
-            <div style="margin-top:12px;border-top:1px solid var(--border-default);padding-top:12px;">
-                <p class="hint mb-3" style="text-align:left;font-size:12px;font-weight:600;">⚡ Quick Rectangle</p>
-                <div class="row">
-                    <div class="field"><label>Width (in)</label><input type="number" id="quickWidth" placeholder="58" min="0"></div>
-                    <div class="field"><label>Height (in)</label><input type="number" id="quickHeight" placeholder="70" min="0"></div>
-                </div>
-                <button class="btn-secondary" onclick="applyQuickRectangle()" style="width:100%;">
-                    Apply Rectangle
-                </button>
-            </div>
+
+        <!-- Hidden legacy inputs for backward compat -->
+        <div style="display:none;">
+            <input type="number" id="leftH" value="70">
+            <input type="number" id="rightVar" value="0.5">
+            <input type="number" id="topW" value="58">
+            <input type="number" id="botVar" value="0.25">
         </div>
 
     </div>
@@ -1570,6 +1592,7 @@
                         <option value="chevron">∧ Chevron</option>
                         <option value="arabesque">❋ Arabesque</option>
                         <option value="picket">⬬ Picket</option>
+                        <option value="octdot">⬡ Octagon + Dot</option>
                     </select>
                 </div>
                 <div class="row">
@@ -1620,6 +1643,7 @@
             <div class="field"><label>Label</label><input type="text" id="voidLabel" placeholder="Niche"></div>
             <div style="font-size:11px;color:var(--text-muted);margin-bottom:6px;">📏 Position — measure from wall edges to the center of the cutout</div>
             <div class="row"><div class="field"><label>From Left Edge (in)</label><input type="number" id="voidX"></div><div class="field"><label>From Bottom Edge (in)</label><input type="number" id="voidY"></div></div>
+            <div style="font-size:11px;color:var(--text-muted);margin-bottom:6px;">📐 Size — width and height of the cutout opening</div>
             <div class="row"><div class="field"><label>Width (in)</label><input type="number" id="voidW" min="0"></div><div class="field"><label>Height (in)</label><input type="number" id="voidH" min="0"></div></div>
             <button class="btn-success" onclick="addVoid()">+ Add Cutout</button>
             <div id="voidList"></div>
@@ -1630,12 +1654,12 @@
     </div>
 
     <div id="calc" class="panel">
-        <div class="section"><h3>🧮 Tile Calculator</h3>
-            <div class="field"><label>Waste % (recommended 10-15%)</label><input type="number" id="waste" value="10" min="0" max="100"></div>
+        <div class="section"><h3>🔢 Tile Calculator</h3>
+            <input type="hidden" id="waste" value="15">
             <button class="btn-primary" onclick="updateTileCount()" style="margin-bottom:10px;">🔢 Calculate Tiles</button>
             <div class="calc-result" id="tilesNeeded">0 tiles</div>
             <div class="hint mt-3">
-                Full tiles + Cut tiles + Waste buffer
+                Full tiles + Cut tiles + 15% waste buffer (auto-calculated)
             </div>
         </div>
         <div class="section"><h3>💰 Cost Estimate</h3>
@@ -1661,22 +1685,6 @@
 
     <div id="projects" class="panel">
         <div class="section">
-            <h3>📤 Backup & Share</h3>
-            <p class="hint mb-3" style="text-align:left;">Export to share or backup. Import to restore.</p>
-            <div class="grid-2">
-                <button class="btn-secondary" onclick="exportProject()">📤 Export</button>
-                <button class="btn-secondary" onclick="document.getElementById('importFile').click()">📥 Import</button>
-            </div>
-            <input type="file" id="importFile" accept=".json" style="display:none" onchange="importProject(event)">
-            <div style="margin-top:12px;">
-                <button class="btn-success" onclick="shareProject()" style="width:100%;display:flex;align-items:center;justify-content:center;gap:8px;padding:14px;">
-                    <span style="font-size:18px;">📤</span> Share Project with Client
-                    <span style="background:rgba(255,255,255,0.25);color:#fff;font-size:9px;padding:2px 6px;border-radius:4px;font-weight:700;letter-spacing:0.5px;">PRO</span>
-                </button>
-            </div>
-        </div>
-
-        <div class="section">
             <h3>📁 Current Project</h3>
             <div class="field">
                 <label>Project Name</label>
@@ -1688,7 +1696,7 @@
                 <button class="btn-secondary" onclick="confirmNewProject()">📄 New</button>
             </div>
         </div>
-        
+
         <div class="section">
             <h3>📋 My Projects</h3>
             <div id="projectList" style="max-height:250px;overflow-y:auto;">
@@ -1698,37 +1706,57 @@
                 No saved projects yet.<br>Save your first project above!
             </div>
         </div>
-        
+
         <div class="section">
-            <h3>🏢 Company Branding</h3>
-            <p class="hint mb-3" style="text-align:left;">Add your company info for shared project pages.</p>
-            <div class="field">
-                <label>Company Name</label>
-                <input type="text" id="companyName" placeholder="Your Company Name" oninput="saveCompanyBranding()">
+            <h3>📤 Backup & Share</h3>
+            <p class="hint mb-3" style="text-align:left;">Export to share with friends or backup. Import to restore.</p>
+            <div class="grid-2">
+                <button class="btn-secondary" onclick="exportProject()">📤 Export</button>
+                <button class="btn-secondary" onclick="document.getElementById('importFile').click()">📥 Import</button>
             </div>
-            <div class="field">
-                <label>Company Logo (optional)</label>
-                <div style="display:flex;gap:8px;align-items:center;">
-                    <button class="btn-secondary" onclick="document.getElementById('logoUpload').click()" style="flex:1;font-size:12px;">📎 Upload Logo</button>
-                    <button class="btn-secondary" onclick="clearCompanyLogo()" style="font-size:12px;padding:10px 12px;">✕</button>
-                </div>
-                <input type="file" id="logoUpload" accept="image/*" style="display:none" onchange="handleLogoUpload(event)">
-                <div id="logoPreview" style="display:none;margin-top:8px;text-align:center;">
-                    <img id="logoPreviewImg" style="max-height:60px;max-width:200px;border-radius:6px;background:rgba(255,255,255,0.1);padding:4px;">
-                </div>
+            <input type="file" id="importFile" accept=".json" style="display:none" onchange="importProject(event)">
+            <div style="margin-top:12px;">
+                <button class="btn-secondary" onclick="shareProject()" style="width:100%;display:flex;align-items:center;justify-content:center;gap:8px;padding:14px;">
+                    <span style="font-size:18px;">📤</span> Share with Friend / Installer
+                </button>
             </div>
         </div>
 
         <div class="section">
-            <h3>☁️ Cloud Sync <span class="pro-badge" id="cloudSyncProBadge">PRO</span></h3>
-            <p class="hint mb-3" style="text-align:left;">Sync projects across all your devices automatically.</p>
-            <button class="btn-secondary" onclick="requirePro('Cloud Sync')" style="width:100%;" id="cloudSyncBtn">☁️ Enable Cloud Sync</button>
+            <h3>📊 Client Report <span style="background:var(--success);color:#fff;font-size:9px;padding:2px 6px;border-radius:4px;font-weight:700;letter-spacing:0.5px;margin-left:4px;">PRO</span></h3>
+            <p class="hint mb-3" style="text-align:left;">Generate a 3-page professional B&W report (8.5×11) with your branding, workspace photo, layout, measurements, tile specs, and notes page. Print-ready PDF.</p>
+            <button class="btn-success" onclick="if(!requirePro('Client Report Share'))return;generateClientReport()" style="width:100%;display:flex;align-items:center;justify-content:center;gap:8px;padding:14px;">
+                <span style="font-size:18px;">📋</span> Generate Client Report
+            </button>
         </div>
 
-        <div class="section">
-            <h3>📤 Share with Team <span class="pro-badge" id="shareProBadge">PRO</span></h3>
-            <p class="hint mb-3" style="text-align:left;">Send layouts to clients and crew members.</p>
-            <button class="btn-secondary" onclick="requirePro('Project Sharing')" style="width:100%;" id="shareBtn">📤 Share Project</button>
+        <!-- Pro-only sections: hidden until Pro is active -->
+        <div id="proFileSections" style="display:none;">
+            <div class="section">
+                <h3>🏢 Company Branding <span style="background:var(--info, #2196F3);color:#fff;font-size:9px;padding:2px 6px;border-radius:4px;font-weight:700;letter-spacing:0.5px;margin-left:4px;">New!</span></h3>
+                <p class="hint mb-3" style="text-align:left;">Add your company info for shared project pages and client reports.</p>
+                <div class="field">
+                    <label>Company Name</label>
+                    <input type="text" id="companyName" placeholder="Your Company Name" oninput="saveCompanyBranding()">
+                </div>
+                <div class="field">
+                    <label>Company Logo (optional)</label>
+                    <div style="display:flex;gap:8px;align-items:center;">
+                        <button class="btn-secondary" onclick="document.getElementById('logoUpload').click()" style="flex:1;font-size:12px;">📎 Upload Logo</button>
+                        <button class="btn-secondary" onclick="clearCompanyLogo()" style="font-size:12px;padding:10px 12px;">✕</button>
+                    </div>
+                    <input type="file" id="logoUpload" accept="image/*" style="display:none" onchange="handleLogoUpload(event)">
+                    <div id="logoPreview" style="display:none;margin-top:8px;text-align:center;">
+                        <img id="logoPreviewImg" style="max-height:60px;max-width:200px;border-radius:6px;background:rgba(255,255,255,0.1);padding:4px;">
+                    </div>
+                </div>
+            </div>
+
+            <div class="section">
+                <h3>☁️ Cloud Sync <span style="background:var(--info, #2196F3);color:#fff;font-size:9px;padding:2px 6px;border-radius:4px;font-weight:700;letter-spacing:0.5px;margin-left:4px;">New!</span></h3>
+                <p class="hint mb-3" style="text-align:left;">Sync projects across all your devices automatically.</p>
+                <button class="btn-secondary" onclick="initCloudSync()" style="width:100%;" id="cloudSyncBtn">☁️ Enable Cloud Sync</button>
+            </div>
         </div>
     </div>
 
@@ -1839,10 +1867,19 @@
                 <div class="guide-item">
                     <div class="guide-header" onclick="toggleGuide(this)" style="display:flex;align-items:center;gap:8px;padding:10px 8px;cursor:pointer;border-radius:var(--radius-sm);transition:background 0.15s;">
                         <span class="guide-arrow" style="font-size:12px;color:var(--text-secondary);transition:transform 0.2s;display:inline-block;width:12px;">&#9656;</span>
-                        <span style="font-weight:600;font-size:13px;color:var(--text-primary);">Project Sharing <span style="background:var(--success);color:#fff;font-size:9px;padding:2px 6px;border-radius:4px;font-weight:700;letter-spacing:0.5px;margin-left:4px;">PRO</span></span>
+                        <span style="font-weight:600;font-size:13px;color:var(--text-primary);">Project Sharing</span>
                     </div>
                     <div class="guide-body" style="display:none;padding:4px 8px 12px 28px;font-size:12px;color:var(--text-secondary);line-height:1.6;">
-                        Generate a clean, branded project page to share with clients. Shows layout visual, dimensions, tile specs, and waste %.
+                        Share your tile layout with friends, family, or your installer. Export and import project files to move between devices.
+                    </div>
+                </div>
+                <div class="guide-item">
+                    <div class="guide-header" onclick="toggleGuide(this)" style="display:flex;align-items:center;gap:8px;padding:10px 8px;cursor:pointer;border-radius:var(--radius-sm);transition:background 0.15s;">
+                        <span class="guide-arrow" style="font-size:12px;color:var(--text-secondary);transition:transform 0.2s;display:inline-block;width:12px;">&#9656;</span>
+                        <span style="font-weight:600;font-size:13px;color:var(--text-primary);">Client Report Share <span style="background:var(--success);color:#fff;font-size:9px;padding:2px 6px;border-radius:4px;font-weight:700;letter-spacing:0.5px;margin-left:4px;">PRO</span></span>
+                    </div>
+                    <div class="guide-body" style="display:none;padding:4px 8px 12px 28px;font-size:12px;color:var(--text-secondary);line-height:1.6;">
+                        Generate a professional, branded report to share with clients. Includes clean B&W layout visual, precise measurements, tile specs, material counts, and your company branding.
                     </div>
                 </div>
             </div>
@@ -2212,44 +2249,29 @@ function setPerimeterMode(mode) {
 
 // Handle click on perimeter canvas
 function handlePerimeterClick(e) {
+    // Once closed, don't intercept — let overlay inputs handle taps
+    if (perimeterState.closed) return;
+
     var rect = perimeterState.canvas.getBoundingClientRect();
-    var x = e.clientX - rect.left;
-    var y = e.clientY - rect.top;
-
-    // Scale for actual canvas size
-    var scaleX = perimeterState.canvas.width / rect.width;
-    var scaleY = perimeterState.canvas.height / rect.height;
-    x *= scaleX;
-    y *= scaleY;
-
-    if (perimeterState.closed) {
-        // Check if clicking on a segment
-        handleSegmentClickAt(x, y);
-        return;
-    }
+    var x = (e.clientX - rect.left) * (perimeterState.canvas.width / rect.width);
+    var y = (e.clientY - rect.top) * (perimeterState.canvas.height / rect.height);
 
     addPerimeterPoint(x, y);
 }
 
 // Handle touch on perimeter canvas
 function handlePerimeterTouch(e) {
+    // Once closed, don't intercept — let overlay inputs handle taps
+    if (perimeterState.closed) return;
+
     e.preventDefault();
     if (e.changedTouches.length > 0) {
         var touch = e.changedTouches[0];
         var rect = perimeterState.canvas.getBoundingClientRect();
-        var x = touch.clientX - rect.left;
-        var y = touch.clientY - rect.top;
-        
-        var scaleX = perimeterState.canvas.width / rect.width;
-        var scaleY = perimeterState.canvas.height / rect.height;
-        x *= scaleX;
-        y *= scaleY;
-        
-        if (perimeterState.closed) {
-            handleSegmentClickAt(x, y);
-        } else {
-            addPerimeterPoint(x, y);
-        }
+        var x = (touch.clientX - rect.left) * (perimeterState.canvas.width / rect.width);
+        var y = (touch.clientY - rect.top) * (perimeterState.canvas.height / rect.height);
+
+        addPerimeterPoint(x, y);
     }
 }
 
@@ -2290,7 +2312,12 @@ function clearPerimeter() {
     
     document.getElementById('segmentMeasurements').style.display = 'none';
     document.getElementById('perimeterHint').style.display = 'block';
-    
+    var overlayContainer = document.getElementById('segmentOverlayInputs');
+    if (overlayContainer) overlayContainer.innerHTML = '';
+
+    // Re-enable canvas for drawing new points
+    if (perimeterState.canvas) perimeterState.canvas.style.pointerEvents = '';
+
     updatePerimeterUI();
     drawPerimeter();
 }
@@ -2320,11 +2347,15 @@ function closePerimeter() {
     document.getElementById('perimeterHint').style.display = 'none';
     document.getElementById('segmentMeasurements').style.display = 'block';
     
+    // Make canvas non-interactive so overlay inputs receive taps
+    perimeterState.canvas.style.pointerEvents = 'none';
+
     updatePerimeterUI();
     updateSegmentsList();
     drawPerimeter();
-    
-    showToast('Shape closed! Now enter measurements for each wall segment.');
+    positionSegmentOverlayInputs();
+
+    showToast('Shape closed! Tap each wall measurement to enter dimensions.');
 }
 
 // Update UI elements
@@ -2386,14 +2417,15 @@ function drawPerimeter() {
         ctx.lineTo(refOx + bW * refScale, refOy + rH * refScale);
         ctx.lineTo(refOx, refOy + C.wall.lH * refScale);
         ctx.closePath();
-        ctx.strokeStyle = 'rgba(79, 139, 255, 0.25)';
-        ctx.lineWidth = 2;
-        ctx.setLineDash([6, 4]);
+        ctx.strokeStyle = 'rgba(79, 139, 255, 0.85)';
+        ctx.lineWidth = 3;
         ctx.stroke();
-        ctx.setLineDash([]);
-        // Dimension labels
-        ctx.fillStyle = 'rgba(79, 139, 255, 0.4)';
-        ctx.font = '10px sans-serif';
+        // Fill shape with subtle color
+        ctx.fillStyle = 'rgba(79, 139, 255, 0.06)';
+        ctx.fill();
+        // Dimension labels — bold and obvious
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+        ctx.font = 'bold 12px sans-serif';
         ctx.textAlign = 'center';
         ctx.fillText(C.wall.tW + '"', refOx + (C.wall.tW * refScale) / 2, refOy - 6);
         ctx.fillText(C.wall.lH + '"', refOx - 14, refOy + (C.wall.lH * refScale) / 2);
@@ -2592,45 +2624,92 @@ function undoLastMeasurement() {
 function setSegmentLength(index, value) {
     var length = parseFloat(value);
     if (isNaN(length) || length <= 0) {
-        showToast('Enter a valid length in inches');
-        return;
+        return; // Silently ignore — user is still typing
     }
-    
+
     perimeterState.segments[index].length = length;
     perimeterState.segments[index].measured = true;
     if (!perimeterState.measurementHistory) perimeterState.measurementHistory = [];
-    perimeterState.measurementHistory.push(index);
-    
-    // Move to next unmeasured segment
-    var nextUnmeasured = perimeterState.segments.findIndex(function(s, i) {
-        return i > index && !s.measured;
-    });
-    if (nextUnmeasured === -1) {
-        nextUnmeasured = perimeterState.segments.findIndex(function(s) {
-            return !s.measured;
-        });
-    }
-    
-    if (nextUnmeasured >= 0) {
-        perimeterState.selectedSegment = nextUnmeasured;
-    } else {
-        perimeterState.selectedSegment = null;
-    }
-    
+    // Only add to history if not already the last entry
+    var hist = perimeterState.measurementHistory;
+    if (hist.length === 0 || hist[hist.length - 1] !== index) hist.push(index);
+
     updateSegmentsList();
     updatePerimeterUI();
     drawPerimeter();
+    positionSegmentOverlayInputs(); // Update overlay input styling
+
+    // Auto-apply when all segments are measured — live layout update
+    var allMeasured = perimeterState.segments.every(function(s) { return s.measured && s.length > 0; });
+    if (allMeasured) {
+        applyPerimeter(true); // Silent — don't switch tabs, just update layout
+    }
+}
+
+// Position overlay input fields at segment midpoints on the canvas
+function positionSegmentOverlayInputs() {
+    var container = document.getElementById('segmentOverlayInputs');
+    if (!container) return;
+
+    // Only show if shape is closed
+    if (!perimeterState.closed || !perimeterState.segments || perimeterState.segments.length === 0) {
+        container.innerHTML = '';
+        return;
+    }
+
+    var canvas = perimeterState.canvas;
+    if (!canvas) return;
+
+    // Get canvas display size vs internal size ratio
+    var rect = canvas.getBoundingClientRect();
+    var scaleX = rect.width / canvas.width;
+    var scaleY = rect.height / canvas.height;
+
+    // Build overlay inputs
+    var html = '';
+    perimeterState.segments.forEach(function(seg, i) {
+        var midX = (seg.p1.x + seg.p2.x) / 2 * scaleX;
+        var midY = (seg.p1.y + seg.p2.y) / 2 * scaleY;
+
+        // Offset input perpendicular to the segment for readability
+        var dx = seg.p2.x - seg.p1.x;
+        var dy = seg.p2.y - seg.p1.y;
+        var len = Math.sqrt(dx * dx + dy * dy);
+        var nx = len > 0 ? -dy / len * 16 * scaleX : 0;
+        var ny = len > 0 ? dx / len * 16 * scaleY : 0;
+
+        var inputX = midX + nx;
+        var inputY = midY + ny;
+
+        var val = seg.measured ? seg.length : '';
+        var bgColor = seg.measured ? 'rgba(70,167,88,0.9)' : 'rgba(255,152,0,0.9)';
+        var textColor = '#fff';
+
+        html += '<input type="number" data-seg="' + i + '" value="' + val + '" placeholder="?" ';
+        html += 'style="position:absolute;pointer-events:auto;';
+        html += 'left:' + (inputX - 28) + 'px;top:' + (inputY - 14) + 'px;';
+        html += 'width:56px;height:28px;padding:2px 4px;';
+        html += 'background:' + bgColor + ';color:' + textColor + ';';
+        html += 'border:2px solid rgba(255,255,255,0.4);border-radius:6px;';
+        html += 'font-size:13px;font-weight:700;text-align:center;';
+        html += 'font-family:inherit;-webkit-appearance:none;';
+        html += '" onchange="setSegmentLength(' + i + ',this.value)" ';
+        html += 'oninput="setSegmentLength(' + i + ',this.value)" ';
+        html += 'onclick="event.stopPropagation();selectSegment(' + i + ')" />';
+    });
+
+    container.innerHTML = html;
 }
 
 // Apply the perimeter dimensions
-function applyPerimeter() {
+function applyPerimeter(silent) {
     // Calculate the scale and generate the wall polygon
     var segments = perimeterState.segments;
-    
+
     // Check all segments are measured
     var allMeasured = segments.every(function(s) { return s.measured && s.length > 0; });
     if (!allMeasured) {
-        showToast('Please measure all wall segments first');
+        if (!silent) showToast('Please measure all wall segments first');
         return;
     }
     
@@ -2689,9 +2768,11 @@ function applyPerimeter() {
     
     markUnsaved();
     draw();
-    
-    showToast('✓ Perimeter applied! Go to 📐 Diagram to see layout.', 3000);
-    showTab('diagram');
+
+    if (!silent) {
+        showToast('✓ Perimeter applied! Go to 📐 Layout to see your design.', 3000);
+        showTab('diagram');
+    }
 }
 
 // Quick rectangle mode
@@ -3211,10 +3292,16 @@ function setupDetailTouchHandlers() {
 function drawDetailView() {
     var tile = window.currentDetailTile;
     if (!tile) return;
-    
+
+    // Route mosaic sheets to dedicated detail view
+    if (tile.shape === 'mosaic_sheet') {
+        drawMosaicSheetDetail(tile);
+        return;
+    }
+
     var canvas = document.getElementById('detailCanvas');
     var ctx = canvas.getContext('2d');
-    
+
     // Larger canvas size for better detail
     var size = 400;
     canvas.width = size * 2; // Retina
@@ -3223,18 +3310,18 @@ function drawDetailView() {
     canvas.style.height = size + 'px';
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.scale(2, 2);
-    
+
     // Clear canvas
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, size, size);
-    
+
     // Apply zoom and pan - zoom from center, then apply pan
     ctx.save();
     ctx.translate(detailPanX, detailPanY);
     ctx.translate(size / 2, size / 2);
     ctx.scale(detailZoom, detailZoom);
     ctx.translate(-size / 2, -size / 2);
-    
+
     var scale = tile.scale;
     var tileCenterX = tile.x;
     var tileCenterY = tile.y;
@@ -4219,6 +4306,356 @@ function drawDetailView() {
     ctx.fillText('Tile size: ' + toFraction(Math.min(actualTileW, actualTileH)) + ' × ' + toFraction(Math.max(actualTileW, actualTileH)), size / 2, size - 25);
 }
 
+// ============ MOSAIC SHEET DETAIL VIEW ============
+// Draws a full mosaic sheet with all sub-tiles, showing wall cut line
+function drawMosaicSheetDetail(tile) {
+    var canvas = document.getElementById('detailCanvas');
+    var ctx = canvas.getContext('2d');
+
+    var size = 400;
+    canvas.width = size * 2;
+    canvas.height = size * 2;
+    canvas.style.width = size + 'px';
+    canvas.style.height = size + 'px';
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.scale(2, 2);
+
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, size, size);
+
+    ctx.save();
+    ctx.translate(detailPanX, detailPanY);
+    ctx.translate(size / 2, size / 2);
+    ctx.scale(detailZoom, detailZoom);
+    ctx.translate(-size / 2, -size / 2);
+
+    var subs = tile.subTiles;
+    var subShape = tile.subShape;
+    var stWpx = tile.stWpx;
+    var stHpx = tile.stHpx;
+    var stGrPx = tile.stGrPx;
+    var orient = tile.orient;
+    var wall = tile.wall;
+    var voidPolys = tile.voidPolys || [];
+    var scale = tile.scale;
+
+    // Compute center of all sub-tiles for positioning
+    var centerX = tile.x;
+    var centerY = tile.y;
+
+    // Scale to fit the sheet in the detail view with padding
+    var sheetW = tile.tw; // pixels
+    var sheetH = tile.th;
+    var padding = 40;
+    var drawScale = Math.min((size - padding * 2) / sheetW, (size - padding * 2) / sheetH) * scale;
+
+    // Title
+    ctx.fillStyle = '#333';
+    ctx.font = 'bold 16px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('Mosaic Sheet — Cut View', size / 2, 22);
+
+    // Sheet size label
+    ctx.fillStyle = '#666';
+    ctx.font = '13px sans-serif';
+    ctx.fillText(toFraction(tile.sheetW) + ' × ' + toFraction(tile.sheetH) + ' sheet', size / 2, 40);
+
+    // Draw each sub-tile in the sheet
+    var cutSubCount = 0;
+    var fullSubCount = 0;
+    for (var si = 0; si < subs.length; si++) {
+        var sub = subs[si];
+        // Convert from canvas pixels to detail view coordinates
+        var dx = (sub.px - centerX) * drawScale / scale + size / 2;
+        var dy = (sub.py - centerY) * drawScale / scale + size / 2 + 15;
+
+        var subWd = stWpx * drawScale / scale;
+        var subHd = stHpx * drawScale / scale;
+        var subGrd = stGrPx * drawScale / scale;
+
+        // Determine if this sub-tile is cut by the wall
+        if (sub.isCut) {
+            ctx.fillStyle = '#FF9800';
+            ctx.strokeStyle = '#E65100';
+            cutSubCount++;
+        } else {
+            ctx.fillStyle = '#4CAF50';
+            ctx.strokeStyle = '#2E7D32';
+            fullSubCount++;
+        }
+        ctx.lineWidth = 1;
+
+        // Draw sub-tile shape
+        ctx.beginPath();
+        if (subShape === 'hex') {
+            var hw = (subWd - subGrd) / 2, hh = (subHd - subGrd) / 2;
+            if (orient === 'pointy') {
+                ctx.moveTo(dx, dy - hh);
+                ctx.lineTo(dx + hw, dy - hh/2);
+                ctx.lineTo(dx + hw, dy + hh/2);
+                ctx.lineTo(dx, dy + hh);
+                ctx.lineTo(dx - hw, dy + hh/2);
+                ctx.lineTo(dx - hw, dy - hh/2);
+            } else {
+                ctx.moveTo(dx + hw, dy);
+                ctx.lineTo(dx + hw/2, dy + hh);
+                ctx.lineTo(dx - hw/2, dy + hh);
+                ctx.lineTo(dx - hw, dy);
+                ctx.lineTo(dx - hw/2, dy - hh);
+                ctx.lineTo(dx + hw/2, dy - hh);
+            }
+            ctx.closePath();
+        } else if (subShape === 'penny') {
+            var r = (subWd - subGrd) / 2;
+            ctx.arc(dx, dy, r, 0, Math.PI * 2);
+        } else if (subShape === 'fishscale') {
+            var rw = (subWd - subGrd) / 2;
+            var fsStemLen = rw * 0.5;
+            var fsTotalH = rw + fsStemLen;
+            var flatY = dy - fsTotalH / 2 + rw;
+            var stemY = dy + fsTotalH / 2;
+            var stemLen = stemY - flatY;
+            ctx.arc(dx, flatY, rw, Math.PI, 2 * Math.PI, false);
+            ctx.quadraticCurveTo(dx + rw * 0.08, flatY + stemLen * 0.38, dx, stemY);
+            ctx.quadraticCurveTo(dx - rw * 0.08, flatY + stemLen * 0.38, dx - rw, flatY);
+            ctx.closePath();
+        } else if (subShape === 'diamond') {
+            var hw = (subWd - subGrd) / 2, hh = (subHd - subGrd) / 2;
+            ctx.moveTo(dx, dy - hh);
+            ctx.lineTo(dx + hw, dy);
+            ctx.lineTo(dx, dy + hh);
+            ctx.lineTo(dx - hw, dy);
+            ctx.closePath();
+        } else if (subShape === 'arabesque') {
+            var hw = (subWd - subGrd) / 2, hh = (subHd - subGrd) / 2;
+            ctx.moveTo(dx, dy - hh);
+            ctx.bezierCurveTo(dx + hw * 0.6, dy - hh * 0.7, dx + hw, dy - hh * 0.3, dx + hw, dy);
+            ctx.bezierCurveTo(dx + hw, dy + hh * 0.3, dx + hw * 0.6, dy + hh * 0.7, dx, dy + hh);
+            ctx.bezierCurveTo(dx - hw * 0.6, dy + hh * 0.7, dx - hw, dy + hh * 0.3, dx - hw, dy);
+            ctx.bezierCurveTo(dx - hw, dy - hh * 0.3, dx - hw * 0.6, dy - hh * 0.7, dx, dy - hh);
+            ctx.closePath();
+        } else if (subShape === 'picket') {
+            var hw = (subWd - subGrd) / 2, hh = (subHd - subGrd) / 2;
+            var pointH = hh * 0.25;
+            ctx.moveTo(dx, dy - hh);
+            ctx.lineTo(dx + hw, dy - hh + pointH);
+            ctx.lineTo(dx + hw, dy + hh - pointH);
+            ctx.lineTo(dx, dy + hh);
+            ctx.lineTo(dx - hw, dy + hh - pointH);
+            ctx.lineTo(dx - hw, dy - hh + pointH);
+            ctx.closePath();
+        } else if (subShape === 'octdot') {
+            var r = (subWd - subGrd) / 2;
+            var sideHalf = r * Math.sin(Math.PI / 8);
+            ctx.moveTo(dx + sideHalf, dy - r);
+            ctx.lineTo(dx + r, dy - sideHalf);
+            ctx.lineTo(dx + r, dy + sideHalf);
+            ctx.lineTo(dx + sideHalf, dy + r);
+            ctx.lineTo(dx - sideHalf, dy + r);
+            ctx.lineTo(dx - r, dy + sideHalf);
+            ctx.lineTo(dx - r, dy - sideHalf);
+            ctx.lineTo(dx - sideHalf, dy - r);
+            ctx.closePath();
+        } else {
+            // square
+            var hw = (subWd - subGrd) / 2;
+            var hh = (subHd - subGrd) / 2;
+            ctx.rect(dx - hw, dy - hh, hw * 2, hh * 2);
+        }
+        ctx.fill();
+        ctx.stroke();
+    }
+
+    // Sheet boundary rect in detail-view coordinates
+    var sheetMinX = (tile.verts[0][0] - centerX) * drawScale / scale + size / 2;
+    var sheetMinY = (tile.verts[0][1] - centerY) * drawScale / scale + size / 2 + 15;
+    var sheetMaxX = (tile.verts[2][0] - centerX) * drawScale / scale + size / 2;
+    var sheetMaxY = (tile.verts[2][1] - centerY) * drawScale / scale + size / 2 + 15;
+
+    // Find wall-sheet intersection points for cut line measurements
+    var sheetEdges = [
+        [tile.verts[0], tile.verts[1]], // top
+        [tile.verts[1], tile.verts[2]], // right
+        [tile.verts[2], tile.verts[3]], // bottom
+        [tile.verts[3], tile.verts[0]]  // left
+    ];
+    var edgeLabels = ['top', 'right', 'bottom', 'left'];
+    var cutIntersections = [];
+
+    for (var wi = 0; wi < wall.length; wi++) {
+        var w1 = wall[wi];
+        var w2 = wall[(wi + 1) % wall.length];
+        for (var ei = 0; ei < sheetEdges.length; ei++) {
+            var s1 = sheetEdges[ei][0];
+            var s2 = sheetEdges[ei][1];
+            var inter = lineIntersect(w1, w2, s1, s2);
+            if (inter) {
+                // Calculate distance from sheet corner in inches
+                var distFromCorner;
+                if (edgeLabels[ei] === 'top' || edgeLabels[ei] === 'bottom') {
+                    distFromCorner = Math.abs(inter[0] - s1[0]) / scale;
+                } else {
+                    distFromCorner = Math.abs(inter[1] - s1[1]) / scale;
+                }
+                cutIntersections.push({
+                    px: (inter[0] - centerX) * drawScale / scale + size / 2,
+                    py: (inter[1] - centerY) * drawScale / scale + size / 2 + 15,
+                    edge: edgeLabels[ei],
+                    distInches: distFromCorner,
+                    rawX: inter[0],
+                    rawY: inter[1]
+                });
+            }
+        }
+    }
+
+    // Draw wall edge as bold red line (the cut line) across the sheet
+    ctx.strokeStyle = '#f44336';
+    ctx.lineWidth = 3;
+    ctx.setLineDash([]);
+    // Draw only wall segments that cross through or near the sheet
+    for (var wi = 0; wi < wall.length; wi++) {
+        var w1 = wall[wi];
+        var w2 = wall[(wi + 1) % wall.length];
+        var wx1 = (w1[0] - centerX) * drawScale / scale + size / 2;
+        var wy1 = (w1[1] - centerY) * drawScale / scale + size / 2 + 15;
+        var wx2 = (w2[0] - centerX) * drawScale / scale + size / 2;
+        var wy2 = (w2[1] - centerY) * drawScale / scale + size / 2 + 15;
+        // Check if this wall segment is near the sheet
+        var segNearSheet = (Math.max(wx1, wx2) > sheetMinX - 20 && Math.min(wx1, wx2) < sheetMaxX + 20 &&
+                           Math.max(wy1, wy2) > sheetMinY - 20 && Math.min(wy1, wy2) < sheetMaxY + 20);
+        if (segNearSheet) {
+            ctx.beginPath();
+            ctx.moveTo(wx1, wy1);
+            ctx.lineTo(wx2, wy2);
+            ctx.stroke();
+        }
+    }
+
+    // Draw cut measurement labels at intersection points
+    if (cutIntersections.length >= 2) {
+        ctx.fillStyle = '#D32F2F';
+        ctx.font = 'bold 12px sans-serif';
+        ctx.textAlign = 'center';
+
+        for (var ci = 0; ci < cutIntersections.length; ci++) {
+            var cp = cutIntersections[ci];
+            var label = toFraction(cp.distInches) + '"';
+            var labelX = cp.px;
+            var labelY = cp.py;
+
+            // Offset label away from sheet center
+            if (cp.edge === 'top') { labelY -= 14; }
+            else if (cp.edge === 'bottom') { labelY += 16; }
+            else if (cp.edge === 'left') { labelX -= 8; ctx.textAlign = 'right'; }
+            else if (cp.edge === 'right') { labelX += 8; ctx.textAlign = 'left'; }
+
+            // Background pill for readability
+            var labelW = ctx.measureText(label).width + 8;
+            ctx.fillStyle = 'rgba(255,255,255,0.9)';
+            roundRect(ctx, labelX - labelW/2, labelY - 10, labelW, 16, 4);
+            ctx.fill();
+            ctx.strokeStyle = '#D32F2F';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+
+            ctx.fillStyle = '#D32F2F';
+            ctx.textAlign = 'center';
+            ctx.fillText(label, labelX, labelY + 2);
+
+            // Draw a small dot at the intersection point
+            ctx.beginPath();
+            ctx.arc(cp.px, cp.py, 4, 0, Math.PI * 2);
+            ctx.fillStyle = '#D32F2F';
+            ctx.fill();
+        }
+
+        // Draw measurement lines from sheet edge to cut point
+        ctx.strokeStyle = '#1565C0';
+        ctx.lineWidth = 1;
+        ctx.setLineDash([3, 3]);
+        for (var ci = 0; ci < cutIntersections.length; ci++) {
+            var cp = cutIntersections[ci];
+            ctx.beginPath();
+            if (cp.edge === 'top' || cp.edge === 'bottom') {
+                var edgeY = cp.edge === 'top' ? sheetMinY : sheetMaxY;
+                ctx.moveTo(sheetMinX, edgeY);
+                ctx.lineTo(cp.px, edgeY);
+            } else {
+                var edgeX = cp.edge === 'left' ? sheetMinX : sheetMaxX;
+                ctx.moveTo(edgeX, sheetMinY);
+                ctx.lineTo(edgeX, cp.py);
+            }
+            ctx.stroke();
+        }
+        ctx.setLineDash([]);
+    }
+
+    // Draw void outlines
+    for (var vi = 0; vi < voidPolys.length; vi++) {
+        var vp = voidPolys[vi];
+        ctx.strokeStyle = '#9C27B0';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([6, 3]);
+        ctx.beginPath();
+        for (var vpi = 0; vpi < vp.length; vpi++) {
+            var vx = (vp[vpi][0] - centerX) * drawScale / scale + size / 2;
+            var vy = (vp[vpi][1] - centerY) * drawScale / scale + size / 2 + 15;
+            if (vpi === 0) ctx.moveTo(vx, vy);
+            else ctx.lineTo(vx, vy);
+        }
+        ctx.closePath();
+        ctx.stroke();
+        ctx.setLineDash([]);
+    }
+
+    // Shade area outside wall (waste)
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(0, 0, size, size);
+    for (var wi = wall.length - 1; wi >= 0; wi--) {
+        var wx = (wall[wi][0] - centerX) * drawScale / scale + size / 2;
+        var wy = (wall[wi][1] - centerY) * drawScale / scale + size / 2 + 15;
+        if (wi === wall.length - 1) ctx.moveTo(wx, wy);
+        else ctx.lineTo(wx, wy);
+    }
+    ctx.closePath();
+    ctx.fillStyle = 'rgba(244, 67, 54, 0.12)';
+    ctx.fill();
+    ctx.restore();
+
+    // Sheet boundary dashed outline
+    ctx.strokeStyle = '#1565C0';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([6, 4]);
+    ctx.strokeRect(sheetMinX, sheetMinY, sheetMaxX - sheetMinX, sheetMaxY - sheetMinY);
+    ctx.setLineDash([]);
+
+    ctx.restore();
+
+    // Summary text at bottom
+    ctx.fillStyle = '#333';
+    ctx.font = '13px sans-serif';
+    ctx.textAlign = 'center';
+    var totalSubs = subs.length;
+    var cutInfo = cutSubCount + ' sub-tiles need cutting';
+    if (cutIntersections.length >= 2) {
+        // Show the straight-line cut measurement
+        var cutDist = Math.sqrt(
+            Math.pow((cutIntersections[1].rawX - cutIntersections[0].rawX) / scale, 2) +
+            Math.pow((cutIntersections[1].rawY - cutIntersections[0].rawY) / scale, 2)
+        );
+        cutInfo += ' • Cut line: ' + toFraction(cutDist) + '"';
+    }
+    ctx.fillText(totalSubs + ' sub-tiles (' + cutInfo + ')', size / 2, size - 40);
+
+    // Instructions
+    ctx.fillStyle = '#888';
+    ctx.font = '11px sans-serif';
+    ctx.fillText('Cut straight through the sheet along the red line', size / 2, size - 22);
+    ctx.fillText('Pinch to zoom • Tap Done when finished', size / 2, size - 8);
+}
+
 // Helper: draw arrow head
 function drawArrow(ctx, x, y, dir) {
     var s = 5;
@@ -4481,14 +4918,14 @@ document.addEventListener('wheel', function(e) {
 
 // ==================== TAB INFO POPUPS ====================
 var TAB_INFO = {
-    diagram: { title: 'Layout', desc: 'See your complete tile layout rendered in real-time. Use pinch to zoom, drag to pan. Tap Optimize to find the best pattern placement with minimal cuts and waste.' },
-    wall:    { title: 'Wall', desc: 'Enter your wall or floor measurements in inches. The app supports rectangular spaces with optional height/width variations for non-square walls.' },
-    tile:    { title: 'Tile', desc: 'Choose from preset tiles or enter custom dimensions. Toggle Nominal to enter box label sizes — grout is auto-subtracted. Supports hex, square, rectangle, herringbone, and mosaic patterns.' },
-    voids:   { title: 'Cutouts', desc: 'Add niches, windows, outlets, or any obstacle. Enter the position (from wall edges to the center) and the size. The layout automatically tiles around them.' },
-    calc:    { title: 'Calculator', desc: 'See exactly how many tiles you need, estimate costs, and generate a material shopping list. Accounts for waste percentage so you never come up short.' },
-    projects:{ title: 'Files', desc: 'Save and load projects, export/import backups, and share professional layout pages with clients. Set up your company branding for shared pages.' },
-    proj:    { title: 'Laser', desc: 'LayIt Laser is coming soon — a WiFi laser projector that beams your tile pattern onto walls and floors at 1:1 scale. Join the waitlist to be first in line.' },
-    settings:{ title: 'Settings', desc: 'Manage your Pro subscription, browse the feature guide, or restart the tutorial.' }
+    diagram: { icon: '📐', title: 'Layout View', desc: 'Your complete tile layout, rendered in real-time. Pinch to zoom, drag to pan. Tap Optimize to find the best placement with minimal cuts and waste.' },
+    wall:    { icon: '📏', title: 'Wall Measurements', desc: 'Enter your wall or floor dimensions in inches. Draw custom perimeters or use Quick Rectangle for simple rooms.' },
+    tile:    { icon: '🔲', title: 'Tile Setup', desc: 'Choose from preset tiles or enter custom dimensions. Supports hex, square, subway, herringbone, and mosaic sheet patterns with precise tessellation.' },
+    voids:   { icon: '⬛', title: 'Cutouts', desc: 'Add windows, outlets, niches, or obstacles. Position from wall edges to the center, set the size, and your layout tiles around them automatically.' },
+    calc:    { icon: '🔢', title: 'Tile Calculator', desc: 'See exactly how many tiles you need. Estimate costs, generate a material shopping list, and account for waste so you never come up short.' },
+    projects:{ icon: '📁', title: 'Files & Sharing', desc: 'Save and load projects, export backups, and share layouts with friends or clients. Pro users get branded client reports.' },
+    proj:    { icon: '🔴', title: 'LayIt Laser', desc: 'Coming soon — a WiFi laser projector that beams your tile pattern onto walls and floors at 1:1 scale. Join the waitlist to be first in line.' },
+    settings:{ icon: '⚙️', title: 'Settings', desc: 'Manage your subscription, explore the feature guide, send feedback, or restart the tutorial walkthrough.' }
 };
 
 function getVisitedTabs() {
@@ -4512,26 +4949,33 @@ function showTabInfoPopup(tabId) {
     // Don't show if no info for this tab
     var info = TAB_INFO[tabId];
     if (!info) return;
-    // Remove any existing popup
-    var existing = document.querySelector('.tab-info-popup');
+    // Remove any existing overlay
+    var existing = document.querySelector('.tab-info-overlay');
     if (existing) existing.remove();
 
-    var panel = document.getElementById(tabId);
-    if (!panel) return;
+    var overlay = document.createElement('div');
+    overlay.className = 'tab-info-overlay';
+    overlay.innerHTML = '<div class="tab-info-modal">' +
+        '<div class="tab-info-modal-icon">' + (info.icon || '') + '</div>' +
+        '<div class="tab-info-modal-title">' + info.title + '</div>' +
+        '<div class="tab-info-modal-desc">' + info.desc + '</div>' +
+        '<button class="btn-dismiss">Got it!</button>' +
+        '</div>';
 
-    var popup = document.createElement('div');
-    popup.className = 'tab-info-popup';
-    popup.innerHTML = '<div class="tab-info-popup-title">' + info.title + '</div>' +
-        '<div class="tab-info-popup-desc">' + info.desc + '</div>' +
-        '<button class="btn-dismiss">Got it!</button>';
-    popup.querySelector('.btn-dismiss').addEventListener('click', function() {
+    function dismissModal() {
         markTabVisited(tabId);
-        popup.style.opacity = '0';
-        popup.style.transform = 'translateY(-8px)';
-        popup.style.transition = 'opacity 0.2s, transform 0.2s';
-        setTimeout(function() { popup.remove(); }, 200);
+        overlay.style.opacity = '0';
+        overlay.style.transition = 'opacity 0.2s';
+        setTimeout(function() { overlay.remove(); }, 200);
+    }
+
+    overlay.querySelector('.btn-dismiss').addEventListener('click', dismissModal);
+    // Tap outside modal also dismisses
+    overlay.addEventListener('click', function(e) {
+        if (e.target === overlay) dismissModal();
     });
-    panel.insertBefore(popup, panel.firstChild);
+
+    document.body.appendChild(overlay);
 }
 
 function showTab(id) {
@@ -4569,6 +5013,19 @@ function showToast(msg, duration) {
         toast.style.transition = 'opacity 0.3s';
         setTimeout(function() { toast.remove(); }, 300);
     }, dur);
+}
+
+var _liveWallTimer = null;
+function liveUpdateWall() {
+    // Update diagram in real-time as user types (debounced)
+    clearTimeout(_liveWallTimer);
+    _liveWallTimer = setTimeout(function() {
+        C.wall.lH = parseFloat(document.getElementById('leftH').value) || 0;
+        C.wall.rV = parseFloat(document.getElementById('rightVar').value) || 0;
+        C.wall.tW = parseFloat(document.getElementById('topW').value) || 0;
+        C.wall.bV = parseFloat(document.getElementById('botVar').value) || 0;
+        drawPerimeter(); // Update the wall diagram preview
+    }, 200);
 }
 
 function updateWall() {
@@ -4616,7 +5073,19 @@ var TILE_PRESETS = [
     {name:'¾" Penny Round (12×12)', shape:'mosaic', nomW:12, nomH:12, actW:11.75, actH:11.75, grout:0.125,
      subShape:'penny', subW:0.75, subH:0.75, subGr:0.0625},
     {name:'2" Fish Scale (12×12)', shape:'mosaic', nomW:12, nomH:12, actW:11.75, actH:11.75, grout:0.125,
-     subShape:'fishscale', subW:2, subH:2.25, subGr:0.0625}
+     subShape:'fishscale', subW:2, subH:2.25, subGr:0.0625},
+    // Arabesque / Lantern
+    {name:'Arabesque Lantern (12×9)', shape:'mosaic', nomW:12, nomH:9, actW:11.75, actH:8.75, grout:0.125,
+     subShape:'arabesque', subW:4.4, subH:3.6, subGr:0.125},
+    // Picket / Elongated Hex
+    {name:'Picket Elongated Hex (11×10)', shape:'mosaic', nomW:11, nomH:10, actW:10.7, actH:10.1, grout:0.125,
+     subShape:'picket', subW:0.5, subH:2, subGr:0.0625},
+    // Octagon + Dot
+    {name:'2" Octagon + Dot (12×12)', shape:'mosaic', nomW:12, nomH:12, actW:11.75, actH:11.75, grout:0.125,
+     subShape:'octdot', subW:2, subH:2, subGr:0.0625},
+    // Diamond mosaic
+    {name:'1" Diamond Mosaic (12×12)', shape:'mosaic', nomW:12, nomH:12, actW:11.75, actH:11.75, grout:0.125,
+     subShape:'diamond', subW:1, subH:1, subGr:0.0625}
 ];
 
 var CUSTOM_PRESETS_KEY = 'layit-custom-presets';
@@ -4818,32 +5287,59 @@ var scannerInterval = null;
 var _pendingBarcode = null;
 var _pendingProduct = null;
 
-// Built-in starter database (placeholder UPCs — verify against real product boxes)
+// Built-in barcode database — top 50 products for offline lookup
+// Keys are HD Internet# or real UPC barcodes matching box labels
 var TILE_DB_LOCAL = {
-    // Daltile Hex Mosaics
+    // ─── MEROLA HEX MOSAICS (most popular at Home Depot) ───
+    '203684368': {name:'Metro 2" Hex Matte White (11⅛×12⅝)', brand:'Merola', shape:'mosaic', nomW:12, nomH:12, actW:11.125, actH:12.625, grout:0.125, subShape:'hex', subW:2, subH:2.25, subGr:0.0625},
+    '203684352': {name:'Metro 2" Hex Matte Black (11⅛×12⅝)', brand:'Merola', shape:'mosaic', nomW:12, nomH:12, actW:11.125, actH:12.625, grout:0.125, subShape:'hex', subW:2, subH:2.25, subGr:0.0625},
+    '205765498': {name:'Metro 1" Hex Matte White (10¼×11¾)', brand:'Merola', shape:'mosaic', nomW:10, nomH:12, actW:10.25, actH:11.75, grout:0.125, subShape:'hex', subW:1, subH:1.125, subGr:0.0625},
+    '205765482': {name:'Metro 1" Hex Matte Black (10¼×11¾)', brand:'Merola', shape:'mosaic', nomW:10, nomH:12, actW:10.25, actH:11.75, grout:0.125, subShape:'hex', subW:1, subH:1.125, subGr:0.0625},
+    // ─── MSI HEX MOSAICS ───
+    '206638553': {name:'White Hexagon 2" Mosaic (11×11)', brand:'MSI', shape:'mosaic', nomW:11, nomH:11, actW:11, actH:11, grout:0.125, subShape:'hex', subW:2, subH:2.25, subGr:0.0625},
+    // ─── MEROLA PENNY ROUND ───
+    '732763201683': {name:'Hudson Penny Round Marine (11⅞×12⅝)', brand:'Merola', shape:'mosaic', nomW:12, nomH:12, actW:11.875, actH:12.625, grout:0.125, subShape:'penny', subW:0.8, subH:0.8, subGr:0.0625},
+    '732763233868': {name:'Hudson Penny Round Midnight (11⅞×12⅝)', brand:'Merola', shape:'mosaic', nomW:12, nomH:12, actW:11.875, actH:12.625, grout:0.125, subShape:'penny', subW:0.8, subH:0.8, subGr:0.0625},
+    // ─── DALTILE PENNY ROUND ───
+    '312227498': {name:'Restore Bright White Penny Round (11×10)', brand:'Daltile', shape:'mosaic', nomW:11, nomH:10, actW:11, actH:10, grout:0.125, subShape:'penny', subW:0.75, subH:0.75, subGr:0.0625},
+    // ─── MSI HERRINGBONE ───
+    '100116061': {name:'Calacatta Cressa Herringbone (12×12)', brand:'MSI', shape:'mosaic', nomW:12, nomH:12, actW:11.63, actH:11.63, grout:0.125, subShape:'rectangle', subW:1, subH:3, subGr:0.0625},
+    // ─── MEROLA FISHSCALE ───
+    '063346103001': {name:'2" Fish Scale Mosaic (12×12)', brand:'Merola', shape:'mosaic', nomW:12, nomH:12, actW:11.75, actH:11.75, grout:0.125, subShape:'fishscale', subW:2, subH:2.25, subGr:0.0625},
+    // ─── JEFFREY COURT ───
+    '301928358': {name:'Whisper Valley White Hex (11×12⅝)', brand:'Jeffrey Court', shape:'mosaic', nomW:11, nomH:12, actW:11, actH:12.625, grout:0.125, subShape:'hex', subW:2, subH:2.25, subGr:0.0625},
+    // ─── OCTAGON + DOT ───
+    '202195275': {name:'Octagon & Dot Matte White/Black (12×12)', brand:'Daltile', shape:'mosaic', nomW:12, nomH:12, actW:12, actH:12, grout:0.125, subShape:'octdot', subW:2, subH:2, subGr:0.0625},
+    '205955516': {name:'Octagon & Dot Matte White/Gray (12×12)', brand:'Daltile', shape:'mosaic', nomW:12, nomH:12, actW:12, actH:12, grout:0.125, subShape:'octdot', subW:2, subH:2, subGr:0.0625},
+    '202788901': {name:'Metro Octagon White/Black (11½×11½)', brand:'Merola', shape:'mosaic', nomW:12, nomH:12, actW:11.5, actH:11.5, grout:0.125, subShape:'octdot', subW:2, subH:2, subGr:0.0625},
+    // ─── ARABESQUE / LANTERN ───
+    '325009573': {name:'Carrara White Lantern Arabesque (12×9)', brand:'Sunwings', shape:'mosaic', nomW:12, nomH:9, actW:12, actH:9, grout:0.125, subShape:'arabesque', subW:4.4, subH:3.6, subGr:0.125},
+    '317237823': {name:'Reflections Silver Big Lantern (11¼×16)', brand:'ABOLOS', shape:'mosaic', nomW:11, nomH:16, actW:11.25, actH:16, grout:0.125, subShape:'arabesque', subW:5.25, subH:4.5, subGr:0.125},
+    // ─── PICKET / ELONGATED HEX ───
+    '327859267': {name:'Picket Blue Mix Long Hex (10.7×10.1)', brand:'Sunwings', shape:'mosaic', nomW:11, nomH:10, actW:10.7, actH:10.1, grout:0.125, subShape:'picket', subW:0.5, subH:2, subGr:0.0625},
+    '327859047': {name:'Picket White Long Hex (10.7×10.1)', brand:'Sunwings', shape:'mosaic', nomW:11, nomH:10, actW:10.7, actH:10.1, grout:0.125, subShape:'picket', subW:0.5, subH:2, subGr:0.0625},
+    // ─── GLASS STRIP ───
+    '318473212': {name:'Silver White Linear Glass (11.8×12.2)', brand:'Apollo Tile', shape:'mosaic', nomW:12, nomH:12, actW:11.8, actH:12.2, grout:0.125, subShape:'rectangle', subW:0.625, subH:2, subGr:0.0625},
+    '206741856': {name:'Glissen Glass Mosaic (11.81×12)', brand:'MSI', shape:'mosaic', nomW:12, nomH:12, actW:11.81, actH:12, grout:0.125, subShape:'rectangle', subW:0.625, subH:2, subGr:0.0625},
+    // ─── DALTILE STANDARD ───
     '049156120300': {name:'2" Hex Marble Mosaic (12×12.5)', brand:'Daltile', shape:'mosaic', nomW:12, nomH:12.5, actW:11.75, actH:12.25, grout:0.125, subShape:'hex', subW:1.875, subH:2.125, subGr:0.0625},
     '049156120317': {name:'1" Hex Porcelain Mosaic (11×11)', brand:'Daltile', shape:'mosaic', nomW:11, nomH:11, actW:10.75, actH:10.75, grout:0.125, subShape:'hex', subW:0.9375, subH:1.0625, subGr:0.0625},
-    // Daltile Standard Tiles
     '049156181004': {name:'12×24 Glazed Porcelain', brand:'Daltile', shape:'rectangle', nomW:12, nomH:24, actW:11.75, actH:23.75, grout:0.125},
     '049156062002': {name:'6×6 Matte Ceramic', brand:'Daltile', shape:'square', nomW:6, nomH:6, actW:5.875, actH:5.875, grout:0.125},
     '049156044008': {name:'4×4 Glossy Ceramic', brand:'Daltile', shape:'square', nomW:4, nomH:4, actW:3.875, actH:3.875, grout:0.125},
-    // MSI
+    // ─── MSI STANDARD ───
     '843276011009': {name:'2" Hex Carrara Mosaic (12×12)', brand:'MSI', shape:'mosaic', nomW:12, nomH:12, actW:11.75, actH:11.75, grout:0.125, subShape:'hex', subW:1.875, subH:2.125, subGr:0.0625},
     '843276024009': {name:'3×6 White Subway', brand:'MSI', shape:'rectangle', nomW:3, nomH:6, actW:2.875, actH:5.875, grout:0.125},
-    // American Olean
+    // ─── AMERICAN OLEAN ───
     '011942333014': {name:'12×12 Glazed Ceramic', brand:'American Olean', shape:'square', nomW:12, nomH:12, actW:11.875, actH:11.875, grout:0.125},
-    // Marazzi
+    // ─── MARAZZI ───
     '081159012006': {name:'12×24 Porcelain Plank', brand:'Marazzi', shape:'rectangle', nomW:12, nomH:24, actW:11.75, actH:23.75, grout:0.125},
-    // Jeffrey Court Mosaics
+    // ─── JEFFREY COURT ───
     '092076014003': {name:'1" Square Glass Mosaic (12×12)', brand:'Jeffrey Court', shape:'mosaic', nomW:12, nomH:12, actW:11.75, actH:11.75, grout:0.125, subShape:'square', subW:0.9375, subH:0.9375, subGr:0.0625},
     '092076027003': {name:'Penny Round Porcelain (12×12)', brand:'Jeffrey Court', shape:'mosaic', nomW:12, nomH:12, actW:11.75, actH:11.75, grout:0.125, subShape:'penny', subW:0.75, subH:0.75, subGr:0.0625},
-    // Florida Tile
-    '041296550012': {name:'3×12 Subway', brand:'Florida Tile', shape:'rectangle', nomW:3, nomH:12, actW:2.875, actH:11.875, grout:0.125},
-    // Merola / Home Depot
-    '063346103001': {name:'2" Fish Scale Mosaic (12×12)', brand:'Merola', shape:'mosaic', nomW:12, nomH:12, actW:11.75, actH:11.75, grout:0.125, subShape:'fishscale', subW:2, subH:2.25, subGr:0.0625},
-    // Generic common sizes
-    '888888880001': {name:'24×24 Porcelain', brand:'Generic', shape:'square', nomW:24, nomH:24, actW:23.875, actH:23.875, grout:0.125},
-    '888888880002': {name:'2×8 Herringbone', brand:'Generic', shape:'herringbone', nomW:2, nomH:8, actW:1.875, actH:7.875, grout:0.125}
+    '207089042': {name:'Retro Octagon Black Dot (11½×11½)', brand:'Jeffrey Court', shape:'mosaic', nomW:12, nomH:12, actW:11.5, actH:11.5, grout:0.125, subShape:'octdot', subW:2, subH:2, subGr:0.0625},
+    // ─── FLORIDA TILE ───
+    '041296550012': {name:'3×12 Subway', brand:'Florida Tile', shape:'rectangle', nomW:3, nomH:12, actW:2.875, actH:11.875, grout:0.125}
 };
 
 // Firebase Tile Database
@@ -5357,7 +5853,7 @@ function onSubShapeChange() {
     var sub = document.getElementById('subShape').value;
     var orientDiv = document.getElementById('orientDiv');
     // Hide orientation for shapes that don't use it
-    if (sub === 'fishscale' || sub === 'penny' || sub === 'square' || sub === 'diamond') {
+    if (sub === 'fishscale' || sub === 'penny' || sub === 'square' || sub === 'diamond' || sub === 'arabesque' || sub === 'picket' || sub === 'octdot' || sub === 'chevron') {
         orientDiv.style.display = 'none';
     } else {
         orientDiv.style.display = 'block';
@@ -5709,6 +6205,23 @@ function draw() {
     part = 0;
     var cutLabels = []; // Store cut dimensions to draw on top
 
+    // In report mode: clip tiles to wall perimeter (no overhang)
+    if (window._reportMode && wall && wall.length > 2) {
+        cx.save();
+        cx.beginPath();
+        cx.moveTo(wall[0][0], wall[0][1]);
+        for (var ci = 1; ci < wall.length; ci++) cx.lineTo(wall[ci][0], wall[ci][1]);
+        cx.closePath();
+        // Cut out voids from clip
+        for (var vci = 0; vci < voidPolys.length; vci++) {
+            var vc = voidPolys[vci];
+            cx.moveTo(vc[0][0], vc[0][1]);
+            for (var vj = 1; vj < vc.length; vj++) cx.lineTo(vc[vj][0], vc[vj][1]);
+            cx.closePath();
+        }
+        cx.clip();
+    }
+
     // Mosaic tiles: draw as continuous sub-tile field instead of sheet rectangles
     if (C.tile.sh === 'mosaic' && C.tile.subShape && !projMode) {
         var mosaicResult = drawMosaicField(ox, oy, s, wall, voidPolys, patternOx, patternOy, projMode, cutLabels);
@@ -5819,7 +6332,12 @@ function draw() {
                 var key = stableKey; // Use stable key based on position in inches
                 var tileState = cutTileStates[key] || 0; // 0=pending, 1=selected, 2=cut
                 
-                if (window._printMode) {
+                if (window._reportMode) {
+                    // Client report: outline only, no fill
+                    cx.fillStyle = '#ffffff';
+                    cx.strokeStyle = '#555555';
+                    cx.lineWidth = 0.5;
+                } else if (window._printMode) {
                     // B&W print mode for client share pages
                     if (isCut) {
                         cx.fillStyle = '#e8e8e8';
@@ -5861,8 +6379,8 @@ function draw() {
                 drawTile(x, y, tw, th, g * s, row, col);
                 cx.fill();
                 // For mosaic: skip the heavy sheet outline so sheets blend seamlessly.
-                // The sub-tile grout lines will define the visual grid instead.
-                if (C.tile.sh !== 'mosaic' || projMode) {
+                // Report mode: always stroke for outlines
+                if (C.tile.sh !== 'mosaic' || projMode || window._reportMode) {
                     cx.stroke();
                 }
 
@@ -5908,9 +6426,12 @@ function draw() {
         }
     }
     
+    // Restore clip if report mode
+    if (window._reportMode) cx.restore();
+
     // Draw wall border
-    cx.strokeStyle = window._printMode ? '#333333' : (projMode ? '#000000' : '#0D47A1');
-    cx.lineWidth = window._printMode ? 1.5 : (projMode ? 4 : 3);
+    cx.strokeStyle = (window._reportMode || window._printMode) ? '#000000' : (projMode ? '#000000' : '#0D47A1');
+    cx.lineWidth = window._reportMode ? 2.5 : (window._printMode ? 1.5 : (projMode ? 4 : 3));
     cx.beginPath();
     cx.moveTo(wall[0][0], wall[0][1]);
     for (var i = 1; i < wall.length; i++) {
@@ -5918,7 +6439,45 @@ function draw() {
     }
     cx.closePath();
     cx.stroke();
-    
+
+    // Report mode: draw dimension brackets outside the wall perimeter
+    if (window._reportMode && wall && wall.length > 2) {
+        var wMinX = Infinity, wMaxX = -Infinity, wMinY = Infinity, wMaxY = -Infinity;
+        for (var bi = 0; bi < wall.length; bi++) {
+            wMinX = Math.min(wMinX, wall[bi][0]);
+            wMaxX = Math.max(wMaxX, wall[bi][0]);
+            wMinY = Math.min(wMinY, wall[bi][1]);
+            wMaxY = Math.max(wMaxY, wall[bi][1]);
+        }
+        var bOff = 18; // bracket offset from wall edge
+        var bTick = 6; // tick mark length
+        cx.strokeStyle = '#000';
+        cx.fillStyle = '#000';
+        cx.lineWidth = 1.5;
+        cx.font = 'bold ' + Math.max(11, Math.min(14, s * 2)) + 'px sans-serif';
+        cx.textAlign = 'center';
+
+        // Bottom bracket (width)
+        var bY = wMaxY + bOff;
+        cx.beginPath();
+        cx.moveTo(wMinX, bY - bTick); cx.lineTo(wMinX, bY); cx.lineTo(wMaxX, bY); cx.lineTo(wMaxX, bY - bTick);
+        cx.stroke();
+        var widthLabel = maxW.toFixed(1) + '"';
+        cx.fillText(widthLabel, (wMinX + wMaxX) / 2, bY + 14);
+
+        // Right bracket (height)
+        var bX = wMaxX + bOff;
+        cx.beginPath();
+        cx.moveTo(bX - bTick, wMinY); cx.lineTo(bX, wMinY); cx.lineTo(bX, wMaxY); cx.lineTo(bX - bTick, wMaxY);
+        cx.stroke();
+        cx.save();
+        cx.translate(bX + 14, (wMinY + wMaxY) / 2);
+        cx.rotate(Math.PI / 2);
+        var heightLabel = maxH.toFixed(1) + '"';
+        cx.fillText(heightLabel, 0, 0);
+        cx.restore();
+    }
+
     // Draw voids (in both modes - important for tracing!)
     if (projMode) {
         // In projector mode: thick black outline for voids (for tracing)
@@ -6528,9 +7087,26 @@ function drawMosaicField(ox, oy, s, wall, voidPolys, patternOx, patternOy, projM
         stRowIn = subH + subGr;
     } else if (subShape === 'fishscale') {
         stColIn = subW + subGr;
-        stRowIn = (subH + subGr) * 0.75;
+        // Fishscale geometry: dome radius = rw = subW/2, stem = rw * 0.5
+        // Row spacing = stem length so domes nest into concave gaps
+        var fsRw = subW / 2;
+        var fsStemLen = fsRw * 0.5;
+        stRowIn = fsStemLen + subGr;
     } else if (subShape === 'diamond') {
         // Diamonds are rotated 45deg squares, spacing is along the diagonal
+        stColIn = subW + subGr;
+        stRowIn = subH + subGr;
+    } else if (subShape === 'arabesque') {
+        // Arabesque/lantern: staggered rows, wider spacing
+        stColIn = subW + subGr;
+        stRowIn = subH * 0.75 + subGr;
+    } else if (subShape === 'picket') {
+        // Elongated hex (picket): same as pointy hex but stretched
+        stColIn = subW + subGr;
+        stRowIn = subH * 0.75 + subGr;
+    } else if (subShape === 'octdot') {
+        // Octagon + dot: octagon grid spacing
+        // Each octagon occupies subW + subGr, dots fill the corners
         stColIn = subW + subGr;
         stRowIn = subH + subGr;
     } else {
@@ -6570,8 +7146,10 @@ function drawMosaicField(ox, oy, s, wall, voidPolys, patternOx, patternOy, projM
     var sheetColIn = sheetW + subGr;
     var sheetRowIn = sheetH + subGr;
 
-    // Track sheet status: key -> { anyIn: bool, allIn: bool }
+    // Track sheet status: key -> { anyIn: bool, allFull: bool }
     var sheetStatus = {};
+    // Collect sub-tiles per sheet for sheet-level cut tracking
+    var sheetSubTiles = {};
 
     // Function to get sheet key for a sub-tile position (in inches)
     function getSheetKey(xIn, yIn) {
@@ -6604,24 +7182,54 @@ function drawMosaicField(ox, oy, s, wall, voidPolys, patternOx, patternOy, projM
             }
             return pts;
         } else if (subShape === 'fishscale') {
-            // Match the bezier fan shape for hit testing
-            var rw = stWpx / 2, rh = stHpx / 2;
+            // Chinese fan / scallop: semicircular arc top, concave sides, narrow stem
+            var rw = stWpx / 2;
+            var fsStemLen = rw * 0.5;
+            var fsTotalH = rw + fsStemLen;
+            var flatY = py - fsTotalH / 2 + rw;
+            var stemY = py + fsTotalH / 2;
+            var stemLen = stemY - flatY;
             var pts = [];
-            pts.push([px - rw * 0.25, py + rh]);  // bottom-left
-            pts.push([px - rw * 0.6, py + rh * 0.3]);
-            pts.push([px - rw, py - rh * 0.1]);   // top-left
-            // Top arc points
-            for (var a = 0; a <= 6; a++) {
-                var angle = Math.PI + (a / 6) * Math.PI;
-                pts.push([px + rw * Math.cos(angle), py - rh * 0.1 + rw * Math.sin(angle)]);
+            // Semicircular dome arc (left to right, going up through top)
+            for (var a = 0; a <= 8; a++) {
+                var angle = Math.PI + (a / 8) * Math.PI;
+                pts.push([px + rw * Math.cos(angle), flatY + rw * Math.sin(angle)]);
             }
-            pts.push([px + rw * 0.6, py + rh * 0.3]);
-            pts.push([px + rw * 0.25, py + rh]);  // bottom-right
+            // Right concave side down to stem (approximate quadratic curve)
+            pts.push([px + rw * 0.5, flatY + stemLen * 0.2]);
+            pts.push([px + rw * 0.08, flatY + stemLen * 0.45]);
+            // Bottom stem
+            pts.push([px, stemY]);
+            // Left concave side back up
+            pts.push([px - rw * 0.08, flatY + stemLen * 0.45]);
+            pts.push([px - rw * 0.5, flatY + stemLen * 0.2]);
             return pts;
         } else if (subShape === 'diamond') {
             // Rotated 45-degree square
             var hw = stWpx / 2, hh = stHpx / 2;
             return [[px, py - hh], [px + hw, py], [px, py + hh], [px - hw, py]];
+        } else if (subShape === 'arabesque') {
+            // Approximate lantern shape with 8 points
+            var hw = stWpx / 2, hh = stHpx / 2;
+            return [[px, py - hh], [px + hw * 0.5, py - hh * 0.5],
+                    [px + hw, py], [px + hw * 0.5, py + hh * 0.5],
+                    [px, py + hh], [px - hw * 0.5, py + hh * 0.5],
+                    [px - hw, py], [px - hw * 0.5, py - hh * 0.5]];
+        } else if (subShape === 'picket') {
+            // Elongated hex
+            var hw = stWpx / 2, hh = stHpx / 2;
+            var pointH = hh * 0.25;
+            return [[px, py - hh], [px + hw, py - hh + pointH],
+                    [px + hw, py + hh - pointH], [px, py + hh],
+                    [px - hw, py + hh - pointH], [px - hw, py - hh + pointH]];
+        } else if (subShape === 'octdot') {
+            // Octagon approximation with 8 vertices
+            var r = stWpx / 2;
+            var s = r * Math.sin(Math.PI / 8);
+            return [[px + s, py - r], [px + r, py - s],
+                    [px + r, py + s], [px + s, py + r],
+                    [px - s, py + r], [px - r, py + s],
+                    [px - r, py - s], [px - s, py - r]];
         } else {
             // square
             var hw = stWpx / 2 - stGrPx / 2;
@@ -6655,37 +7263,24 @@ function drawMosaicField(ox, oy, s, wall, voidPolys, patternOx, patternOy, projM
             var r = (stWpx - stGrPx) / 2;
             cx.arc(px, py, r, 0, Math.PI * 2);
         } else if (subShape === 'fishscale') {
-            // Proper interlocking fishscale — ALL bezier, no arc mixing
-            // Teardrop/fan: wide rounded top tapering to a point at bottom
+            // Chinese fan / scallop: semicircular arc top, concave sides, narrow stem
             var rw = (stWpx - stGrPx) / 2;
-            var rh = (stHpx - stGrPx) / 2;
-            var topY = py - rh;   // top of tile
-            var botY = py + rh;   // bottom point
-            // Start at bottom point
-            cx.moveTo(px, botY);
-            // Left side: curve out from point to wide top-left
-            cx.bezierCurveTo(
-                px - rw * 0.1, py,          // control 1: slightly left of center
-                px - rw, py - rh * 0.15,    // control 2: full width, slightly below top
-                px - rw, topY + rh * 0.35   // endpoint: left side, upper area
+            var fsStemLen = rw * 0.5;
+            var fsTotalH = rw + fsStemLen;
+            var flatY = py - fsTotalH / 2 + rw;  // flat edge of semicircle
+            var stemY = py + fsTotalH / 2;        // bottom stem tip
+            var stemLen = stemY - flatY;
+            // Semicircular dome: arc from left to right going up through top
+            cx.arc(px, flatY, rw, Math.PI, 2 * Math.PI, false);
+            // Right concave side: from (px+rw, flatY) down to stem
+            cx.quadraticCurveTo(
+                px + rw * 0.08, flatY + stemLen * 0.38,
+                px, stemY
             );
-            // Top-left to top-center: round the top
-            cx.bezierCurveTo(
-                px - rw, topY - rh * 0.1,   // control 1: left side, above top (overshoot for roundness)
-                px - rw * 0.5, topY - rh * 0.2, // control 2: between left and center, above
-                px, topY                     // endpoint: top center
-            );
-            // Top-center to top-right: mirror
-            cx.bezierCurveTo(
-                px + rw * 0.5, topY - rh * 0.2, // control 1: between center and right, above
-                px + rw, topY - rh * 0.1,   // control 2: right side, above top
-                px + rw, topY + rh * 0.35   // endpoint: right side, upper area
-            );
-            // Right side: curve back in to bottom point
-            cx.bezierCurveTo(
-                px + rw, py - rh * 0.15,    // control 1: full width, slightly below top
-                px + rw * 0.1, py,          // control 2: slightly right of center
-                px, botY                     // endpoint: bottom point
+            // Left concave side: from stem back up to (px-rw, flatY)
+            cx.quadraticCurveTo(
+                px - rw * 0.08, flatY + stemLen * 0.38,
+                px - rw, flatY
             );
             cx.closePath();
         } else if (subShape === 'diamond') {
@@ -6694,6 +7289,49 @@ function drawMosaicField(ox, oy, s, wall, voidPolys, patternOx, patternOy, projM
             cx.lineTo(px + hw, py);
             cx.lineTo(px, py + hh);
             cx.lineTo(px - hw, py);
+            cx.closePath();
+        } else if (subShape === 'arabesque') {
+            // Arabesque/lantern: curvy shape with pointed top and bottom
+            var hw = (stWpx - stGrPx) / 2;
+            var hh = (stHpx - stGrPx) / 2;
+            // Top point
+            cx.moveTo(px, py - hh);
+            // Right shoulder curve
+            cx.bezierCurveTo(px + hw * 0.6, py - hh * 0.7, px + hw, py - hh * 0.3, px + hw, py);
+            // Right hip curve to bottom point
+            cx.bezierCurveTo(px + hw, py + hh * 0.3, px + hw * 0.6, py + hh * 0.7, px, py + hh);
+            // Left hip curve
+            cx.bezierCurveTo(px - hw * 0.6, py + hh * 0.7, px - hw, py + hh * 0.3, px - hw, py);
+            // Left shoulder curve back to top
+            cx.bezierCurveTo(px - hw, py - hh * 0.3, px - hw * 0.6, py - hh * 0.7, px, py - hh);
+            cx.closePath();
+        } else if (subShape === 'picket') {
+            // Elongated hexagon (picket): stretched pointy-top hex
+            var hw = (stWpx - stGrPx) / 2;
+            var hh = (stHpx - stGrPx) / 2;
+            var pointH = hh * 0.25; // pointed ends are 25% of total height
+            cx.moveTo(px, py - hh);
+            cx.lineTo(px + hw, py - hh + pointH);
+            cx.lineTo(px + hw, py + hh - pointH);
+            cx.lineTo(px, py + hh);
+            cx.lineTo(px - hw, py + hh - pointH);
+            cx.lineTo(px - hw, py - hh + pointH);
+            cx.closePath();
+        } else if (subShape === 'octdot') {
+            // Octagon: regular 8-sided polygon
+            var r = (stWpx - stGrPx) / 2;
+            var s45 = r * Math.sin(Math.PI / 4); // ~0.707
+            var c45 = r * Math.cos(Math.PI / 4);
+            // Side length factor for regular octagon: side = r * 2 * sin(pi/8)
+            var sideHalf = r * Math.sin(Math.PI / 8); // ~0.383
+            cx.moveTo(px + sideHalf, py - r);
+            cx.lineTo(px + r, py - sideHalf);
+            cx.lineTo(px + r, py + sideHalf);
+            cx.lineTo(px + sideHalf, py + r);
+            cx.lineTo(px - sideHalf, py + r);
+            cx.lineTo(px - r, py + sideHalf);
+            cx.lineTo(px - r, py - sideHalf);
+            cx.lineTo(px - sideHalf, py - r);
             cx.closePath();
         } else {
             // square
@@ -6719,6 +7357,14 @@ function drawMosaicField(ox, oy, s, wall, voidPolys, patternOx, patternOy, projM
                     py += stRowPx / 2;
                 }
             } else if (subShape === 'fishscale') {
+                if (((row % 2 + 2) % 2) === 1) {
+                    px += stColPx / 2;
+                }
+            } else if (subShape === 'arabesque') {
+                if (((row % 2 + 2) % 2) === 1) {
+                    px += stColPx / 2;
+                }
+            } else if (subShape === 'picket') {
                 if (((row % 2 + 2) % 2) === 1) {
                     px += stColPx / 2;
                 }
@@ -6782,21 +7428,179 @@ function drawMosaicField(ox, oy, s, wall, voidPolys, patternOx, patternOy, projM
             sheetStatus[sk].anyIn = true;
             if (isCut) sheetStatus[sk].allFull = false;
 
-            // Set colors
-            if (projMode && !window.segmentProjMode) {
+            // Collect sub-tile info per sheet for sheet-level cut tracking
+            if (!sheetSubTiles[sk]) sheetSubTiles[sk] = [];
+            sheetSubTiles[sk].push({ px: px, py: py, row: row, col: col, isCut: isCut });
+
+            // Sheet-level cut state: all sub-tiles in a cut sheet share the same state
+            var sheetIsCut = !sheetStatus[sk].allFull; // will be updated as more sub-tiles processed
+            var tileState = cutTileStates[sk] || 0;
+
+            // Set colors based on cut state (sheet-level for mosaic)
+            if (window._reportMode) {
                 cx.fillStyle = '#ffffff';
+                cx.strokeStyle = '#555555';
+                cx.lineWidth = 0.3;
+            } else if (window._printMode) {
+                if (isCut) {
+                    cx.fillStyle = '#e8e8e8';
+                    cx.strokeStyle = '#aaaaaa';
+                } else {
+                    cx.fillStyle = '#f5f5f5';
+                    cx.strokeStyle = '#aaaaaa';
+                }
+                cx.lineWidth = 0.5;
+            } else if (projMode && !window.segmentProjMode) {
+                cx.fillStyle = '#ffffff';
+                cx.strokeStyle = '#000000';
+                cx.lineWidth = 2;
+            } else if (tileState === 2) {
+                // Sheet marked as done — entire sheet turns red
+                cx.fillStyle = '#f44336';
+                cx.strokeStyle = '#c62828';
+                cx.lineWidth = 1;
+            } else if (tileState === 1) {
+                // Sheet selected — entire sheet turns yellow
+                cx.fillStyle = '#FFEB3B';
+                cx.strokeStyle = '#FBC02D';
+                cx.lineWidth = 3;
             } else if (isCut) {
+                // Untracked cut tile — orange
                 cx.fillStyle = '#FF9800';
+                cx.strokeStyle = '#E65100';
+                cx.lineWidth = 1;
             } else {
                 cx.fillStyle = '#4CAF50';
+                cx.strokeStyle = '#2E7D32';
+                cx.lineWidth = 1;
             }
 
             // Draw the sub-tile
             drawSubTilePath(px, py);
             cx.fill();
+            // Fishscale tiles overlap, so stroke grout lines explicitly
+            if (subShape === 'fishscale') {
+                cx.strokeStyle = '#333';
+                cx.lineWidth = Math.max(1, stGrPx);
+                cx.stroke();
+            }
+
+            // Octagon + Dot: draw small square "dots" in the corner gaps
+            if (subShape === 'octdot') {
+                var octR = (stWpx - stGrPx) / 2;
+                var octSide = octR * 2 * Math.sin(Math.PI / 8); // side length of octagon
+                var dotSize = octSide - stGrPx; // dot fills the gap minus grout
+                // Dot positions: at each corner of the octagon grid cell
+                var dotOffsets = [
+                    [stColPx / 2, stRowPx / 2],
+                    [-stColPx / 2, stRowPx / 2],
+                    [stColPx / 2, -stRowPx / 2],
+                    [-stColPx / 2, -stRowPx / 2]
+                ];
+                for (var di = 0; di < dotOffsets.length; di++) {
+                    var dotX = px + dotOffsets[di][0];
+                    var dotY = py + dotOffsets[di][1];
+                    // Only draw if in wall bounds and not already drawn by neighbor
+                    if (dotX > wallMinX && dotX < wallMaxX && dotY > wallMinY && dotY < wallMaxY) {
+                        // Only draw from bottom-right offset to avoid duplicates
+                        if (di === 0) {
+                            var dotInWall = inPoly([dotX, dotY], wall);
+                            if (dotInWall) {
+                                cx.fillStyle = isCut ? '#FF9800' : '#81C784';
+                                cx.strokeStyle = isCut ? '#E65100' : '#2E7D32';
+                                cx.lineWidth = 0.5;
+                                cx.beginPath();
+                                cx.rect(dotX - dotSize/2, dotY - dotSize/2, dotSize, dotSize);
+                                cx.fill();
+                                cx.stroke();
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 
+    // Build sheet-level cutTilesData entries (one per cut sheet, not per sub-tile)
+    if (!projMode || window.segmentProjMode) {
+        var sheetColPxForData = sheetColIn * s;
+        var sheetRowPxForData = sheetRowIn * s;
+        for (var sk in sheetStatus) {
+            if (!sheetStatus[sk].anyIn) continue;
+            var sheetState = cutTileStates[sk] || 0;
+            if (sheetState === 2) cutDoneCount++;
+            if (!sheetStatus[sk].allFull && sheetSubTiles[sk]) {
+                // This is a cut sheet — build cutTilesData entry
+                var subs = sheetSubTiles[sk];
+                // Compute sheet pixel bounds from sheet key
+                var skParts = sk.split(',');
+                var sheetCol = parseInt(skParts[0]);
+                var sheetRow = parseInt(skParts[1]);
+                // Collect all sub-tile verts for hit testing (use bounding polygon of all sub-tiles)
+                var allMinX = Infinity, allMaxX = -Infinity, allMinY = Infinity, allMaxY = -Infinity;
+                var subTilePositions = [];
+                for (var si = 0; si < subs.length; si++) {
+                    var sub = subs[si];
+                    subTilePositions.push({ px: sub.px, py: sub.py, isCut: sub.isCut, row: sub.row, col: sub.col });
+                    allMinX = Math.min(allMinX, sub.px - stWpx/2);
+                    allMaxX = Math.max(allMaxX, sub.px + stWpx/2);
+                    allMinY = Math.min(allMinY, sub.py - stHpx/2);
+                    allMaxY = Math.max(allMaxY, sub.py + stHpx/2);
+                }
+                // Use sheet bounding rect as hit-test polygon
+                var sheetVerts = [
+                    [allMinX, allMinY], [allMaxX, allMinY],
+                    [allMaxX, allMaxY], [allMinX, allMaxY]
+                ];
+                var wallCopy = [];
+                for (var wi = 0; wi < wall.length; wi++) {
+                    wallCopy.push([wall[wi][0], wall[wi][1]]);
+                }
+                // Calculate sheet-level cut dimensions
+                var sheetDims = toFraction(sheetW) + ' × ' + toFraction(sheetH) + ' sheet';
+                if (cutLabels) {
+                    // Label at center of cut sub-tiles
+                    var labelX = 0, labelY = 0;
+                    for (var si = 0; si < subs.length; si++) {
+                        if (subs[si].isCut) { labelX += subs[si].px; labelY += subs[si].py; }
+                    }
+                    var cutCount = subs.filter(function(st) { return st.isCut; }).length;
+                    if (cutCount > 0) {
+                        cutLabels.push({ x: labelX/cutCount, y: labelY/cutCount, text: sheetDims, state: sheetState });
+                    }
+                }
+                cutTilesData.push({
+                    key: sk,
+                    x: (allMinX + allMaxX) / 2,
+                    y: (allMinY + allMaxY) / 2,
+                    tw: allMaxX - allMinX,
+                    th: allMaxY - allMinY,
+                    col: sheetCol,
+                    row: sheetRow,
+                    shape: 'mosaic_sheet',
+                    orient: orient,
+                    dims: sheetDims,
+                    verts: sheetVerts,
+                    wall: wallCopy,
+                    voidPolys: voidPolys,
+                    scale: s,
+                    // Sheet-specific data for detail view
+                    subTiles: subTilePositions,
+                    subShape: subShape,
+                    subW: subW,
+                    subH: subH,
+                    subGr: subGr,
+                    stWpx: stWpx,
+                    stHpx: stHpx,
+                    stGrPx: stGrPx,
+                    sheetW: sheetW,
+                    sheetH: sheetH,
+                    stColPx: stColPx,
+                    stRowPx: stRowPx
+                });
+            }
+        }
+    }
     // Draw subtle sheet boundary lines (non-projector mode only, hidden in print mode)
     if (!projMode && !window._printMode) {
         cx.save();
@@ -8201,6 +9005,392 @@ function nativeShareProject() {
     }
 }
 
+// ==================== WORKSPACE PHOTO ====================
+var workspacePhoto = localStorage.getItem('layit_workspace_photo') || null;
+
+function handleWorkspacePhoto(e) {
+    var file = e.target.files[0];
+    if (!file) return;
+    var reader = new FileReader();
+    reader.onload = function(ev) {
+        // Compress to reasonable size
+        var img = new Image();
+        img.onload = function() {
+            var canvas = document.createElement('canvas');
+            var maxDim = 800;
+            var scale = Math.min(maxDim / img.width, maxDim / img.height, 1);
+            canvas.width = img.width * scale;
+            canvas.height = img.height * scale;
+            var ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+            workspacePhoto = canvas.toDataURL('image/jpeg', 0.7);
+            localStorage.setItem('layit_workspace_photo', workspacePhoto);
+            updateWorkspacePhotoUI();
+            showToast('Workspace photo saved');
+        };
+        img.src = ev.target.result;
+    };
+    reader.readAsDataURL(file);
+}
+
+function updateWorkspacePhotoUI() {
+    var preview = document.getElementById('workspacePhotoPreview');
+    var prompt = document.getElementById('workspacePhotoPrompt');
+    var img = document.getElementById('workspacePhotoImg');
+    if (workspacePhoto) {
+        img.src = workspacePhoto;
+        preview.style.display = 'block';
+        prompt.innerHTML = '<span style="font-size:11px;color:var(--text-muted);">Tap to change photo</span>';
+    } else {
+        preview.style.display = 'none';
+    }
+}
+
+// Init workspace photo on load
+setTimeout(updateWorkspacePhotoUI, 200);
+
+// ==================== CLIENT REPORT (3-PAGE B&W PDF) ====================
+function generateClientReport() {
+    // Check we have something to render
+    if (!C.wall.lH || !C.wall.tW || !C.tile.w || !C.tile.h) {
+        showToast('Set up your wall dimensions and tile first');
+        return;
+    }
+
+    // Temporarily show the diagram panel so canvas renders at full size
+    var diagramPanel = document.getElementById('diagram');
+    var wasActive = diagramPanel.classList.contains('active');
+    if (!wasActive) {
+        diagramPanel.style.display = 'block';
+        diagramPanel.style.position = 'absolute';
+        diagramPanel.style.left = '-9999px';
+    }
+
+    // Render outline-only layout clipped to perimeter with dimension brackets
+    window._reportMode = true;
+    window._printMode = true;
+    draw();
+
+    // Capture layout image
+    var layoutImg = cv.toDataURL('image/jpeg', 0.9);
+
+    window._reportMode = false;
+    window._printMode = false;
+    draw();
+
+    // Restore diagram panel visibility
+    if (!wasActive) {
+        diagramPanel.style.display = '';
+        diagramPanel.style.position = '';
+        diagramPanel.style.left = '';
+    }
+
+    var projName = document.getElementById('projName').value.trim() || 'Tile Layout';
+    var compName = (document.getElementById('companyName') ? document.getElementById('companyName').value : '').trim();
+    var dateStr = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+
+    // Dimensions
+    var rH = C.wall.lH + C.wall.rV;
+    var bW = C.wall.tW + C.wall.bV;
+    var maxW = Math.max(C.wall.tW, bW);
+    var maxH = Math.max(C.wall.lH, rH);
+    var dimText = maxW.toFixed(1) + '" × ' + maxH.toFixed(1) + '"';
+    var sqft = ((maxW * maxH) / 144).toFixed(1);
+    var shapeName = getShareShapeName(C.tile.sh);
+    var tileSize = C.tile.w + '" × ' + C.tile.h + '"';
+    var groutLabel = C.tile.gr === 0.0625 ? '1/16"' : C.tile.gr === 0.125 ? '1/8"' : C.tile.gr === 0.25 ? '1/4"' : C.tile.gr + '"';
+    var totalTiles = full + part;
+
+    // Logo
+    var logoHtml = '';
+    if (companyLogo) {
+        logoHtml = '<img src="' + companyLogo + '" style="max-height:80px;max-width:200px;" alt="Logo">';
+    }
+
+    // Workspace photo
+    var photoHtml = '<div style="height:180px;border:1px dashed #aaa;display:flex;align-items:center;justify-content:center;font-size:11px;">No workspace photo provided</div>';
+    if (workspacePhoto) {
+        photoHtml = '<img src="' + workspacePhoto + '" style="width:100%;max-height:220px;object-fit:contain;border:1px solid #ddd;">';
+    }
+
+    // Sub-tile info for mosaics
+    var subInfo = '';
+    if (C.tile.sh === 'mosaic' && C.tile.subShape) {
+        subInfo = '<tr><td style="padding:6px 0;border-bottom:1px solid #ddd;color:#666;">Sub-tile Shape</td><td style="padding:6px 0;border-bottom:1px solid #ddd;font-weight:600;text-align:right;">' + C.tile.subShape + '</td></tr>' +
+            '<tr><td style="padding:6px 0;border-bottom:1px solid #ddd;color:#666;">Sub-tile Size</td><td style="padding:6px 0;border-bottom:1px solid #ddd;font-weight:600;text-align:right;">' + C.tile.subW + '" × ' + C.tile.subH + '"</td></tr>';
+    }
+
+    // Cutouts
+    var cutoutInfo = '';
+    if (C.voids && C.voids.length > 0) {
+        cutoutInfo = '<tr><td style="padding:6px 0;border-bottom:1px solid #ddd;color:#666;">Cutouts</td><td style="padding:6px 0;border-bottom:1px solid #ddd;font-weight:600;text-align:right;">' + C.voids.length + '</td></tr>';
+    }
+
+    var html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>' + escapeShareHtml(projName) + ' - Client Report</title>' +
+        '<style>' +
+        '@page { size: letter; margin: 0.5in; }' +
+        '* { box-sizing: border-box; margin: 0; padding: 0; }' +
+        'body { font-family: -apple-system, "Helvetica Neue", Arial, sans-serif; color: #222; line-height: 1.5; font-size: 12px; }' +
+        '.page { width: 7.5in; min-height: 10in; padding: 0; page-break-after: always; position: relative; }' +
+        '.page:last-child { page-break-after: auto; }' +
+        'h1 { font-size: 20px; font-weight: 700; }' +
+        'h2 { font-size: 16px; font-weight: 700; border-bottom: 2px solid #222; padding-bottom: 6px; margin-bottom: 12px; }' +
+        'table { width: 100%; border-collapse: collapse; }' +
+        'td, span, div, p { color: #222 !important; }' +
+        'h1, h2, h3 { color: #000 !important; }' +
+        '.lined { border-bottom: 1px solid #999; height: 32px; }' +
+        '@media screen { body { background: #2a2a2a; } .page { background: #fff; max-width: 7.5in; margin: 16px auto; padding: 0.4in; box-shadow: 0 4px 20px rgba(0,0,0,0.5); border-radius: 2px; } .pages-wrap { padding: 8px 12px 40px; } }' +
+        '@media print { .no-print { display: none !important; } }' +
+        '</style></head><body>' +
+
+        // ─── PRINT BUTTON (screen only) ───
+        '<div class="no-print" style="text-align:center;padding:16px;">' +
+        '<button onclick="window.print()" style="padding:12px 32px;font-size:16px;font-weight:600;background:#222;color:#fff;border:none;border-radius:8px;cursor:pointer;">Print / Save PDF</button>' +
+        ' <button onclick="window.close()" style="padding:12px 24px;font-size:14px;background:#eee;color:#333;border:1px solid #ccc;border-radius:8px;cursor:pointer;margin-left:8px;">Close</button>' +
+        '</div>' +
+
+        // ═══════ PAGES WRAPPER (scroll-snap on mobile) ═══════
+        '<div class="pages-wrap">' +
+
+        // ═══════ PAGE 1: PROJECT COVER ═══════
+        '<div class="page">' +
+        '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;padding-bottom:10px;border-bottom:3px solid #222;">' +
+        '<div>' +
+        (compName ? '<div style="font-size:20px;font-weight:700;">' + escapeShareHtml(compName) + '</div>' : '<div style="font-size:20px;font-weight:700;">Company Name</div>') +
+        '<div style="font-size:11px;margin-top:2px;">' + dateStr + '</div>' +
+        '</div>' +
+        '<div style="text-align:right;">' +
+        (logoHtml || '<div style="width:100px;height:50px;border:1px dashed #aaa;display:flex;align-items:center;justify-content:center;font-size:9px;">Logo</div>') +
+        '</div>' +
+        '</div>' +
+        '<div style="text-align:center;margin-bottom:10px;">' +
+        '<h1 style="font-size:18px;">' + escapeShareHtml(projName) + '</h1>' +
+        '<div style="font-size:11px;">Client Report</div>' +
+        '</div>' +
+        '<div style="margin-bottom:10px;">' +
+        '<div style="font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px;">Workspace</div>' +
+        photoHtml +
+        '</div>' +
+        '<h2 style="font-size:13px;margin-bottom:6px;">Project Summary</h2>' +
+        '<table style="font-size:11px;">' +
+        '<tr><td style="padding:4px 0;border-bottom:1px solid #ddd;">Room Dimensions</td><td style="padding:4px 0;border-bottom:1px solid #ddd;font-weight:600;text-align:right;">' + dimText + '</td></tr>' +
+        '<tr><td style="padding:4px 0;border-bottom:1px solid #ddd;">Coverage Area</td><td style="padding:4px 0;border-bottom:1px solid #ddd;font-weight:600;text-align:right;">' + sqft + ' sq ft</td></tr>' +
+        '<tr><td style="padding:4px 0;border-bottom:1px solid #ddd;">Tile Shape</td><td style="padding:4px 0;border-bottom:1px solid #ddd;font-weight:600;text-align:right;">' + shapeName + '</td></tr>' +
+        '<tr><td style="padding:4px 0;border-bottom:1px solid #ddd;">Tile Size</td><td style="padding:4px 0;border-bottom:1px solid #ddd;font-weight:600;text-align:right;">' + tileSize + '</td></tr>' +
+        '<tr><td style="padding:4px 0;border-bottom:1px solid #ddd;">Grout Joint</td><td style="padding:4px 0;border-bottom:1px solid #ddd;font-weight:600;text-align:right;">' + groutLabel + '</td></tr>' +
+        subInfo + cutoutInfo +
+        '<tr><td style="padding:4px 0;">Total Tiles</td><td style="padding:4px 0;font-weight:600;text-align:right;">' + totalTiles + ' (' + full + ' full + ' + part + ' cuts)</td></tr>' +
+        '</table>' +
+        '</div>' +
+
+        // ═══════ PAGE 2: LAYOUT + SPECS ═══════
+        '<div class="page">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;padding-bottom:6px;border-bottom:2px solid #222;">' +
+        '<h2 style="border:none;margin:0;padding:0;font-size:14px;">Layout Diagram</h2>' +
+        '<div style="font-size:10px;">' + escapeShareHtml(projName) + ' | ' + dateStr + '</div>' +
+        '</div>' +
+        '<div style="margin-bottom:8px;border:2px solid #222;background:#f9f9f9;padding:3px;">' +
+        '<div id="reportLayoutImgSlot" style="min-height:150px;display:flex;align-items:center;justify-content:center;font-size:11px;">Loading layout...</div>' +
+        '</div>' +
+        '<div style="display:flex;justify-content:space-between;margin-bottom:8px;font-size:11px;font-weight:700;">' +
+        '<div>W: ' + maxW.toFixed(1) + '"</div>' +
+        '<div>H: ' + maxH.toFixed(1) + '"</div>' +
+        '<div>Area: ' + sqft + ' sq ft</div>' +
+        '</div>' +
+        '<div style="display:flex;gap:16px;">' +
+        '<div style="flex:1;">' +
+        '<h2 style="font-size:12px;margin-bottom:4px;">Tile Specs</h2>' +
+        '<table style="font-size:10px;">' +
+        '<tr><td style="padding:3px 0;border-bottom:1px solid #ddd;">Shape</td><td style="padding:3px 0;border-bottom:1px solid #ddd;font-weight:600;text-align:right;">' + shapeName + '</td></tr>' +
+        '<tr><td style="padding:3px 0;border-bottom:1px solid #ddd;">Size</td><td style="padding:3px 0;border-bottom:1px solid #ddd;font-weight:600;text-align:right;">' + tileSize + '</td></tr>' +
+        '<tr><td style="padding:3px 0;border-bottom:1px solid #ddd;">Grout</td><td style="padding:3px 0;border-bottom:1px solid #ddd;font-weight:600;text-align:right;">' + groutLabel + '</td></tr>' +
+        '<tr><td style="padding:3px 0;border-bottom:1px solid #ddd;">Full</td><td style="padding:3px 0;border-bottom:1px solid #ddd;font-weight:600;text-align:right;">' + full + '</td></tr>' +
+        '<tr><td style="padding:3px 0;border-bottom:1px solid #ddd;">Cuts</td><td style="padding:3px 0;border-bottom:1px solid #ddd;font-weight:600;text-align:right;">' + part + '</td></tr>' +
+        '<tr><td style="padding:3px 0;">Total</td><td style="padding:3px 0;font-weight:700;text-align:right;">' + totalTiles + '</td></tr>' +
+        '</table>' +
+        '</div>' +
+        '<div style="flex:1;">' +
+        '<h2 style="font-size:12px;margin-bottom:4px;">Materials</h2>' +
+        '<table style="font-size:10px;">' +
+        '<tr><td style="padding:3px 0;border-bottom:1px solid #ddd;">Area</td><td style="padding:3px 0;border-bottom:1px solid #ddd;font-weight:600;text-align:right;">' + sqft + ' sq ft</td></tr>' +
+        '<tr><td style="padding:3px 0;border-bottom:1px solid #ddd;">Waste</td><td style="padding:3px 0;border-bottom:1px solid #ddd;font-weight:600;text-align:right;">15%</td></tr>' +
+        '<tr><td style="padding:3px 0;border-bottom:1px solid #ddd;">Thinset</td><td style="padding:3px 0;border-bottom:1px solid #ddd;font-weight:600;text-align:right;">~' + Math.ceil(parseFloat(sqft) / 45) + ' bags</td></tr>' +
+        '<tr><td style="padding:3px 0;border-bottom:1px solid #ddd;">Grout</td><td style="padding:3px 0;border-bottom:1px solid #ddd;font-weight:600;text-align:right;">~' + Math.ceil(parseFloat(sqft) / 70) + ' bags</td></tr>' +
+        '<tr><td style="padding:3px 0;">Spacers</td><td style="padding:3px 0;font-weight:600;text-align:right;">' + groutLabel + '</td></tr>' +
+        '</table>' +
+        '</div>' +
+        '</div>' +
+        '<div style="margin-top:10px;">' +
+        '<div style="font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px;">Notes</div>' +
+        '<div class="lined"></div><div class="lined"></div><div class="lined"></div><div class="lined"></div>' +
+        '</div>' +
+        '</div>' +
+
+        // ═══════ PAGE 3: ADDITIONAL NOTES ═══════
+        '<div class="page">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;padding-bottom:8px;border-bottom:2px solid #222;">' +
+        '<h2 style="border:none;margin:0;padding:0;">Additional Notes</h2>' +
+        '<div style="font-size:11px;color:#666;">' + escapeShareHtml(projName) + ' | ' + dateStr + '</div>' +
+        '</div>' +
+
+        // Lined note area — full page
+        '<div style="margin-top:8px;">';
+
+    // Generate lines to fill the page (20 fits 8.5x11 with header)
+    for (var li = 0; li < 20; li++) {
+        html += '<div class="lined"></div>';
+    }
+
+    html += '</div>' +
+
+        // Footer
+        '<div style="position:absolute;bottom:0;left:0;right:0;text-align:center;font-size:10px;color:#aaa;padding:8px;">' +
+        'Generated by LayIt — layitapp.com' +
+        '</div>' +
+        '</div>' +
+
+        '</div>' + // close pages-wrap
+
+        '</body></html>';
+
+    // Show report as full-screen overlay (works in WKWebView)
+    var overlay = document.createElement('div');
+    overlay.id = 'reportPreviewOverlay';
+    overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:300;display:flex;flex-direction:column;background:#1a1a1a;';
+
+    var topBar = document.createElement('div');
+    topBar.style.cssText = 'display:flex;justify-content:space-between;align-items:center;padding:10px 16px;background:#111;flex-shrink:0;z-index:2;';
+    topBar.innerHTML = '<button onclick="document.getElementById(\'reportPreviewOverlay\').remove()" style="background:none;border:none;color:#aaa;font-size:15px;cursor:pointer;padding:8px;">✕ Close</button>' +
+        '<span style="color:#eee;font-weight:600;font-size:14px;">Client Report</span>' +
+        '<button onclick="window.webkit&&window.webkit.messageHandlers&&window.webkit.messageHandlers.shareHtml?window.webkit.messageHandlers.shareHtml.postMessage(window._reportHtml):void(0)" style="background:#4CAF50;border:none;color:#fff;font-size:13px;cursor:pointer;padding:8px 14px;border-radius:6px;font-weight:600;">Share</button>';
+
+    // Scrollable content area — scroll-snap for print preview feel
+    var content = document.createElement('div');
+    content.style.cssText = 'flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;background:#333;padding:12px 10px;scroll-snap-type:y proximity;';
+
+    // Build pages directly as DOM
+    var pages = document.createElement('div');
+    var bodyMatch = html.match(/<body[^>]*>([\s\S]*)<\/body>/);
+    var bodyContent = bodyMatch ? bodyMatch[1] : html;
+    pages.innerHTML = bodyContent;
+
+    // Print-preview styling — pages look like paper with margins
+    var style = document.createElement('style');
+    style.textContent = '* { box-sizing: border-box; } ' +
+        '.no-print { display: none !important; } ' +
+        '.pages-wrap { padding: 0; } ' +
+        '.page { background: #fff; width: 90%; max-width: 600px; margin: 10px auto; padding: 20px 16px; ' +
+        'box-shadow: 0 1px 8px rgba(0,0,0,0.5); border: 1px solid #555; position: relative; ' +
+        'scroll-snap-align: start; } ' +
+        'h1 { font-size: 18px; font-weight: 700; } ' +
+        'h2 { font-size: 14px; font-weight: 700; border-bottom: 2px solid #222; padding-bottom: 4px; margin-bottom: 10px; } ' +
+        'table { width: 100%; border-collapse: collapse; font-size: 12px; } ' +
+        'td, span, div, p { color: #222 !important; } ' +
+        'h1, h2, h3 { color: #000 !important; } ' +
+        '.lined { border-bottom: 1px solid #999; height: 28px; } ' +
+        'img { max-width: 100%; height: auto; }';
+    pages.insertBefore(style, pages.firstChild);
+
+    content.appendChild(pages);
+    overlay.appendChild(topBar);
+    overlay.appendChild(content);
+    document.body.appendChild(overlay);
+
+    // Inject layout image into the slot after DOM is built
+    var imgSlot = overlay.querySelector('#reportLayoutImgSlot');
+    if (imgSlot && layoutImg) {
+        var img = document.createElement('img');
+        img.style.cssText = 'width:100%;display:block;';
+        img.alt = 'Tile Layout Diagram';
+        img.src = layoutImg;
+        imgSlot.innerHTML = '';
+        imgSlot.appendChild(img);
+    }
+
+    // Store for sharing
+    window._reportHtml = html;
+
+    // ── Pinch-to-zoom on report pages ──
+    var reportZoom = 1;
+    var reportPinchStart = 0;
+    var reportZoomStart = 1;
+    var reportPanX = 0, reportPanY = 0;
+    var reportPanStartX = 0, reportPanStartY = 0;
+    var reportTouchStartX = 0, reportTouchStartY = 0;
+
+    function applyReportTransform() {
+        var z = Math.max(1, reportZoom);
+        if (z <= 1.05) {
+            // Snapped to full page — reset pan
+            z = 1;
+            reportPanX = 0;
+            reportPanY = 0;
+            reportZoom = 1;
+            content.style.overflow = 'auto';
+            content.style.scrollSnapType = 'y proximity';
+        } else {
+            content.style.overflow = 'hidden';
+            content.style.scrollSnapType = 'none';
+        }
+        pages.style.transform = 'scale(' + z + ') translate(' + (reportPanX / z) + 'px,' + (reportPanY / z) + 'px)';
+        pages.style.transformOrigin = 'top center';
+    }
+
+    content.addEventListener('touchstart', function(e) {
+        if (e.touches.length === 2) {
+            e.preventDefault();
+            var dx = e.touches[0].clientX - e.touches[1].clientX;
+            var dy = e.touches[0].clientY - e.touches[1].clientY;
+            reportPinchStart = Math.sqrt(dx * dx + dy * dy);
+            reportZoomStart = reportZoom;
+            reportTouchStartX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+            reportTouchStartY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+            reportPanStartX = reportPanX;
+            reportPanStartY = reportPanY;
+        } else if (e.touches.length === 1 && reportZoom > 1.05) {
+            e.preventDefault();
+            reportTouchStartX = e.touches[0].clientX;
+            reportTouchStartY = e.touches[0].clientY;
+            reportPanStartX = reportPanX;
+            reportPanStartY = reportPanY;
+        }
+    }, { passive: false });
+
+    content.addEventListener('touchmove', function(e) {
+        if (e.touches.length === 2) {
+            e.preventDefault();
+            var dx = e.touches[0].clientX - e.touches[1].clientX;
+            var dy = e.touches[0].clientY - e.touches[1].clientY;
+            var dist = Math.sqrt(dx * dx + dy * dy);
+            reportZoom = reportZoomStart * (dist / reportPinchStart);
+            reportZoom = Math.max(1, Math.min(reportZoom, 4));
+
+            // Pan while pinching
+            var cx = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+            var cy = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+            reportPanX = reportPanStartX + (cx - reportTouchStartX);
+            reportPanY = reportPanStartY + (cy - reportTouchStartY);
+
+            applyReportTransform();
+        } else if (e.touches.length === 1 && reportZoom > 1.05) {
+            e.preventDefault();
+            reportPanX = reportPanStartX + (e.touches[0].clientX - reportTouchStartX);
+            reportPanY = reportPanStartY + (e.touches[0].clientY - reportTouchStartY);
+            applyReportTransform();
+        }
+    }, { passive: false });
+
+    content.addEventListener('touchend', function(e) {
+        if (e.touches.length === 0 && reportZoom <= 1.05) {
+            // Snap back to full page
+            reportZoom = 1;
+            reportPanX = 0;
+            reportPanY = 0;
+            applyReportTransform();
+        }
+    });
+}
+
 // Import project from file
 function importProject(e) {
     var file = e.target.files[0];
@@ -9191,6 +10381,10 @@ function updateProUI() {
     var badges = document.querySelectorAll('#scanProBadge, #roomScanProBadge, #cloudSyncProBadge, #shareProBadge, #jobCostProBadge');
     badges.forEach(function(b) { b.style.display = proUser ? 'none' : ''; });
 
+    // Files tab: show Pro-only sections when Pro is active
+    var proFileSections = document.getElementById('proFileSections');
+    if (proFileSections) proFileSections.style.display = proUser ? '' : 'none';
+
     // Settings tab status
     var statusCard = document.getElementById('proStatusCard');
     var statusValue = document.getElementById('proStatusValue');
@@ -9365,6 +10559,7 @@ function completeOnboarding() {
 
 function restartOnboarding() {
     localStorage.removeItem('layit_onboarded');
+    localStorage.removeItem('layit_visited_tabs');
     showOnboarding();
 }
 
