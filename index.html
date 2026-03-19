@@ -1654,30 +1654,60 @@
     </div>
 
     <div id="calc" class="panel">
-        <div class="section"><h3>🔢 Tile Calculator</h3>
-            <input type="hidden" id="waste" value="15">
-            <button class="btn-primary" onclick="updateTileCount()" style="margin-bottom:10px;">🔢 Calculate Tiles</button>
-            <div class="calc-result" id="tilesNeeded">0 tiles</div>
-            <div class="hint mt-3">
-                Full tiles + Cut tiles + 15% waste buffer (auto-calculated)
-            </div>
-        </div>
-        <div class="section"><h3>💰 Cost Estimate</h3>
-            <div class="field"><label>Price per Tile ($)</label><input type="number" id="tilePrice" value="5" step="0.01" min="0"></div>
-            <div class="field"><label>Price per Box (optional)</label>
-                <div class="grid-2">
-                    <input type="number" id="boxPrice" placeholder="Box $" step="0.01" min="0">
-                    <input type="number" id="tilesPerBox" placeholder="Tiles/box" min="0">
+        <input type="hidden" id="waste" value="15">
+
+        <!-- Tile Count Summary (auto from layout) -->
+        <div class="section">
+            <h3>🔢 Tile Count</h3>
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:12px;background:var(--bg-recessed);border-radius:var(--radius-sm);margin-bottom:8px;">
+                <div style="text-align:center;flex:1;">
+                    <div style="font-size:22px;font-weight:700;" id="calcFullCount">0</div>
+                    <div style="font-size:10px;color:var(--text-secondary);">Full</div>
+                </div>
+                <div style="color:var(--text-tertiary);font-size:18px;">+</div>
+                <div style="text-align:center;flex:1;">
+                    <div style="font-size:22px;font-weight:700;color:#FF9800;" id="calcCutCount">0</div>
+                    <div style="font-size:10px;color:var(--text-secondary);">Cuts</div>
+                </div>
+                <div style="color:var(--text-tertiary);font-size:18px;">+</div>
+                <div style="text-align:center;flex:1;">
+                    <div style="font-size:22px;font-weight:700;color:var(--text-secondary);" id="calcWasteCount">0</div>
+                    <div style="font-size:10px;color:var(--text-secondary);">Waste (15%)</div>
+                </div>
+                <div style="color:var(--text-tertiary);font-size:18px;">=</div>
+                <div style="text-align:center;flex:1;">
+                    <div style="font-size:24px;font-weight:700;color:var(--success);" id="calcTotalCount">0</div>
+                    <div style="font-size:10px;color:var(--text-secondary);">Total</div>
                 </div>
             </div>
-            <button class="btn-primary" onclick="updateCostEstimate()" style="margin-bottom:10px;">💰 Calculate Cost</button>
-            <div class="calc-result" id="costEstimate">$0.00</div>
-            <div class="hint" id="costBreakdown"></div>
+            <div class="calc-result" id="tilesNeeded" style="display:none;">0 tiles</div>
+            <button class="btn-secondary" onclick="updateTileCount()" style="width:100%;font-size:12px;">Refresh Count</button>
         </div>
 
+        <!-- Cost Estimate -->
+        <div class="section">
+            <h3>💰 Cost Estimate</h3>
+            <div id="scannedPriceInfo" style="display:none;padding:8px 12px;background:rgba(76,175,80,0.1);border:1px solid var(--success);border-radius:var(--radius-sm);margin-bottom:10px;font-size:12px;"></div>
+            <div class="field"><label>Price per Tile ($)</label><input type="number" id="tilePrice" value="0" step="0.01" min="0" placeholder="Enter tile price" oninput="liveCostUpdate()"></div>
+            <div class="field"><label>Price per Box (optional)</label>
+                <div class="grid-2">
+                    <input type="number" id="boxPrice" placeholder="Box $" step="0.01" min="0" oninput="liveCostUpdate()">
+                    <input type="number" id="tilesPerBox" placeholder="Tiles/box" min="0" oninput="liveCostUpdate()">
+                </div>
+            </div>
+            <div class="calc-result" id="costEstimate" style="margin-top:10px;">$0.00</div>
+            <div class="hint" id="costBreakdown"></div>
+            <div id="comparePricesBtn" style="display:none;margin-top:10px;">
+                <button class="btn-secondary" onclick="openPriceComparison()" style="width:100%;display:flex;align-items:center;justify-content:center;gap:8px;padding:12px;">
+                    🔍 Compare Prices Online
+                </button>
+            </div>
+        </div>
+
+        <!-- Shopping List -->
         <div class="section">
             <h3>🛒 Shopping List</h3>
-            <div class="hint" style="margin-bottom:12px;">Calculate everything you need to buy for this job.</div>
+            <div class="hint" style="margin-bottom:12px;">Everything you need to buy for this job.</div>
             <button class="btn-primary" onclick="calculateShoppingList()" style="margin-bottom:12px;">🛒 Calculate Materials</button>
             <div id="shoppingListResults"></div>
         </div>
@@ -1741,13 +1771,11 @@
                 </div>
                 <div class="field">
                     <label>Company Logo (optional)</label>
-                    <div style="display:flex;gap:8px;align-items:center;">
-                        <button class="btn-secondary" onclick="document.getElementById('logoUpload').click()" style="flex:1;font-size:12px;">📎 Upload Logo</button>
-                        <button class="btn-secondary" onclick="clearCompanyLogo()" style="font-size:12px;padding:10px 12px;">✕</button>
-                    </div>
+                    <button class="btn-secondary" onclick="document.getElementById('logoUpload').click()" style="width:100%;font-size:12px;">📎 Upload Logo</button>
                     <input type="file" id="logoUpload" accept="image/*" style="display:none" onchange="handleLogoUpload(event)">
-                    <div id="logoPreview" style="display:none;margin-top:8px;text-align:center;">
+                    <div id="logoPreview" style="display:none;margin-top:8px;text-align:center;position:relative;">
                         <img id="logoPreviewImg" style="max-height:60px;max-width:200px;border-radius:6px;background:rgba(255,255,255,0.1);padding:4px;">
+                        <button onclick="clearCompanyLogo()" style="position:absolute;top:-6px;right:calc(50% - 106px);width:20px;height:20px;border-radius:50%;background:rgba(0,0,0,0.6);color:#fff;border:none;font-size:11px;line-height:20px;text-align:center;cursor:pointer;padding:0;">✕</button>
                     </div>
                 </div>
             </div>
@@ -4992,6 +5020,7 @@ function showTab(id) {
 
     if (id === 'diagram') draw();
     if (id === 'projects') updateProjectList();
+    if (id === 'calc') updateTileCount();
 
     // Show first-visit info popup
     showTabInfoPopup(id);
@@ -5378,6 +5407,14 @@ function hasBarcodeSupport() {
 
 function openBarcodeScanner() {
     if (!requirePro('Barcode Scanner')) return;
+
+    // Use native iOS scanner if available (AVFoundation — reads real barcodes)
+    if (window._nativeApp && window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.scanBarcode) {
+        window.webkit.messageHandlers.scanBarcode.postMessage({});
+        return;
+    }
+
+    // Fallback: browser-based scanner (Chrome/Android only)
     var overlay = document.getElementById('scannerOverlay');
     overlay.classList.add('active');
     var statusEl = document.getElementById('scannerStatus');
@@ -5434,11 +5471,16 @@ function openBarcodeScanner() {
 function onBarcodeDetected(barcode) {
     if (scannerInterval) { clearInterval(scannerInterval); scannerInterval = null; }
 
-    // Green flash
-    var flash = document.createElement('div');
-    flash.className = 'scanner-flash';
-    document.getElementById('scannerOverlay').appendChild(flash);
-    setTimeout(function() { flash.remove(); }, 500);
+    // Green flash (only if scanner overlay is open)
+    var scanOverlay = document.getElementById('scannerOverlay');
+    if (scanOverlay && scanOverlay.classList.contains('active')) {
+        var flash = document.createElement('div');
+        flash.className = 'scanner-flash';
+        scanOverlay.appendChild(flash);
+        setTimeout(function() { flash.remove(); }, 500);
+        var statusEl = document.getElementById('scannerStatus');
+        if (statusEl) statusEl.textContent = 'Found: ' + barcode;
+    }
 
     // Beep
     try {
@@ -5450,7 +5492,11 @@ function onBarcodeDetected(barcode) {
         osc.start(); osc.stop(actx.currentTime + 0.15);
     } catch(e) {}
 
-    document.getElementById('scannerStatus').textContent = 'Found: ' + barcode;
+    // Show toast for native scanner (no overlay visible)
+    if (!scanOverlay || !scanOverlay.classList.contains('active')) {
+        showToast('Scanned: ' + barcode, 1500);
+    }
+
     setTimeout(function() {
         closeBarcodeScanner();
         lookupBarcode(barcode);
@@ -5561,17 +5607,40 @@ function showProductFound(barcode, product) {
         el.appendChild(img);
     }
 
+    // Compare Prices button
+    el.appendChild(document.createElement('br'));
+    var compareBtn = document.createElement('button');
+    compareBtn.textContent = '🔍 Compare Prices';
+    compareBtn.style.cssText = 'margin-top:10px;padding:10px 16px;background:var(--bg-elevated);border:2px solid var(--border-default);border-radius:8px;color:var(--text-primary);font-size:13px;font-weight:600;cursor:pointer;width:100%;';
+    var searchQuery = encodeURIComponent((product.brand || '') + ' ' + (product.name || '') + ' tile price');
+    compareBtn.onclick = function() {
+        var url = 'https://www.google.com/search?q=' + searchQuery + '&tbm=shop';
+        if (window._nativeApp && window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.openURL) {
+            window.webkit.messageHandlers.openURL.postMessage(url);
+        } else {
+            window.open(url, '_blank');
+        }
+    };
+    el.appendChild(compareBtn);
+
     document.getElementById('productFoundModal').classList.add('active');
     _pendingProduct = product;
+    _lastScannedProduct = product; // Store for calc tab price auto-fill
 }
 
 function closeProductFound(apply) {
     document.getElementById('productFoundModal').classList.remove('active');
     if (apply && _pendingProduct) {
         applyScannedProduct(_pendingProduct);
+        // Auto-fill price if available
+        if (_pendingProduct.pricePerSqFt) {
+            document.getElementById('tilePrice').value = _pendingProduct.pricePerSqFt;
+        }
     }
     _pendingProduct = null;
 }
+
+var _lastScannedProduct = null;
 
 function applyScannedProduct(product) {
     document.getElementById('tileShape').value = product.shape;
@@ -9446,40 +9515,82 @@ function trackChanges() {
 
 // Update tile count
 function updateTileCount() {
-    var waste = parseFloat(document.getElementById('waste').value) || 10;
+    var waste = parseFloat(document.getElementById('waste').value) || 15;
     var total = full + part;
-    var tilesNeeded = Math.ceil(total * (1 + waste / 100));
+    var wasteCount = Math.ceil(total * waste / 100);
+    var tilesNeeded = total + wasteCount;
+
+    // Update hidden field for backward compat
     document.getElementById('tilesNeeded').textContent = tilesNeeded + ' tiles';
-    document.getElementById('tilesNeeded').innerHTML = tilesNeeded + ' tiles<br><span style="font-size:12px;color:#888;">(' + full + ' full + ' + part + ' cut + ' + Math.ceil(total * waste / 100) + ' waste)</span>';
+
+    // Update the visual calc display
+    var calcFull = document.getElementById('calcFullCount');
+    var calcCut = document.getElementById('calcCutCount');
+    var calcWaste = document.getElementById('calcWasteCount');
+    var calcTotal = document.getElementById('calcTotalCount');
+    if (calcFull) calcFull.textContent = full;
+    if (calcCut) calcCut.textContent = part;
+    if (calcWaste) calcWaste.textContent = wasteCount;
+    if (calcTotal) calcTotal.textContent = tilesNeeded;
+
+    // Show scanned product info if available
+    if (_lastScannedProduct) {
+        var infoEl = document.getElementById('scannedPriceInfo');
+        if (infoEl) {
+            infoEl.style.display = 'block';
+            infoEl.textContent = 'Scanned: ' + (_lastScannedProduct.brand || '') + ' ' + (_lastScannedProduct.name || '');
+        }
+        var compareBtn = document.getElementById('comparePricesBtn');
+        if (compareBtn) compareBtn.style.display = 'block';
+    }
+
+    // Auto-update cost
+    liveCostUpdate();
 }
 
-// Update cost estimate
-function updateCostEstimate() {
-    // First update tile count
-    updateTileCount();
-    
-    var waste = parseFloat(document.getElementById('waste').value) || 10;
+// Live cost update as user types price
+function liveCostUpdate() {
+    var waste = parseFloat(document.getElementById('waste').value) || 15;
     var total = full + part;
-    var tilesNeeded = Math.ceil(total * (1 + waste / 100));
-    
+    var tilesNeeded = total + Math.ceil(total * waste / 100);
+
     var pricePerTile = parseFloat(document.getElementById('tilePrice').value) || 0;
     var boxPrice = parseFloat(document.getElementById('boxPrice').value) || 0;
     var tilesPerBox = parseFloat(document.getElementById('tilesPerBox').value) || 0;
-    
+
     var cost = 0;
     var breakdown = '';
-    
+
     if (boxPrice && tilesPerBox) {
         var boxesNeeded = Math.ceil(tilesNeeded / tilesPerBox);
         cost = boxesNeeded * boxPrice;
-        breakdown = boxesNeeded + ' boxes × $' + boxPrice.toFixed(2) + ' = ';
+        breakdown = boxesNeeded + ' boxes × $' + boxPrice.toFixed(2);
     } else if (pricePerTile) {
         cost = tilesNeeded * pricePerTile;
-        breakdown = tilesNeeded + ' tiles × $' + pricePerTile.toFixed(2) + ' = ';
+        breakdown = tilesNeeded + ' tiles × $' + pricePerTile.toFixed(2);
     }
-    
-    document.getElementById('costEstimate').textContent = '$' + cost.toFixed(2);
-    document.getElementById('costBreakdown').textContent = breakdown ? breakdown : 'Enter price to calculate';
+
+    document.getElementById('costEstimate').textContent = cost > 0 ? '$' + cost.toFixed(2) : 'Enter price above';
+    document.getElementById('costBreakdown').textContent = breakdown;
+}
+
+// Legacy wrapper
+function updateCostEstimate() { updateTileCount(); }
+
+// Open Google Shopping for price comparison
+function openPriceComparison() {
+    var query = '';
+    if (_lastScannedProduct) {
+        query = (_lastScannedProduct.brand || '') + ' ' + (_lastScannedProduct.name || '') + ' tile';
+    } else {
+        query = (C.tile.w || '') + 'x' + (C.tile.h || '') + ' ' + (C.tile.sh || '') + ' tile';
+    }
+    var url = 'https://www.google.com/search?q=' + encodeURIComponent(query + ' price') + '&tbm=shop';
+    if (window._nativeApp && window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.openURL) {
+        window.webkit.messageHandlers.openURL.postMessage(url);
+    } else {
+        window.open(url, '_blank');
+    }
 }
 
 function calculateShoppingList() {
