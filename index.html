@@ -1542,13 +1542,26 @@
             </div>
         </div>
         
+        <!-- Unit Toggle -->
+        <div class="section" style="padding-bottom:8px;">
+            <div style="display:flex;align-items:center;justify-content:center;gap:8px;">
+                <span style="font-size:12px;font-weight:600;" id="unitLabelIn">Inches</span>
+                <label style="position:relative;display:inline-block;width:44px;height:24px;cursor:pointer;">
+                    <input type="checkbox" id="cmToggle" onchange="toggleUnits()" style="opacity:0;width:0;height:0;">
+                    <span style="position:absolute;top:0;left:0;right:0;bottom:0;background:var(--bg-elevated);border:2px solid var(--border-default);border-radius:12px;transition:0.2s;"></span>
+                    <span id="unitToggleKnob" style="position:absolute;top:2px;left:2px;width:16px;height:16px;background:var(--success);border-radius:50%;transition:0.2s;"></span>
+                </label>
+                <span style="font-size:12px;font-weight:600;" id="unitLabelCm">cm</span>
+            </div>
+        </div>
+
         <!-- Quick Rectangle (prominent, first option) -->
         <div class="section">
             <h3>⚡ Quick Rectangle</h3>
             <p class="hint mb-3" style="text-align:left;font-size:12px;">Enter width and height for a simple rectangular space.</p>
             <div class="row">
-                <div class="field"><label>Width (in)</label><input type="number" id="quickWidth" placeholder="58" min="0"></div>
-                <div class="field"><label>Height (in)</label><input type="number" id="quickHeight" placeholder="70" min="0"></div>
+                <div class="field"><label id="qwLabel">Width (in)</label><input type="number" id="quickWidth" placeholder="58" min="0"></div>
+                <div class="field"><label id="qhLabel">Height (in)</label><input type="number" id="quickHeight" placeholder="70" min="0"></div>
             </div>
             <button class="btn-primary" onclick="applyQuickRectangle()" style="width:100%;">
                 Apply Rectangle
@@ -1739,7 +1752,13 @@
                 </div>
             </div>
             <div class="calc-result" id="tilesNeeded" style="display:none;">0 tiles</div>
-            <button class="btn-secondary" onclick="updateTileCount()" style="width:100%;font-size:12px;">Refresh Count</button>
+            <!-- Box count (shown when pieces-per-box is known from scan) -->
+            <div id="boxCountDisplay" style="display:none;text-align:center;margin-top:12px;padding:16px;background:linear-gradient(135deg,rgba(76,175,80,0.1),rgba(76,175,80,0.05));border:2px solid var(--success);border-radius:var(--radius-md);">
+                <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-secondary);margin-bottom:4px;">You need</div>
+                <div style="font-size:36px;font-weight:800;color:var(--success);" id="boxCountNum">0</div>
+                <div style="font-size:15px;font-weight:600;">boxes</div>
+            </div>
+            <button class="btn-secondary" onclick="updateTileCount()" style="width:100%;font-size:12px;margin-top:8px;">Refresh Count</button>
         </div>
 
         <!-- Cost Estimate -->
@@ -2863,13 +2882,17 @@ function applyPerimeter(silent) {
 
 // Quick rectangle mode
 function applyQuickRectangle() {
-    var width = parseFloat(document.getElementById('quickWidth').value);
-    var height = parseFloat(document.getElementById('quickHeight').value);
-    
-    if (isNaN(width) || isNaN(height) || width <= 0 || height <= 0) {
+    var rawW = parseFloat(document.getElementById('quickWidth').value);
+    var rawH = parseFloat(document.getElementById('quickHeight').value);
+
+    if (isNaN(rawW) || isNaN(rawH) || rawW <= 0 || rawH <= 0) {
         showToast('Enter valid width and height');
         return;
     }
+
+    // Convert from cm to inches if cm mode is active
+    var width = toInches(rawW);
+    var height = toInches(rawH);
     if (width > 9999 || height > 9999) {
         showToast('Dimensions too large (max 9999 inches)');
         return;
@@ -2896,7 +2919,8 @@ function applyQuickRectangle() {
     draw();
     
     showToast('✓ Rectangle applied!', 2000);
-    showTab('diagram');
+    checkPendingNextStep();
+    if (!window._pendingNextStep) showTab('diagram');
 }
 
 // Initialize perimeter canvas on load
@@ -5948,6 +5972,7 @@ function applyScannedProduct(product) {
     onNominalToggle();
     updateTile();
     showToast('✅ Applied: ' + (product.brand ? product.brand + ' ' : '') + product.name);
+    checkPendingNextStep();
 }
 
 // Crowdsource — Photo preview + base64 encoding
@@ -10167,6 +10192,19 @@ function updateTileCount() {
     if (calcWaste) calcWaste.textContent = wasteCount;
     if (calcTotal) calcTotal.textContent = tilesNeeded;
 
+    // Box count — if we know pieces per box from scan
+    var boxDisplay = document.getElementById('boxCountDisplay');
+    if (boxDisplay) {
+        var ppb = _lastScannedProduct ? _lastScannedProduct.piecesPerBox : null;
+        if (ppb && ppb > 0) {
+            var boxesNeeded = Math.ceil(tilesNeeded / ppb);
+            document.getElementById('boxCountNum').textContent = boxesNeeded;
+            boxDisplay.style.display = 'block';
+        } else {
+            boxDisplay.style.display = 'none';
+        }
+    }
+
     // Show scanned product info if available
     if (_lastScannedProduct) {
         var infoEl = document.getElementById('scannedPriceInfo');
@@ -11172,106 +11210,53 @@ if (restored) {
 
 // ==================== ONBOARDING WIZARD ====================
 
-var onboardingStep = 0;
-var onboardingSteps = [
-    {
-        icon: '',
-        useLogo: true,
-        title: 'Welcome to LayIt!',
-        text: "Let's set up your first tile project in under 2 minutes.",
-        nextLabel: "Let's Go!"
-    },
-    {
-        icon: '📐',
-        label: 'Step 1',
-        title: 'Measure Your Wall',
-        text: 'Start by entering your wall or floor dimensions. Or draw your room perimeter if uniquely shaped and add measurements after.',
-        nextLabel: 'Next'
-    },
-    {
-        icon: '🧱',
-        label: 'Step 2',
-        title: 'Pick Your Tile',
-        text: 'Choose your tile size or scan the box barcode. We\'ll auto-fill the dimensions and grout spacing.',
-        nextLabel: 'Next'
-    },
-    {
-        icon: '📊',
-        label: 'Step 3',
-        title: 'See Your Layout',
-        text: 'See your tiles laid out instantly. Tap Optimize to minimize cuts and waste.',
-        nextLabel: 'Next'
-    },
-    {
-        icon: '🪟',
-        label: 'Step 4',
-        title: 'Add Cutouts',
-        text: 'Have a niche, window, or outlet? Add cutouts to cut around obstacles.',
-        nextLabel: 'Next'
-    },
-    {
-        icon: '🧮',
-        label: 'Step 5',
-        title: 'Calculate Materials',
-        text: 'See exactly how many tiles and materials you need. No more guessing at the store.',
-        nextLabel: 'Next'
-    },
-    {
-        icon: '⭐',
-        label: 'Step 6',
-        title: 'Go Pro',
-        text: 'Unlock barcode scanning, cut tracking, project sharing, and more for just $4.99/mo.',
-        nextLabel: null,
-        isProStep: true
-    }
-];
+// ==================== UNIT TOGGLE (inches / cm) ====================
+var useCm = false;
 
-function renderOnboardingStep(stepIdx) {
-    var step = onboardingSteps[stepIdx];
+function toggleUnits() {
+    useCm = document.getElementById('cmToggle').checked;
+    var knob = document.getElementById('unitToggleKnob');
+    knob.style.left = useCm ? '24px' : '2px';
+    document.getElementById('unitLabelIn').style.opacity = useCm ? '0.4' : '1';
+    document.getElementById('unitLabelCm').style.opacity = useCm ? '1' : '0.4';
+
+    var unit = useCm ? 'cm' : 'in';
+    var el = document.getElementById('qwLabel');
+    if (el) el.textContent = 'Width (' + unit + ')';
+    el = document.getElementById('qhLabel');
+    if (el) el.textContent = 'Height (' + unit + ')';
+}
+
+function toInches(val) {
+    return useCm ? val / 2.54 : val;
+}
+
+// ==================== "WHERE ARE WE STARTING?" FLOW ====================
+
+function showOnboarding() {
+    var overlay = document.getElementById('onboardingOverlay');
     var content = document.getElementById('onboardingStepContent');
     var dots = document.getElementById('onboardingDots');
     var actions = document.getElementById('onboardingActions');
 
-    // Build content
-    var html = '';
-    if (step.useLogo) {
-        html += '<svg class="onboarding-logo" viewBox="0 0 100 100"><rect width="100" height="100" rx="20" fill="#1a1a2e"/><polygon points="50,15 70,27 70,52 50,65 30,52 30,27" fill="#4CAF50"/><polygon points="30,52 30,77 50,90 50,65" fill="#FF9800"/><polygon points="70,52 70,77 50,90 50,65" fill="#FF9800"/></svg>';
-    } else {
-        html += '<span class="onboarding-icon">' + step.icon + '</span>';
-    }
-    if (step.label) {
-        html += '<div class="onboarding-step-label">' + step.label + '</div>';
-    }
-    html += '<div class="onboarding-title">' + step.title + '</div>';
-    html += '<div class="onboarding-subtitle">' + step.text + '</div>';
-    content.innerHTML = html;
+    dots.innerHTML = '';
+    actions.innerHTML = '';
 
-    // Build dots
-    var dotsHtml = '';
-    for (var i = 0; i < onboardingSteps.length; i++) {
-        var cls = 'onboarding-dot';
-        if (i === stepIdx) cls += ' active';
-        else if (i < stepIdx) cls += ' done';
-        dotsHtml += '<div class="' + cls + '"></div>';
-    }
-    dots.innerHTML = dotsHtml;
+    content.innerHTML =
+        '<svg class="onboarding-logo" viewBox="0 0 100 100"><rect width="100" height="100" rx="20" fill="#1a1a2e"/>' +
+        '<polygon points="50,15 70,27 70,52 50,65 30,52 30,27" fill="#4CAF50"/>' +
+        '<polygon points="30,52 30,77 50,90 50,65" fill="#FF9800"/>' +
+        '<polygon points="70,52 70,77 50,90 50,65" fill="#FF9800"/></svg>' +
+        '<div class="onboarding-title">Where are we starting?</div>' +
+        '<div class="onboarding-subtitle" style="margin-bottom:20px;">Pick whichever you\'re ready to do first — the other comes next.</div>';
 
-    // Build actions
-    var actHtml = '';
-    if (step.isProStep) {
-        actHtml += '<button class="onboarding-btn-upgrade" onclick="completeOnboarding(); showUpgradeModal();">Upgrade to Pro</button>';
-        actHtml += '<button class="onboarding-btn-next" onclick="completeOnboarding();" style="background:linear-gradient(135deg, #22c55e 0%, #16a34a 100%);">Maybe Later</button>';
-    } else {
-        actHtml += '<button class="onboarding-btn-next" onclick="nextOnboardingStep();">' + step.nextLabel + '</button>';
-        actHtml += '<button class="onboarding-btn-skip" onclick="skipOnboarding();">Skip</button>';
-    }
-    actions.innerHTML = actHtml;
-}
+    actions.innerHTML =
+        '<button class="onboarding-btn-next" onclick="startWithRoom()" style="margin-bottom:10px;display:flex;align-items:center;gap:12px;justify-content:center;">' +
+        '<span style="font-size:24px;">📐</span> Measure My Room</button>' +
+        '<button class="onboarding-btn-next" onclick="startWithTile()" style="background:linear-gradient(135deg, #FF9800 0%, #F57C00 100%);display:flex;align-items:center;gap:12px;justify-content:center;">' +
+        '<span style="font-size:24px;">📸</span> Identify My Tile</button>' +
+        '<button class="onboarding-btn-skip" onclick="completeOnboarding()" style="margin-top:8px;">Skip — I\'ll explore on my own</button>';
 
-function showOnboarding() {
-    onboardingStep = 0;
-    renderOnboardingStep(0);
-    var overlay = document.getElementById('onboardingOverlay');
     overlay.style.display = 'flex';
     requestAnimationFrame(function() {
         requestAnimationFrame(function() {
@@ -11280,17 +11265,41 @@ function showOnboarding() {
     });
 }
 
-function nextOnboardingStep() {
-    onboardingStep++;
-    if (onboardingStep >= onboardingSteps.length) {
-        completeOnboarding();
-        return;
-    }
-    renderOnboardingStep(onboardingStep);
+function startWithRoom() {
+    completeOnboarding();
+    showTab('wall');
+    // After they finish wall measurements, prompt tile scan
+    window._pendingNextStep = 'tile';
 }
 
-function skipOnboarding() {
+function startWithTile() {
     completeOnboarding();
+    showTab('tile');
+    // Open the tile scanner immediately
+    setTimeout(function() { openTileScanner(); }, 400);
+    // After they finish tile ID, prompt room measurement
+    window._pendingNextStep = 'wall';
+}
+
+// After completing one step, nudge them to the next
+function checkPendingNextStep() {
+    if (!window._pendingNextStep) return;
+    var next = window._pendingNextStep;
+    window._pendingNextStep = null;
+
+    if (next === 'tile' && C.wall.tW > 0 && C.wall.lH > 0) {
+        // They just set up room — now prompt tile
+        setTimeout(function() {
+            showToast('Room set! Now identify your tile.', 3000);
+            showTab('tile');
+        }, 500);
+    } else if (next === 'wall' && C.tile.w > 0 && C.tile.h > 0) {
+        // They just identified tile — now prompt room
+        setTimeout(function() {
+            showToast('Tile set! Now enter your room dimensions.', 3000);
+            showTab('wall');
+        }, 500);
+    }
 }
 
 function completeOnboarding() {
@@ -11308,7 +11317,7 @@ function restartOnboarding() {
     showOnboarding();
 }
 
-// Auto-show onboarding on first launch
+// Auto-show on first launch
 if (!localStorage.getItem('layit_onboarded')) {
     setTimeout(function() { showOnboarding(); }, 600);
 }
