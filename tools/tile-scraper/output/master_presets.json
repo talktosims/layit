@@ -441,7 +441,7 @@
   "_meta": {
     "version": "1.0",
     "lastUpdated": "2026-03-19",
-    "totalPresets": 195,
+    "totalPresets": 234,
     "note": "Keys are UPC barcodes where known, HD Internet# otherwise. subH for hex = subW * 1.125 (pointy-top ratio). orient=pointy is standard hex."
   },
   "732763201683": {
@@ -3445,6 +3445,393 @@
     "subShape": "hex",
     "subW": 2,
     "subH": 2.25,
+    "subGr": 0.0625
+  },
+  "081516409082": {
+    "name": "6x6 in Ceramic Tile White Daltile Color 0100 Subway Square 6 x 6 inch Gloss 10 Piece Box (B08C9GVH8Q",
+    "brand": "Daltile",
+    "shape": "square",
+    "grout": 0.125,
+    "source": "upc-verified",
+    "nomW": 6,
+    "nomH": 6
+  },
+  "852056004033": {
+    "name": "Daltile Ceramic Wall Tile, White, 6X6 In.",
+    "brand": "Daltile",
+    "shape": "square",
+    "grout": 0.125,
+    "source": "upc-verified",
+    "nomW": 6,
+    "nomH": 6
+  },
+  "081516409105": {
+    "name": "6 In Arctic Bright White Ceramic Tile 6 In Daltile Color 0190 Subway Square 6x6",
+    "brand": "Daltile",
+    "shape": "square",
+    "grout": 0.125,
+    "source": "upc-verified",
+    "nomW": 6,
+    "nomH": 6
+  },
+  "730575605903": {
+    "name": "Restore Tide Blue 4-1/4 in. x 4-1/4 in. Glazed Ceramic Wall Tile (12.5 sq. ft. / case)UPC Database A",
+    "brand": "Daltile",
+    "shape": "square",
+    "grout": 0.125,
+    "source": "upc-verified",
+    "nomW": 4,
+    "nomH": 4
+  },
+  "730575012534": {
+    "name": "Semi-Gloss Arctic White 4-1/4 in. x 4-1/4 in. Ceramic Wall Tile (12.5 sq. ft. / case)",
+    "brand": "Daltile",
+    "shape": "square",
+    "grout": 0.125,
+    "source": "upc-verified",
+    "nomW": 4,
+    "nomH": 4
+  },
+  "730575004805": {
+    "name": "Daltile Semi-Gloss Ice Gray 4-1/4 in. x 4-1/4 in. Ceramic Wall Tile (12.5 sq. ft. / case)",
+    "brand": "Daltile",
+    "shape": "square",
+    "grout": 0.125,
+    "source": "upc-verified",
+    "nomW": 4,
+    "nomH": 4
+  },
+  "747583041814": {
+    "name": "Calacatta 12 in. x 24 in. Glazed Porcelain Floor and Wall Tile (16 sq. ft. / case)EAN Lookup Service",
+    "brand": "MSI",
+    "shape": "rectangle",
+    "grout": 0.125,
+    "source": "upc-verified",
+    "nomW": 12,
+    "nomH": 24
+  },
+  "747583035745": {
+    "name": "Porcelain Floor & Wall Tile: MS International Flooring Mare Bianco 12 in. x 24 in. Glazed Polished P",
+    "brand": "MSI",
+    "shape": "rectangle",
+    "grout": 0.125,
+    "source": "upc-verified",
+    "nomW": 12,
+    "nomH": 24
+  },
+  "747583036636": {
+    "name": "Carreaux de porcelaine polie pour planchers/murs Cape Breton Beige de 12x24(16 pi ca/boÃ®te)",
+    "brand": "MSI",
+    "shape": "rectangle",
+    "grout": 0.125,
+    "source": "upc-verified",
+    "nomW": 12,
+    "nomH": 24
+  },
+  "747583042477": {
+    "name": "MSI Dove Gray Arabesque 10-1/2 in. x 15-1/2 in. x 8 mm Glazed Ceramic Mesh-Mounted Mosaic Wall Tile ",
+    "brand": "MSI",
+    "shape": "mosaic",
+    "grout": 0.125,
+    "source": "upc-verified",
+    "subShape": "arabesque",
+    "subW": 4.4,
+    "subH": 3.6,
+    "subGr": 0.0625
+  },
+  "747583042453": {
+    "name": "Mosaic Tile: MS International Building Materials Antique White Arabesque 10-1/2 in. x 15-1/2 in. x 8",
+    "brand": "MSI",
+    "shape": "mosaic",
+    "grout": 0.125,
+    "source": "upc-verified",
+    "subShape": "arabesque",
+    "subW": 4.4,
+    "subH": 3.6,
+    "subGr": 0.0625
+  },
+  "747583051929": {
+    "name": "MSI Bianco Arabesque 9.84 in. x 10.63 in. x 6 mm Glazed Ceramic Mesh-Mounted Mosaic Tile (10.95 sq. ",
+    "brand": "MSI",
+    "shape": "mosaic",
+    "grout": 0.125,
+    "source": "upc-verified",
+    "subShape": "arabesque",
+    "subW": 4.4,
+    "subH": 3.6,
+    "subGr": 0.0625
+  },
+  "747583044068": {
+    "name": "MSI Carrara White Basketweave 12 in. x 12 in. x 10 mm Polished Marble Mesh-Mounted Mosaic Tile (10.3",
+    "brand": "MSI",
+    "shape": "mosaic",
+    "grout": 0.125,
+    "source": "upc-verified",
+    "subShape": "rectangle",
+    "subW": 1,
+    "subH": 2,
+    "subGr": 0.0625
+  },
+  "747583039026": {
+    "name": "Arion SMOT-CRECAP-BWP Crema Cappuccino Basketweave 12-Inch x 12-Inch x 10mm Polished Marble Mosaic T",
+    "brand": "MSI",
+    "shape": "mosaic",
+    "grout": 0.125,
+    "source": "upc-verified",
+    "subShape": "rectangle",
+    "subW": 1,
+    "subH": 2,
+    "subGr": 0.0625
+  },
+  "747583039057": {
+    "name": "Mosaic Tile: MS International Flooring Emperador Light Basketweave 12 in. x 12 in. x 10 mm Polished ",
+    "brand": "MSI",
+    "shape": "mosaic",
+    "grout": 0.125,
+    "source": "upc-verified",
+    "subShape": "rectangle",
+    "subW": 1,
+    "subH": 2,
+    "subGr": 0.0625
+  },
+  "732763222107": {
+    "name": "Merola Tile Expressions Beveled Diamond White 11-5/8-inch x 12-inch x 7 mm Glass Mosaic Tile (9.89 s",
+    "brand": "Merola",
+    "shape": "mosaic",
+    "grout": 0.125,
+    "source": "upc-verified",
+    "subShape": "diamond",
+    "subW": 1,
+    "subH": 1,
+    "subGr": 0.0625
+  },
+  "732763209030": {
+    "name": "SomerTile 13x13-inch Jewel Marine Porcelain Mosaic Floor and Wall Tile (Case of 10)",
+    "brand": "Merola",
+    "shape": "mosaic",
+    "grout": 0.125,
+    "source": "upc-verified",
+    "subShape": "diamond",
+    "subW": 1,
+    "subH": 1,
+    "subGr": 0.0625
+  },
+  "732763210098": {
+    "name": "SomerTile 13x13-inch Jewel Glossy White Porcelain Mosaic Floor and Wall Tile (Case of 10)",
+    "brand": "Merola",
+    "shape": "mosaic",
+    "grout": 0.125,
+    "source": "upc-verified",
+    "subShape": "diamond",
+    "subW": 1,
+    "subH": 1,
+    "subGr": 0.0625
+  },
+  "081516661015": {
+    "name": "Lifeproof Sierra Wood Hexagon 12 in. x 12 in. x 8 mm Glazed Porcelain Mosaic Floor and Wall Tile (0.",
+    "brand": "LifeProof",
+    "shape": "rectangle",
+    "grout": 0.125,
+    "source": "upc-verified",
+    "nomW": 12,
+    "nomH": 24
+  },
+  "081516561308": {
+    "name": "LifeProof Shadow Wood 6 in. x 24 in. Porcelain Floor and Wall Tile (14.55 sq. ft. / case)",
+    "brand": "LifeProof",
+    "shape": "rectangle",
+    "grout": 0.125,
+    "source": "upc-verified",
+    "nomW": 12,
+    "nomH": 24
+  },
+  "081516583225": {
+    "name": "Lifeproof Shadow Wood 6-inch x 24-inch Glazed Porcelain Floor and Wall Tile",
+    "brand": "LifeProof",
+    "shape": "rectangle",
+    "grout": 0.125,
+    "source": "upc-verified",
+    "nomW": 12,
+    "nomH": 24
+  },
+  "042369778558": {
+    "name": "Trafficmaster Peel N' Stick Tile 18 In. X 18 In. Ton Gill Slate Day'S End 2.5Mm (0.100 In.) / 36 Sq.",
+    "brand": "TrafficMaster",
+    "shape": "square",
+    "grout": 0.125,
+    "source": "upc-verified",
+    "nomW": 12,
+    "nomH": 12
+  },
+  "042369777476": {
+    "name": "Trafficmaster Peel N' Stick Tile 18 In. X 18 In. Calamara Travertine Earthly Straw 2.5Mm (0.100 In.)",
+    "brand": "TrafficMaster",
+    "shape": "square",
+    "grout": 0.125,
+    "source": "upc-verified",
+    "nomW": 12,
+    "nomH": 12
+  },
+  "088969998064": {
+    "name": "Vinyl Tile: TrafficMASTER Building Materials 12 in. x 12 in. Beige Slate Solid Vinyl Tile (30 sq. ft",
+    "brand": "TrafficMaster",
+    "shape": "square",
+    "grout": 0.125,
+    "source": "upc-verified",
+    "nomW": 12,
+    "nomH": 12
+  },
+  "759147877579": {
+    "name": "Emser Tile M05metr1212mhw Marble",
+    "brand": "Emser",
+    "shape": "mosaic",
+    "grout": 0.125,
+    "source": "upc-verified",
+    "subShape": "hex",
+    "subW": 2,
+    "subH": 2.25,
+    "subGr": 0.0625
+  },
+  "759147877753": {
+    "name": "Emser Tile M05metr1212mhl Marble",
+    "brand": "Emser",
+    "shape": "mosaic",
+    "grout": 0.125,
+    "source": "upc-verified",
+    "subShape": "hex",
+    "subW": 2,
+    "subH": 2.25,
+    "subGr": 0.0625
+  },
+  "759147877746": {
+    "name": "Emser Tile Metro MO/1212 Limestone Tile in Gray Hex Large Honed MosaicUPC Lookup Service",
+    "brand": "Emser",
+    "shape": "mosaic",
+    "grout": 0.125,
+    "source": "upc-verified",
+    "subShape": "hex",
+    "subW": 2,
+    "subH": 2.25,
+    "subGr": 0.0625
+  },
+  "097518281304": {
+    "name": "Shaw Floors CS60C-00200 Lunar 12\" Porcelain Tile in BeigeUPC Database Access",
+    "brand": "Shaw",
+    "shape": "rectangle",
+    "grout": 0.125,
+    "source": "upc-verified",
+    "nomW": 12,
+    "nomH": 24
+  },
+  "097518281328": {
+    "name": "Shaw Floors CS60C-00701 Lunar 12\" Porcelain Tile in Noce",
+    "brand": "Shaw",
+    "shape": "rectangle",
+    "grout": 0.125,
+    "source": "upc-verified",
+    "nomW": 12,
+    "nomH": 24
+  },
+  "094671002050": {
+    "name": "Shaw Floors Soho 12\" x 12\" Porcelain Tile in Seagrass",
+    "brand": "Shaw",
+    "shape": "rectangle",
+    "grout": 0.125,
+    "source": "upc-verified",
+    "nomW": 12,
+    "nomH": 24
+  },
+  "577682486342": {
+    "name": "Mohawk Industries 14537 Sand Ceramic Floor Tile - 18 Inch X 18 Inch (10.9 SF / Carton)Reverse UPC Lo",
+    "brand": "Mohawk",
+    "shape": "square",
+    "grout": 0.125,
+    "source": "upc-verified",
+    "nomW": 12,
+    "nomH": 12
+  },
+  "088699073277": {
+    "name": "DuraCeramic DuraSet Ceramic Tile Adhesive",
+    "brand": "Mohawk",
+    "shape": "square",
+    "grout": 0.125,
+    "source": "upc-verified",
+    "nomW": 12,
+    "nomH": 12
+  },
+  "088699070306": {
+    "name": "Congoleum DuraCeramic DuraSet Multi-Purpose Floor Adhesive",
+    "brand": "Mohawk",
+    "shape": "square",
+    "grout": 0.125,
+    "source": "upc-verified",
+    "nomW": 12,
+    "nomH": 12
+  },
+  "767950518039": {
+    "name": "SUNWINGS Backsplash Tile for Kitchen Peel and Stick  Stone Composite Self Adhesive Tiles Long Hexago",
+    "brand": "Sunwings",
+    "shape": "mosaic",
+    "grout": 0.125,
+    "source": "upc-verified",
+    "subShape": "arabesque",
+    "subW": 4.4,
+    "subH": 3.6,
+    "subGr": 0.0625
+  },
+  "750264415354": {
+    "name": "Mix Gray Hexagon 11.7 x 10.2in. Mosaic Tile Recycled Glass Marble Looks Floor And Wall Tile(8.33 sq.",
+    "brand": "Sunwings",
+    "shape": "mosaic",
+    "grout": 0.125,
+    "source": "upc-verified",
+    "subShape": "arabesque",
+    "subW": 4.4,
+    "subH": 3.6,
+    "subGr": 0.0625
+  },
+  "750264415361": {
+    "name": "Black Marquina 11 in. x 10 in. Hexagon Recycled Glass Marble Looks Floor and Wall Mosaic Tile (8.33 ",
+    "brand": "Sunwings",
+    "shape": "mosaic",
+    "grout": 0.125,
+    "source": "upc-verified",
+    "subShape": "arabesque",
+    "subW": 4.4,
+    "subH": 3.6,
+    "subGr": 0.0625
+  },
+  "696307931118": {
+    "name": "Abolos Whsambhpm-162 Amber Collection Caledonia Matte Square Glass Mosaic Tile",
+    "brand": "ABOLOS",
+    "shape": "mosaic",
+    "grout": 0.125,
+    "source": "upc-verified",
+    "subShape": "arabesque",
+    "subW": 5.25,
+    "subH": 4.5,
+    "subGr": 0.0625
+  },
+  "819487029066": {
+    "name": "Reflections 3 in.x12 in. Beveled Antique Silver Glass Mirror Subway Peel and Stick Wall Backsplash T",
+    "brand": "ABOLOS",
+    "shape": "mosaic",
+    "grout": 0.125,
+    "source": "upc-verified",
+    "subShape": "arabesque",
+    "subW": 5.25,
+    "subH": 4.5,
+    "subGr": 0.0625
+  },
+  "819487027017": {
+    "name": "Reflections 3 x 12 Beveled Black Glass Mirror Subway Wall Mosaic Tile with Instaset Mastic Adhesive ",
+    "brand": "ABOLOS",
+    "shape": "mosaic",
+    "grout": 0.125,
+    "source": "upc-verified",
+    "subShape": "arabesque",
+    "subW": 5.25,
+    "subH": 4.5,
     "subGr": 0.0625
   }
 }

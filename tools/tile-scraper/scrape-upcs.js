@@ -43,6 +43,26 @@ const PRODUCTS = [
   { brand: 'Ceramiche Piemme', query: 'Ceramiche Piemme porcelain tile', shape: 'hexagon' },
   { brand: 'Apollo Tile', query: 'Apollo Tile fishscale fan mosaic', shape: 'mosaic', subShape: 'fishscale', subW: 2, subH: 2.25 },
   { brand: 'Bedrosians', query: 'Bedrosians hex mosaic tile', shape: 'mosaic', subShape: 'hex', subW: 2, subH: 2.25 },
+  // Round 2 — more popular products
+  { brand: 'Daltile', query: 'Daltile 6x6 ceramic tile white', shape: 'square', nomW: 6, nomH: 6 },
+  { brand: 'Daltile', query: 'Daltile 4x4 ceramic tile', shape: 'square', nomW: 4, nomH: 4 },
+  { brand: 'Daltile', query: 'Daltile 3x6 subway tile', shape: 'rectangle', nomW: 3, nomH: 6 },
+  { brand: 'MSI', query: 'MSI 12x24 porcelain tile', shape: 'rectangle', nomW: 12, nomH: 24 },
+  { brand: 'MSI', query: 'MSI arabesque mosaic tile', shape: 'mosaic', subShape: 'arabesque', subW: 4.4, subH: 3.6 },
+  { brand: 'MSI', query: 'MSI basketweave mosaic tile', shape: 'mosaic', subShape: 'rectangle', subW: 1, subH: 2 },
+  { brand: 'Merola', query: 'Merola 3x6 subway tile white', shape: 'rectangle', nomW: 3, nomH: 6 },
+  { brand: 'Merola', query: 'Merola diamond mosaic tile', shape: 'mosaic', subShape: 'diamond', subW: 1, subH: 1 },
+  { brand: 'Marazzi', query: 'Marazzi 4x16 subway tile', shape: 'rectangle', nomW: 4, nomH: 16 },
+  { brand: 'Marazzi', query: 'Marazzi hex mosaic tile', shape: 'mosaic', subShape: 'hex', subW: 2, subH: 2.25 },
+  { brand: 'LifeProof', query: 'LifeProof porcelain tile floor', shape: 'rectangle', nomW: 12, nomH: 24 },
+  { brand: 'TrafficMaster', query: 'TrafficMaster ceramic tile floor', shape: 'square', nomW: 12, nomH: 12 },
+  { brand: 'Satori', query: 'Satori tile Lowes mosaic', shape: 'mosaic', subShape: 'hex', subW: 2, subH: 2.25 },
+  { brand: 'Emser', query: 'Emser hex mosaic tile', shape: 'mosaic', subShape: 'hex', subW: 2, subH: 2.25 },
+  { brand: 'Emser', query: 'Emser 12x24 porcelain tile', shape: 'rectangle', nomW: 12, nomH: 24 },
+  { brand: 'Shaw', query: 'Shaw porcelain floor tile', shape: 'rectangle', nomW: 12, nomH: 24 },
+  { brand: 'Mohawk', query: 'Mohawk ceramic floor tile', shape: 'square', nomW: 12, nomH: 12 },
+  { brand: 'Sunwings', query: 'Sunwings mosaic tile', shape: 'mosaic', subShape: 'arabesque', subW: 4.4, subH: 3.6 },
+  { brand: 'ABOLOS', query: 'ABOLOS glass mosaic tile', shape: 'mosaic', subShape: 'arabesque', subW: 5.25, subH: 4.5 },
 ];
 
 async function searchUPC(browser, query) {
