@@ -1832,7 +1832,7 @@
             </div>
             <input type="file" id="importFile" accept=".json" style="display:none" onchange="importProject(event)">
             <div style="margin-top:12px;">
-                <button class="btn-secondary" onclick="shareProject()" style="width:100%;display:flex;align-items:center;justify-content:center;gap:8px;padding:14px;">
+                <button class="btn-secondary" onclick="shareProjectFree()" style="width:100%;display:flex;align-items:center;justify-content:center;gap:8px;padding:14px;">
                     <span style="font-size:18px;">📤</span> Share with Friend / Installer
                 </button>
             </div>
@@ -9672,6 +9672,43 @@ function escapeShareHtml(str) {
     var div = document.createElement('div');
     div.textContent = str;
     return div.innerHTML;
+}
+
+// Free tier sharing — exports project file via native share sheet
+function shareProjectFree() {
+    var projName = document.getElementById('projName').value.trim() || 'Tile Layout';
+    var data = {
+        name: projName,
+        wall: C.wall,
+        tile: C.tile,
+        voids: C.voids,
+        polygon: C.polygon,
+        fullTiles: full,
+        cutTiles: part,
+        date: new Date().toISOString()
+    };
+    var json = JSON.stringify(data, null, 2);
+
+    if (window._nativeApp && window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.shareHtml) {
+        // On iOS: share as a simple text summary via native share sheet
+        var summary = projName + '\n\n' +
+            'Room: ' + Math.max(C.wall.tW, C.wall.tW + C.wall.bV).toFixed(1) + '" × ' + Math.max(C.wall.lH, C.wall.lH + C.wall.rV).toFixed(1) + '"\n' +
+            'Tile: ' + C.tile.w + '" × ' + C.tile.h + '" ' + C.tile.sh + '\n' +
+            'Total: ' + (full + part) + ' tiles (' + full + ' full + ' + part + ' cuts)\n' +
+            'Area: ' + ((Math.max(C.wall.tW, C.wall.tW + C.wall.bV) * Math.max(C.wall.lH, C.wall.lH + C.wall.rV)) / 144).toFixed(1) + ' sq ft\n\n' +
+            'Shared from LayIt';
+        window.webkit.messageHandlers.shareHtml.postMessage(summary);
+    } else {
+        // Fallback: download JSON
+        var blob = new Blob([json], { type: 'application/json' });
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement('a');
+        a.href = url;
+        a.download = projName.replace(/\s+/g, '_') + '.layit.json';
+        a.click();
+        URL.revokeObjectURL(url);
+        showToast('Project exported!');
+    }
 }
 
 function shareProject() {
