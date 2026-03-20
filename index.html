@@ -9291,7 +9291,7 @@ function doOptimize() {
     var tileW = C.tile.w;
     var tileH = C.tile.h;
 
-    // Try different offsets (in inches)
+    // Pass 1: Coarse search (8x8 grid = 64 positions)
     var stepX = tileW / 8;
     var stepY = tileH / 8;
 
@@ -9299,26 +9299,40 @@ function doOptimize() {
         for (var oy = 0; oy < tileH; oy += stepY) {
             C.view.oxInches = ox;
             C.view.oyInches = oy;
-
-            // Count tiles and analyze cuts
             var results = countTilesForOptimize();
-            // Maximize full tiles, minimize total cuts, heavily penalize small slivers
             var score = results.full * 50 - results.cut * 5 - results.smallCuts * 100;
-
             if (score > best.score) {
                 best = { score: score, x: ox, y: oy, results: results };
             }
         }
     }
-    
+
+    // Pass 2: Fine-tune around best position (±1 step, 16 sub-positions)
+    var fineStepX = stepX / 4;
+    var fineStepY = stepY / 4;
+    var bestCoarse = { x: best.x, y: best.y };
+
+    for (var fx = bestCoarse.x - stepX; fx <= bestCoarse.x + stepX; fx += fineStepX) {
+        for (var fy = bestCoarse.y - stepY; fy <= bestCoarse.y + stepY; fy += fineStepY) {
+            var ox2 = ((fx % tileW) + tileW) % tileW; // Wrap around
+            var oy2 = ((fy % tileH) + tileH) % tileH;
+            C.view.oxInches = ox2;
+            C.view.oyInches = oy2;
+            var results = countTilesForOptimize();
+            var score = results.full * 50 - results.cut * 5 - results.smallCuts * 100;
+            if (score > best.score) {
+                best = { score: score, x: ox2, y: oy2, results: results };
+            }
+        }
+    }
+
     // Apply best position
     C.view.oxInches = best.x;
     C.view.oyInches = best.y;
     draw();
-    
-    // Show results
-    if (best.results) {
-    }
+
+    var saved = best.results ? (best.results.cut - (best.results.smallCuts || 0)) : 0;
+    showToast('Optimized! ' + (best.results ? best.results.full + ' full, ' + best.results.cut + ' cuts' : ''), 2000);
 }
 
 // Count tiles for optimization (without drawing)
