@@ -5980,20 +5980,34 @@ function handleTileScanPhoto(input) {
                         role: 'user',
                         content: [
                             { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: imageData } },
-                            { type: 'text', text: 'Extract tile specifications from this box label photo. Return ONLY a JSON object:\n' +
-                                '- name: product name (string)\n- brand: manufacturer (string)\n' +
-                                '- shape: "square", "rectangle", "hexagon", "herringbone", or "mosaic"\n' +
-                                '- nomW: nominal width in INCHES (convert from cm÷2.54 or mm÷25.4)\n' +
-                                '- nomH: nominal height in INCHES\n' +
-                                '- actW: actual width in INCHES if listed (or nomW - 0.125)\n' +
-                                '- actH: actual height in INCHES if listed (or nomH - 0.125)\n' +
-                                '- grout: grout joint in inches (default 0.125)\n' +
-                                '- material: "porcelain", "ceramic", "glass", "marble", "stone"\n' +
-                                '- piecesPerBox: pieces per box if listed (number or null)\n' +
-                                '- coverageSqFt: coverage per box in sq ft (number or null)\n' +
-                                '- barcode: UPC/EAN barcode number if visible (string or null)\n' +
-                                'For mosaic sheets also: subShape ("hex","penny","fishscale","square","diamond","octdot","arabesque","picket"), subW, subH, subGr\n' +
-                                'ONLY return valid JSON, no markdown.' }
+                            { type: 'text', text: 'You are reading a tile product label/sticker from a box. Extract the specs and return ONLY a JSON object (no markdown, no explanation).\n\n' +
+                                'REQUIRED FIELDS:\n' +
+                                '- name: full product name (string)\n' +
+                                '- brand: manufacturer — look for logos like Daltile, MSI, Merola, Marazzi, American Olean, Jeffrey Court, etc. (string)\n' +
+                                '- shape: "square" (W≈H), "rectangle" (W≠H, includes subway/plank), "hexagon", "herringbone", or "mosaic" (sheet of small tiles)\n' +
+                                '- nomW: nominal WIDTH in INCHES. Labels may say cm (÷2.54), mm (÷25.4), or "x" format like 7x8. Width = shorter dimension.\n' +
+                                '- nomH: nominal HEIGHT in INCHES. Height = longer dimension.\n' +
+                                '- actW: actual/work-size width in INCHES. If label says "work size", "actual", or "net" use that. Otherwise nomW - 0.125\n' +
+                                '- actH: actual/work-size height in INCHES. Same logic as actW.\n' +
+                                '- grout: grout joint in inches. If label says joint width, use it. Default 0.125 (1/8")\n' +
+                                '- material: "porcelain", "ceramic", "glass", "marble", "natural stone", "travertine", or "slate"\n' +
+                                '- piecesPerBox: integer pieces/sheets per box (number or null)\n' +
+                                '- coverageSqFt: sq ft coverage per box (number or null). May be listed as ft², SF, sq.ft.\n' +
+                                '- barcode: UPC/EAN number if visible on label (string or null)\n\n' +
+                                'MOSAIC SHEETS — if the tile is a sheet of smaller tiles mounted on mesh:\n' +
+                                '- shape MUST be "mosaic"\n' +
+                                '- nomW/nomH = the SHEET dimensions (e.g. 12x12)\n' +
+                                '- subShape: shape of individual tiles — "hex","penny","fishscale","square","diamond","octdot","arabesque","picket","rhombus","triangle","chevron","rectangle"\n' +
+                                '- subW: individual tile width in inches\n' +
+                                '- subH: individual tile height in inches\n' +
+                                '- subGr: grout between sub-tiles (usually 1/16" = 0.0625)\n\n' +
+                                'IMPORTANT RULES:\n' +
+                                '- Labels may be in Spanish, French, or Portuguese — translate dimensions correctly\n' +
+                                '- "Piso" = floor tile, "Muro" = wall tile, "Revestimiento" = covering\n' +
+                                '- If dimensions show two numbers like "17.5 x 20" with units, the UNIT matters (cm vs inches)\n' +
+                                '- Wood-look planks are shape:"rectangle" not a special shape\n' +
+                                '- Penny rounds, hex mosaics, fish scales on mesh = shape:"mosaic" with appropriate subShape\n' +
+                                '- Return ONLY valid JSON. No markdown fences. No text before or after the JSON object.' }
                         ]
                     }]
                 })
@@ -6004,9 +6018,36 @@ function handleTileScanPhoto(input) {
                 var text = data.content && data.content[0] && data.content[0].text;
                 if (!text) { showToast('No response — try again', 2000); return; }
                 var jsonMatch = text.match(/\{[\s\S]*\}/);
-                if (!jsonMatch) { showToast('Could not read label — try again', 2000); return; }
+                if (!jsonMatch) { showToast('Could not read label — try a clearer photo', 3000); return; }
 
-                var specs = JSON.parse(jsonMatch[0]);
+                var specs;
+                try {
+                    specs = JSON.parse(jsonMatch[0]);
+                } catch(parseErr) {
+                    showToast('AI response was not valid JSON — try again', 3000);
+                    return;
+                }
+
+                // Sanity check: if dimensions look like cm (>30), auto-convert
+                if (specs.nomW > 30 && specs.nomH > 30) {
+                    // Likely centimeters — convert to inches
+                    specs.nomW = Math.round(specs.nomW / 2.54 * 100) / 100;
+                    specs.nomH = Math.round(specs.nomH / 2.54 * 100) / 100;
+                    specs.actW = specs.nomW - 0.125;
+                    specs.actH = specs.nomH - 0.125;
+                } else if (specs.nomW > 100 || specs.nomH > 100) {
+                    // Likely millimeters
+                    specs.nomW = Math.round(specs.nomW / 25.4 * 100) / 100;
+                    specs.nomH = Math.round(specs.nomH / 25.4 * 100) / 100;
+                    specs.actW = specs.nomW - 0.125;
+                    specs.actH = specs.nomH - 0.125;
+                }
+
+                // Ensure width <= height (normalize orientation)
+                if (specs.nomW > specs.nomH) {
+                    var tmp = specs.nomW; specs.nomW = specs.nomH; specs.nomH = tmp;
+                    tmp = specs.actW; specs.actW = specs.actH; specs.actH = tmp;
+                }
 
                 // Auto-detect shape from dimensions if not specified
                 if (!specs.shape && specs.nomW && specs.nomH) {
@@ -7111,6 +7152,21 @@ function draw() {
     part = 0;
     var cutLabels = []; // Store cut dimensions to draw on top
 
+    // Pre-compute wall bounding box for fast tile rejection
+    var wallMinX = wall[0][0], wallMaxX = wall[0][0];
+    var wallMinY = wall[0][1], wallMaxY = wall[0][1];
+    for (var wi = 1; wi < wall.length; wi++) {
+        if (wall[wi][0] < wallMinX) wallMinX = wall[wi][0];
+        if (wall[wi][0] > wallMaxX) wallMaxX = wall[wi][0];
+        if (wall[wi][1] < wallMinY) wallMinY = wall[wi][1];
+        if (wall[wi][1] > wallMaxY) wallMaxY = wall[wi][1];
+    }
+    // Pre-copy wall for cut tile storage (avoid per-tile deep copy)
+    var wallCopyForCuts = [];
+    for (var wi = 0; wi < wall.length; wi++) {
+        wallCopyForCuts.push([wall[wi][0], wall[wi][1]]);
+    }
+
     // In report mode: clip tiles to wall perimeter (no overhang)
     if (window._reportMode && wall && wall.length > 2) {
         cx.save();
@@ -7187,9 +7243,16 @@ function draw() {
                 }
             }
             
+            // Quick bounding-box reject: skip tiles clearly outside the wall
+            var tileHalfW = Math.max(tw, th) / 2 + groutPx;
+            if (x + tileHalfW < wallMinX || x - tileHalfW > wallMaxX ||
+                y + tileHalfW < wallMinY || y - tileHalfW > wallMaxY) {
+                continue;
+            }
+
             // Create stable key based on tile position in inches (rounded to avoid float issues)
             var stableKey = Math.round(tileXInches * 1000) + ',' + Math.round(tileYInches * 1000);
-            
+
             var verts = getVerts(x, y, tw, th, row, col);
             var allIn = true, anyIn = false;
             
@@ -7300,11 +7363,6 @@ function draw() {
                     for (var vi = 0; vi < verts.length; vi++) {
                         vertsCopy.push([verts[vi][0], verts[vi][1]]);
                     }
-                    // Deep copy wall too
-                    var wallCopy = [];
-                    for (var wi = 0; wi < wall.length; wi++) {
-                        wallCopy.push([wall[wi][0], wall[wi][1]]);
-                    }
                     cutTilesData.push({
                         key: key,
                         x: x,
@@ -7317,7 +7375,7 @@ function draw() {
                         orient: C.tile.or,
                         dims: cutDims,
                         verts: vertsCopy, // Deep copy of tile vertices
-                        wall: wallCopy, // Deep copy of wall polygon
+                        wall: wallCopyForCuts, // Pre-copied wall polygon (shared)
                         voidPolys: voidPolys, // Reference to void polygons (these don't change)
                         scale: s // Current scale for converting back to inches
                     });
