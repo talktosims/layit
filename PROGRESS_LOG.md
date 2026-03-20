@@ -1,90 +1,83 @@
 # LayIt Work Session — March 19, 2026
 
 ## Session Summary
-All 8 tasks completed. Tile database expanded from 45 to 164 presets, 3 new tessellation shapes added, mosaic cut tracking enhanced with measurements, and entire database uploaded to Firebase.
+Massive day. Tile database 3x expansion, 20 tile shape renderers, native barcode scanner, AI label scanning, client report, complete onboarding redesign, paywall fixes, App Store prep.
 
 ---
 
-## Task Results
+## Database
+- **45 → 195 presets** in master_presets.json
+- **33 + 12 = 45 entries** in TILE_DB_LOCAL (offline)
+- **37 real UPC barcodes** scraped from upcitemdb.com
+- **All uploaded to Firebase** (164 + 31 = 195 total)
+- Brands: Daltile, MSI, Merola, Marazzi, Jeffrey Court, American Olean, Bedrosians, Emser, Apollo Tile, Ivy Hill, Sunwings, ABOLOS
 
-### 1. Manufacturer Tile Scraper (DONE)
-- Created `scrape-manufacturers.js` (1,197 lines) — Puppeteer + Claude API scraper targeting manufacturer sites
-- Supports: daltile.com, msisurfaces.com, marazziusa.com, americanolean.com, bedrosians.com, emser.com, crossvilleinc.com
-- Includes `--catalog` mode for bulk collection scraping
-- Manufacturer-specific tab navigation (Technical Information, Specifications, etc.)
+## New Tile Shapes (20 total)
+Previously: square, rectangle, hexagon, herringbone, penny, fishscale, diamond
+Added: octagon+dot, arabesque, picket, rhombus/3D cube, triangle, capsule/pill, quatrefoil, ogee/provenzal, star & cross, kite, leaf/teardrop, dragon scale, chevron
 
-### 2. Tile Database Expansion (DONE)
-- **45 → 164 presets** (3.6x increase)
-- Shape coverage:
-  - Hex: 59 | Penny: 28 | Rectangle: 26 | Square: 25
-  - Fishscale: 8 | Octagon+Dot: 5 | Picket: 4
-  - Arabesque: 3 | Hexagon (individual): 3 | Diamond: 3
-- Brands: Daltile (19), MSI (12), Merola (8+), Jeffrey Court (7), American Olean (7), Bedrosians (6), Marazzi (5), Emser (5), Apollo Tile (3), Ivy Hill (1), Sunwings, ABOLOS, Generic
+## AI Label Scanner
+- Primary tile identification method (replaces barcode as default)
+- User photographs box label → Claude Vision API extracts all specs
+- Auto-populates shape, dimensions, grout, material
+- Saves to Firebase so next person gets instant match
+- First scan free, Pro required after
+- Instruction modal tells user exactly what to photograph
 
-### 3. AI Tessellation Geometry Engine (DONE)
-- Created `tessellation-engine.js` (824 lines)
-- Functions: `validateTileGeometry()`, `computeSubTileCount()`, `computeSubTileHeight()`, `computeSubTileCoverage()`, `autoCorrectPreset()`, `computeSheetCutGeometry()`
-- Handles all 10 tessellation patterns: hex (pointy/flat), penny, fishscale, square, diamond, rectangle, octagon+dot, arabesque, elongated hex
+## Native iOS Barcode Scanner
+- BarcodeScannerView.swift using AVFoundation
+- Full-screen camera with viewfinder, scan line, haptic feedback
+- Wired via scanBarcode message handler
+- Preserved as fallback when DB hits 500+ verified UPCs
 
-### 4. Firebase Upload (DONE)
-- 164 presets uploaded to Firebase (85 initial + 67 research merge + 12 already existed)
-- Fixed critical path bug: upload.js used `layit/tiledb/` but app reads from `tiledb/`
-- Created `upload-rest.js` — uses Firebase REST API with anonymous auth (no service account needed)
-- Zero upload failures
+## Client Report (Pro)
+- 3-page B&W print-ready report
+- Page 1: Company branding, workspace photo, project summary
+- Page 2: Outline-only layout (clipped to perimeter, dimension brackets), tile specs + materials side-by-side
+- Page 3: Additional notes (lined)
+- Pinch-to-zoom viewer with snap-to-page on zoom out
+- Dark background print-preview look
 
-### 5. TILE_DB_LOCAL Expansion (DONE)
-- **16 → 33 entries** in hardcoded local database
-- Includes all new shapes: octagon+dot (4), arabesque (2), picket (2), glass strip (2)
-- Uses real HD Internet# for barcode scanner matching
+## Onboarding Redesign
+- Replaced 7-step wizard with "Where are we starting?" two-choice modal
+- Options: "Measure My Room" or "Identify My Tile"
+- Cascading workflow: finish one → nudged to the other
+- First-visit tab modals: centered overlay with dim background
 
-### 6. Mosaic Cut Tracking Enhancement (DONE)
-- Enhanced `drawMosaicSheetDetail()` with:
-  - Wall-sheet intersection detection for cut line positions
-  - Measurement labels: "3½" from edge" with white pill backgrounds
-  - Solid red cut line with measurement dots
-  - Blue reference lines from sheet edge to cut point
-  - Cut line length in summary text
-  - Updated instructions for installers
+## UI Changes
+- Wall tab: removed Quick Rectangle, removed measurement status cards
+- in/cm unit toggle in wall tab header
+- Perimeter draw box auto-populates rectangle from existing dimensions
+- Overlay measurement inputs on perimeter lines
+- "Update Layout" button with validation
+- Files tab: Current Project → My Projects → Backup → Client Report → Pro sections
+- Calc tab: visual Full+Cuts+Waste=Total display, box count, live cost, price comparison
+- Mosaic sheets turn fully red when marked as cut
+- Cutout tab: descriptive labels on size fields
+- Calculator icon changed from abacus to match tab
 
-### 7. New Tessellation Shapes (DONE)
-- **Octagon + Dot** — Regular octagons with square accent dots in corners
-- **Arabesque / Lantern** — Bezier curve organic shape
-- **Picket / Elongated Hex** — Stretched hexagonal tiles
-- Added to: drawSubTilePath(), getSubTileVerts(), grid spacing, row offsets, detail view, subShape dropdown, onSubShapeChange(), TILE_PRESETS array
+## Bug Fixes
+- Paywall bypass: removed duplicate handleProPurchase() that granted free Pro
+- Duplicate element IDs: removed proUpgradeBtn/proManageBtn from Laser tab
+- Dead code: removed toggleCuts(), showCuts variable
+- Duplicate functions: consolidated showUpgradeModal, requirePro, closeUpgradeModal
+- Firebase path mismatch: layit/tiledb → tiledb
+- Canvas capture: diagram panel shown offscreen for toDataURL
+- Report text visibility: forced dark colors on all report text
+- Cut tracking: Pro check before lock check on tile tap
 
-### 8. Progress Log (DONE)
-- This file
+## App Store Prep
+- Full App Store listing draft (sales/APP_STORE_LISTING.md)
+- Privacy policy
+- Terms of service
+- Screenshot copy for 8 screens
+- API key moved out of source code to native bridge
 
----
+## Tools Built
+- scrape-manufacturers.js (1,197 lines) — Puppeteer + Claude API
+- tessellation-engine.js (824 lines) — geometry validation
+- upload-rest.js — Firebase REST API uploader
+- scrape-upcs.js — UPC barcode scraper
 
-## Files Changed
-
-| File | Change | Lines |
-|------|--------|-------|
-| `index.html` | Mosaic detail view, 3 new shapes, expanded TILE_DB_LOCAL, new presets | ~200 lines changed |
-| `tools/tile-scraper/output/master_presets.json` | 45 → 164 presets | ~2000 lines |
-| `tools/tile-scraper/scrape-manufacturers.js` | NEW — manufacturer scraper | 1,197 lines |
-| `tools/tile-scraper/tessellation-engine.js` | NEW — geometry validator | 824 lines |
-| `tools/tile-scraper/upload-rest.js` | NEW — REST API uploader | ~120 lines |
-| `tools/tile-scraper/upload.js` | Fixed path: layit/tiledb → tiledb | 2 lines |
-| `tools/tile-scraper/output/manufacturer_research.json` | NEW — 73 researched products | 30KB |
-| `PROGRESS_LOG.md` | NEW — this file | — |
-| iOS copies | Both paths in LayIt-iOS updated | — |
-
-## Bugs Fixed
-1. **Firebase path mismatch** — upload.js wrote to `layit/tiledb/` but app reads from `tiledb/`. Fixed in both upload scripts.
-2. **Mosaic cut measurements missing** — Detail view showed cut/full sub-tiles but no measurement labels. Now shows precise cut distances.
-3. **New shapes rendered as squares** — Arabesque, picket, chevron in dropdown but all fell through to square rendering. Now have proper tessellation paths.
-
-## Key Decisions
-- No existing tessellating layouts were changed or broken
-- Octagon+dot draws small squares in corner gaps (separate from main octagon)
-- Arabesque uses bezier curves for organic shape
-- Picket pointed ends are 25% of total height
-- Firebase upload uses anonymous auth via REST API (matches app's auth pattern)
-
-## What's Next
-- Test all new shapes in the Xcode build
-- Run the manufacturer scraper (`node scrape-manufacturers.js --catalog <url>`) to find even more products
-- Consider adding chevron rendering (in dropdown but still renders as square)
-- App Store submission: fix remaining audit issues (paywall bypass, duplicate IDs)
+## Commits (all pushed to GitHub)
+17 commits on main, all pushed to origin
