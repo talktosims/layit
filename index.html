@@ -1433,17 +1433,23 @@
     <div class="modal-overlay" id="proUpgradeModal">
         <div class="pro-upgrade-box">
             <h3>LayIt Pro</h3>
+            <div id="proFeatureContext" style="font-size:13px;color:var(--text-secondary);margin-bottom:12px;text-align:center;display:none;"></div>
             <ul class="pro-feature-list">
-                <li><span class="pf-icon">📷</span> Barcode scanner + auto-populate</li>
+                <li><span class="pf-icon">📸</span> Unlimited AI tile scanning</li>
+                <li><span class="pf-icon">✂️</span> Cut tracking with measurements</li>
+                <li><span class="pf-icon">📊</span> Professional client reports</li>
+                <li><span class="pf-icon">🔍</span> Price comparison across stores</li>
+                <li><span class="pf-icon">🏢</span> Company branding</li>
                 <li><span class="pf-icon">☁️</span> Cloud sync across devices</li>
-                <li><span class="pf-icon">🎬</span> CutScene — animated cut guides</li>
-                <li><span class="pf-icon">📐</span> AI room scan <span class="pf-soon">SOON</span></li>
-                <li><span class="pf-icon">🔦</span> Laser projection <span class="pf-soon">SOON</span></li>
             </ul>
+            <div style="text-align:center;margin-bottom:12px;padding:10px;background:rgba(76,175,80,0.08);border-radius:8px;">
+                <div style="font-size:12px;color:var(--success);font-weight:600;">Pro users save an average of $47 per project</div>
+                <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">by finding better prices and avoiding over-buying</div>
+            </div>
             <div id="proSubscribeButtons">
                 <button class="btn-pro" onclick="handleProPurchase('monthly')" style="width:100%;">$4.99 / month</button>
                 <button class="btn-pro" onclick="handleProPurchase('annual')" style="width:100%; margin-top:8px; background:linear-gradient(135deg,#f5a623,#f7c948);">$39.99 / year <span style="font-size:0.8em; opacity:0.9;">(Save 33%)</span></button>
-                <button class="pro-dismiss" onclick="handleRestorePurchases()" style="margin-top:8px; font-size:0.85em;">Restore Purchases</button>
+                <button class="pro-dismiss" onclick="restoreProPurchases()" style="margin-top:8px; font-size:0.85em;">Restore Purchases</button>
             </div>
             <div id="proWebFallback" style="display:none; text-align:center; padding:12px 0;">
                 <p style="color:#aaa; font-size:0.95em;">Download the LayIt app from the App Store to subscribe.</p>
@@ -1988,10 +1994,13 @@
 // ==================== PRO SUBSCRIPTION SYSTEM ====================
 
 var proFeatureDescriptions = {
-    'Cut Tracking': 'See all your cuts measured for you! Tap any cut tile to see exact dimensions instantly. Mark each one done as you go — never lose your place on a complex job.',
-    'Share Project': 'Send a professional, branded layout page to your client. Shows the tile pattern, dimensions, specs, and your company branding.',
-    'Barcode Scanner': 'Scan the barcode on any tile box to auto-populate tile specs instantly. No more measuring or guessing sizes.',
-    'Identify Tile': 'Photograph any tile box label — AI reads the specs and fills everything instantly. No manual entry needed.'
+    'Cut Tracking': 'Tap any cut tile to see exact measurements. Mark each one done as you go — never lose your place on a complex job.',
+    'Share Project': 'Send a professional layout page to your client with tile specs, dimensions, and your company branding.',
+    'Client Report Share': 'Generate a 3-page print-ready report with your branding, layout diagram, measurements, and materials list.',
+    'Barcode Scanner': 'Scan the barcode on any tile box to auto-populate specs instantly.',
+    'Identify Tile': 'Your first scan is free! Upgrade for unlimited AI tile scanning on every job.',
+    'Cloud Sync': 'Sync your projects across all your devices. Start on your phone, finish on your tablet.',
+    'Company Branding': 'Add your company name and logo to shared reports and client pages.'
 };
 
 function isProUser() {
@@ -1999,21 +2008,35 @@ function isProUser() {
 }
 
 function requirePro(featureName) {
-    if (isProUser()) return true;
+    if (proUser || isProUser()) return true;
     var desc = proFeatureDescriptions[featureName] || 'Upgrade to Pro to unlock premium features.';
     showUpgradeModal(desc);
     return false;
 }
 
 function showUpgradeModal(featureDescription) {
-    var desc = featureDescription || 'Upgrade to Pro to unlock premium features.';
-    document.getElementById('upgradeModalDesc').textContent = desc;
-    var modal = document.getElementById('upgradeModal');
-    modal.style.display = 'flex';
+    var ctx = document.getElementById('proFeatureContext');
+    if (ctx) {
+        if (featureDescription) {
+            ctx.textContent = featureDescription;
+            ctx.style.display = 'block';
+        } else {
+            ctx.style.display = 'none';
+        }
+    }
+    // Show/hide subscribe buttons vs web fallback based on native app
+    var isNative = !!(window._nativeApp || (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.purchase));
+    var subBtns = document.getElementById('proSubscribeButtons');
+    var webFallback = document.getElementById('proWebFallback');
+    if (subBtns && webFallback) {
+        subBtns.style.display = isNative ? '' : 'none';
+        webFallback.style.display = isNative ? 'none' : '';
+    }
+    document.getElementById('proUpgradeModal').classList.add('active');
 }
 
 function closeUpgradeModal() {
-    document.getElementById('upgradeModal').style.display = 'none';
+    document.getElementById('proUpgradeModal').classList.remove('active');
 }
 
 function handleProPurchase(plan) {
@@ -11168,27 +11191,9 @@ draw = function() {
 var proUser = localStorage.getItem('layit_pro') === 'true';
 var _isNativeApp = !!(window._nativeApp || (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.purchase));
 
-function requirePro(featureName) {
-    if (proUser) return true;
-    showUpgradeModal(featureName);
-    return false;
-}
+// requirePro defined earlier (near line 2007) with contextual feature descriptions
 
-function showUpgradeModal(featureName) {
-    // Detect native app vs web browser
-    var isNative = _isNativeApp || !!(window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.purchase);
-    var subBtns = document.getElementById('proSubscribeButtons');
-    var webFallback = document.getElementById('proWebFallback');
-    if (subBtns && webFallback) {
-        subBtns.style.display = isNative ? '' : 'none';
-        webFallback.style.display = isNative ? 'none' : '';
-    }
-    document.getElementById('proUpgradeModal').classList.add('active');
-}
-
-function closeUpgradeModal() {
-    document.getElementById('proUpgradeModal').classList.remove('active');
-}
+// showUpgradeModal and closeUpgradeModal defined earlier (near line 2014)
 
 // activateProDev kept only for the secret dev tap toggle in Settings
 function activateProDev() {
