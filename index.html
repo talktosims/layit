@@ -1688,7 +1688,20 @@
             </div>
             <div id="nominalHint" style="display:none;font-size:var(--text-xs);color:var(--success);margin:-4px 0 6px 2px;">✓ Actual size will be calculated: nominal − grout joint</div>
             <div id="actualReadout" style="display:none;font-size:var(--text-sm);color:var(--info);background:rgba(59,130,246,0.1);padding:6px 8px;border-radius:4px;margin-bottom:8px;"></div>
-            <div class="field"><label>Grout</label><select id="grout" onchange="onNominalToggle()"><option value="0.0625">1/16"</option><option value="0.125" selected>1/8"</option><option value="0.25">1/4"</option></select></div>
+            <div class="row">
+                <div class="field" style="flex:1;"><label>Grout Size</label><select id="grout" onchange="onNominalToggle()"><option value="0.0625">1/16"</option><option value="0.125" selected>1/8"</option><option value="0.25">1/4"</option></select></div>
+                <div class="field" style="flex:1;"><label>Grout Color</label>
+                    <div style="display:flex;gap:4px;flex-wrap:wrap;">
+                        <button onclick="setGroutColor('#ffffff')" class="grout-swatch" style="background:#ffffff;width:28px;height:28px;border-radius:6px;border:2px solid #ccc;cursor:pointer;" title="White"></button>
+                        <button onclick="setGroutColor('#d4d4d4')" class="grout-swatch" style="background:#d4d4d4;width:28px;height:28px;border-radius:6px;border:2px solid #bbb;cursor:pointer;" title="Light Gray"></button>
+                        <button onclick="setGroutColor('#888888')" class="grout-swatch" style="background:#888888;width:28px;height:28px;border-radius:6px;border:2px solid #777;cursor:pointer;" title="Gray"></button>
+                        <button onclick="setGroutColor('#444444')" class="grout-swatch" style="background:#444444;width:28px;height:28px;border-radius:6px;border:2px solid #333;cursor:pointer;" title="Charcoal"></button>
+                        <button onclick="setGroutColor('#222222')" class="grout-swatch" style="background:#222222;width:28px;height:28px;border-radius:6px;border:2px solid #111;cursor:pointer;" title="Black"></button>
+                        <button onclick="setGroutColor('#c4a882')" class="grout-swatch" style="background:#c4a882;width:28px;height:28px;border-radius:6px;border:2px solid #b09770;cursor:pointer;" title="Sand"></button>
+                        <button onclick="setGroutColor('#8b7355')" class="grout-swatch" style="background:#8b7355;width:28px;height:28px;border-radius:6px;border:2px solid #7a6345;cursor:pointer;" title="Brown"></button>
+                    </div>
+                </div>
+            </div>
             <button class="btn-primary" onclick="updateTile(); showTab('diagram');">🔄 Update</button>
             <button class="btn-secondary" onclick="saveCustomPreset()" style="margin-top:4px;width:100%;font-size:11px;">💾 Save as Preset</button>
             <p class="hint" style="margin-top:6px;text-align:left;">💡 Measure the tile face, not the box label. Or check "Nominal" to enter the box size and let the app calculate actual.</p>
@@ -3036,6 +3049,18 @@ setTimeout(initPerimeterCanvas, 100);
 
 function setSection(sec) {
     projSection = sec;
+}
+
+var groutColor = '#ffffff';
+
+function setGroutColor(color) {
+    groutColor = color;
+    // Highlight selected swatch
+    document.querySelectorAll('.grout-swatch').forEach(function(s) {
+        s.style.outline = s.style.background === color || s.style.backgroundColor === color ? '3px solid var(--success)' : 'none';
+        s.style.outlineOffset = '2px';
+    });
+    draw();
 }
 
 let C = {
@@ -6705,8 +6730,8 @@ function draw() {
     cx.setTransform(1, 0, 0, 1, 0, 0);
     cx.scale(2, 2);
     
-    // White background
-    cx.fillStyle = '#ffffff';
+    // Background (grout color)
+    cx.fillStyle = (window._printMode || window._reportMode) ? '#ffffff' : groutColor;
     cx.fillRect(0, 0, cv.width, cv.height);
     
     // Check if we have valid dimensions — perimeter must be closed with all measurements
@@ -9422,6 +9447,7 @@ function saveCurrentProject() {
         cutTileStates: JSON.parse(JSON.stringify(cutTileStates)),
         savedPatternPosition: savedPatternPosition ? JSON.parse(JSON.stringify(savedPatternPosition)) : null,
         patternLocked: patternLocked,
+        groutColor: groutColor,
         savedAt: Date.now()
     };
     
@@ -10803,6 +10829,9 @@ function applySyncState(state) {
     if (typeof state.patternLocked !== 'undefined') {
         patternLocked = state.patternLocked;
         updateLockButton();
+    }
+    if (state.groutColor) {
+        groutColor = state.groutColor;
     }
     
     // Update UI
