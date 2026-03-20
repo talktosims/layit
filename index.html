@@ -2584,10 +2584,19 @@ function closePerimeter() {
 
     updatePerimeterUI();
     updateSegmentsList();
-    drawPerimeter();
-    positionSegmentOverlayInputs();
 
-    showToast('Shape closed! Tap each wall measurement to enter dimensions.');
+    // Force canvas repaint with requestAnimationFrame (iOS WKWebView needs this)
+    requestAnimationFrame(function() {
+        drawPerimeter();
+        positionSegmentOverlayInputs();
+        // Double-draw to ensure iOS renders the closing line
+        requestAnimationFrame(function() {
+            drawPerimeter();
+            positionSegmentOverlayInputs();
+        });
+    });
+
+    showToast('Shape closed! Enter measurements below.');
 }
 
 // Update UI elements
@@ -2936,6 +2945,11 @@ function setSegmentLength(index, value) {
     var allMeasured = perimeterState.segments.every(function(s) { return s.measured && s.length > 0; });
     if (allMeasured) {
         applyPerimeter(true);
+        // Force canvas redraw to show closed shape with measurements
+        requestAnimationFrame(function() {
+            drawPerimeter();
+            positionSegmentOverlayInputs();
+        });
     }
 }
 
