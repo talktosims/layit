@@ -2585,23 +2585,20 @@ function closePerimeter() {
     updatePerimeterUI();
     updateSegmentsList();
 
-    // Force iOS WKWebView canvas repaint by toggling display
-    var canvasEl = perimeterState.canvas;
-    canvasEl.style.display = 'none';
-    canvasEl.offsetHeight; // Force reflow
-    canvasEl.style.display = '';
-
     drawPerimeter();
     positionSegmentOverlayInputs();
 
-    // Backup: redraw again after a tick
+    // iOS WKWebView won't repaint canvas until tab switch
+    // Simulate it: briefly show diagram tab then snap back to wall
     setTimeout(function() {
-        canvasEl.style.display = 'none';
-        canvasEl.offsetHeight;
-        canvasEl.style.display = '';
-        drawPerimeter();
-        positionSegmentOverlayInputs();
-    }, 100);
+        document.getElementById('diagram').style.display = 'block';
+        document.getElementById('wall').style.display = 'none';
+        setTimeout(function() {
+            document.getElementById('diagram').style.display = '';
+            document.getElementById('wall').style.display = '';
+            showTab('wall');
+        }, 50);
+    }, 50);
 
     showToast('Shape closed! Enter measurements below.');
 }
