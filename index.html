@@ -2512,7 +2512,16 @@ function addPerimeterPoint(x, y) {
     if (perimeterState.points.length >= 3) {
         var first = perimeterState.points[0];
         var dist = Math.sqrt((x - first.x) ** 2 + (y - first.y) ** 2);
-        if (dist < 40) { // Generous tap target for closing
+        // Very generous tap zone — 50px in canvas coords
+        if (dist < 50) {
+            closePerimeter();
+            return;
+        }
+        // Also check if tapping near the LAST drawn line's start (near first point via wrap)
+        var last = perimeterState.points[perimeterState.points.length - 1];
+        var distToFirst = Math.sqrt((first.x - last.x) ** 2 + (first.y - last.y) ** 2);
+        // If the last point is already close to the first, any tap in the vicinity closes it
+        if (distToFirst < 80 && dist < 80) {
             closePerimeter();
             return;
         }
