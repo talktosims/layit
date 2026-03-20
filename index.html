@@ -5969,6 +5969,15 @@ function handleTileScanPhoto(input) {
                 if (!jsonMatch) { showToast('Could not read label — try again', 2000); return; }
 
                 var specs = JSON.parse(jsonMatch[0]);
+
+                // Auto-detect shape from dimensions if not specified
+                if (!specs.shape && specs.nomW && specs.nomH) {
+                    var ratio = specs.nomW / specs.nomH;
+                    if (Math.abs(ratio - 1) < 0.1) specs.shape = 'square';
+                    else if (Math.abs(ratio - 1.15) < 0.15 || Math.abs(1/ratio - 1.15) < 0.15) specs.shape = 'hexagon';
+                    else specs.shape = 'rectangle';
+                }
+
                 var product = {
                     name: specs.name || 'Tile',
                     brand: specs.brand || '',
