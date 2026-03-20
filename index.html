@@ -2510,16 +2510,10 @@ function addPerimeterPoint(x, y) {
     if (perimeterState.points.length >= 3) {
         var first = perimeterState.points[0];
         var dist = Math.sqrt((x - first.x) ** 2 + (y - first.y) ** 2);
-        // Very generous tap zone — 50px in canvas coords
+        // Generous tap zone — 50px in canvas coords
         if (dist < 50) {
-            closePerimeter();
-            return;
-        }
-        // Also check if tapping near the LAST drawn line's start (near first point via wrap)
-        var last = perimeterState.points[perimeterState.points.length - 1];
-        var distToFirst = Math.sqrt((first.x - last.x) ** 2 + (first.y - last.y) ** 2);
-        // If the last point is already close to the first, any tap in the vicinity closes it
-        if (distToFirst < 80 && dist < 80) {
+            // Snap the last point to the first point's position so the shape visually closes
+            // (don't add a new point — the close handles the wrap)
             closePerimeter();
             return;
         }
@@ -2675,13 +2669,15 @@ function drawPerimeter() {
     if (points.length === 0) return;
     
     // Draw segments
-    ctx.lineWidth = 3;
     for (var i = 0; i < points.length; i++) {
         var p1 = points[i];
         var p2 = points[(i + 1) % points.length];
-        
-        // Don't draw last segment if not closed
+
+        // Don't draw last segment (back to first) if not closed
         if (!perimeterState.closed && i === points.length - 1) continue;
+
+        // Closing segment gets slightly thicker to be visible
+        ctx.lineWidth = (i === points.length - 1 && perimeterState.closed) ? 4 : 3;
         
         // Color based on whether measured
         var seg = perimeterState.segments[i];
