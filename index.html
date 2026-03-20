@@ -2585,16 +2585,23 @@ function closePerimeter() {
     updatePerimeterUI();
     updateSegmentsList();
 
-    // Force canvas repaint with requestAnimationFrame (iOS WKWebView needs this)
-    requestAnimationFrame(function() {
+    // Force iOS WKWebView canvas repaint by toggling display
+    var canvasEl = perimeterState.canvas;
+    canvasEl.style.display = 'none';
+    canvasEl.offsetHeight; // Force reflow
+    canvasEl.style.display = '';
+
+    drawPerimeter();
+    positionSegmentOverlayInputs();
+
+    // Backup: redraw again after a tick
+    setTimeout(function() {
+        canvasEl.style.display = 'none';
+        canvasEl.offsetHeight;
+        canvasEl.style.display = '';
         drawPerimeter();
         positionSegmentOverlayInputs();
-        // Double-draw to ensure iOS renders the closing line
-        requestAnimationFrame(function() {
-            drawPerimeter();
-            positionSegmentOverlayInputs();
-        });
-    });
+    }, 100);
 
     showToast('Shape closed! Enter measurements below.');
 }
