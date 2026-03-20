@@ -1589,7 +1589,7 @@
                 <div style="flex:1;">
                     <div style="display:flex;align-items:center;gap:8px;">
                         <span style="font-size:17px;font-weight:700;color:var(--success);">Identify Tile</span>
-                        <span style="background:var(--success);color:#fff;font-size:9px;padding:2px 6px;border-radius:4px;font-weight:700;letter-spacing:0.5px;">PRO</span>
+                        <span id="scanBadge" style="background:var(--success);color:#fff;font-size:9px;padding:2px 6px;border-radius:4px;font-weight:700;letter-spacing:0.5px;">FREE</span>
                     </div>
                     <div style="font-size:12px;color:var(--text-muted);margin-top:3px;">Photo the spec sticker on the box — AI fills everything for you</div>
                 </div>
@@ -5284,6 +5284,16 @@ function showTab(id) {
     if (id === 'diagram') draw();
     if (id === 'projects') updateProjectList();
     if (id === 'calc') updateTileCount();
+    if (id === 'tile') {
+        // Update scan badge (FREE vs PRO)
+        var sc = parseInt(localStorage.getItem('layit_scan_count') || '0');
+        var badge = document.getElementById('scanBadge');
+        if (badge) {
+            if (proUser) badge.style.display = 'none';
+            else if (sc > 0) { badge.textContent = 'PRO'; badge.style.background = 'var(--success)'; }
+            else { badge.textContent = 'FREE'; badge.style.background = '#2196F3'; }
+        }
+    }
     if (id === 'wall') {
         // Re-draw perimeter and reposition overlay inputs when wall tab becomes visible
         if (C.wall.tW > 0 && C.wall.lH > 0 && perimeterState.points.length === 0) {
@@ -5714,6 +5724,17 @@ function hasBarcodeSupport() {
 function openTileScanner() {
     // First scan is free — Pro required after that
     var scanCount = parseInt(localStorage.getItem('layit_scan_count') || '0');
+    // Update badge
+    var badge = document.getElementById('scanBadge');
+    if (badge) {
+        if (scanCount > 0 && !proUser) {
+            badge.textContent = 'PRO';
+        } else if (scanCount === 0) {
+            badge.textContent = 'FREE';
+        } else {
+            badge.style.display = 'none'; // Pro user, no badge needed
+        }
+    }
     if (scanCount > 0 && !requirePro('Identify Tile')) return;
 
     // Show instruction modal telling user what to photograph
