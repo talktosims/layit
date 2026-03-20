@@ -7509,6 +7509,42 @@ function draw() {
         }
     }
     
+    // Start point indicator — shows first full tile corner after optimization
+    if (!projMode && !window._printMode && !window._reportMode && patternLocked && wall && wall.length > 1) {
+        // Find the wall's bottom-left corner (origin for measurement)
+        var wMinX = Infinity, wMaxX = -Infinity, wMinY = Infinity, wMaxY = -Infinity;
+        for (var si = 0; si < wall.length; si++) {
+            wMinX = Math.min(wMinX, wall[si][0]);
+            wMaxX = Math.max(wMaxX, wall[si][0]);
+            wMinY = Math.min(wMinY, wall[si][1]);
+            wMaxY = Math.max(wMaxY, wall[si][1]);
+        }
+        // Pattern origin offset
+        var startX = ox + (C.view.oxInches || 0) * s + patternOx;
+        var startY = oy + (C.view.oyInches || 0) * s + patternOy;
+        // Distance from wall edges in inches
+        var fromLeft = Math.abs(startX - wMinX) / s;
+        var fromBottom = Math.abs(wMaxY - startY) / s;
+
+        // Draw start marker
+        cx.fillStyle = '#1565C0';
+        cx.beginPath();
+        cx.arc(startX, startY, 6, 0, Math.PI * 2);
+        cx.fill();
+        cx.strokeStyle = '#fff';
+        cx.lineWidth = 2;
+        cx.stroke();
+
+        // Label
+        cx.fillStyle = '#1565C0';
+        cx.font = 'bold 10px sans-serif';
+        cx.textAlign = 'left';
+        cx.fillText('START', startX + 10, startY - 2);
+        cx.font = '9px sans-serif';
+        cx.fillText(toFraction(fromLeft) + '" from left', startX + 10, startY + 10);
+        cx.fillText(toFraction(fromBottom) + '" from bottom', startX + 10, startY + 20);
+    }
+
     // Update display
     document.getElementById('fullCount').textContent = full;
     var partialEl = document.getElementById('partialCount');
