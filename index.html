@@ -2668,6 +2668,18 @@ function drawPerimeter() {
     var points = perimeterState.points;
     if (points.length === 0) return;
     
+    // Fill closed shape with semi-transparent color
+    if (perimeterState.closed && points.length >= 3) {
+        ctx.beginPath();
+        ctx.moveTo(points[0].x, points[0].y);
+        for (var fi = 1; fi < points.length; fi++) {
+            ctx.lineTo(points[fi].x, points[fi].y);
+        }
+        ctx.closePath();
+        ctx.fillStyle = 'rgba(76, 175, 80, 0.08)';
+        ctx.fill();
+    }
+
     // Draw segments
     for (var i = 0; i < points.length; i++) {
         var p1 = points[i];
