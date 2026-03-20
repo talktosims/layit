@@ -1545,11 +1545,8 @@
                 <button class="btn-secondary" onclick="undoPerimeterPoint()" id="undoBtn" disabled style="font-size:12px;padding:10px;">
                     ↩ Undo
                 </button>
-                <button class="btn-secondary" onclick="clearPerimeter()" style="font-size:12px;padding:10px;">
+                <button class="btn-secondary" onclick="clearPerimeter()" style="font-size:12px;padding:10px;flex:1;">
                     🗑 Clear
-                </button>
-                <button class="btn-success" onclick="closePerimeter()" id="closeBtn" disabled style="font-size:12px;padding:10px;">
-                    ✓ Close
                 </button>
             </div>
             
@@ -2396,7 +2393,7 @@ function initPerimeterCanvas() {
 function updateLayoutFromPerimeter() {
     // Check perimeter is closed
     if (!perimeterState.closed) {
-        showToast('Close your perimeter first — tap the first point or hit Close', 3000);
+        showToast('Close your perimeter first — tap the first point to connect', 3000);
         return;
     }
     // Check all segments measured
@@ -2604,7 +2601,7 @@ function updatePerimeterUI() {
     var pointCount = perimeterState.points.length;
     var status = document.getElementById('perimeterStatus');
     var undoBtn = document.getElementById('undoBtn');
-    var closeBtn = document.getElementById('closeBtn');
+    var closeBtn = document.getElementById('closeBtn') || {};
     
     if (perimeterState.closed) {
         var measured = perimeterState.segments.filter(function(s) { return s.measured; }).length;
