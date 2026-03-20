@@ -1865,8 +1865,6 @@
             <div id="waitlistConfirm" style="display:none;color:var(--success);margin-top:12px;font-weight:600;">
                 ✓ You're on the list! We'll notify you.
             </div>
-            <button class="btn-pro" id="proUpgradeBtn" onclick="showUpgradeModal()" style="margin-top:12px;">Upgrade to Pro</button>
-            <button class="btn-secondary" id="proManageBtn" onclick="deactivateProDev()" style="margin-top:12px;display:none;width:100%;">Revert to Free (Dev)</button>
         </div>
 
         <div class="section">
@@ -6494,7 +6492,6 @@ var savedPatternPosition = null; // Saved position when locked with cut tiles
 var hasCutProgress = false; // Track if any tiles have been marked
 
 // Show cut dimensions state
-var showCuts = false;
 
 function countCutProgress() {
     var count = 0;
@@ -6594,24 +6591,6 @@ function restorePattern() {
         }
         draw();
     }
-}
-
-function toggleCuts() {
-    showCuts = !showCuts;
-    var btn = document.getElementById('cutsBtn');
-    var icon = document.getElementById('cutsIcon');
-    var text = document.getElementById('cutsText');
-    
-    if (showCuts) {
-        btn.className = 'btn-success';
-        icon.textContent = '📐';
-        text.textContent = 'Cuts On';
-    } else {
-        btn.className = 'btn-secondary';
-        icon.textContent = '📐';
-        text.textContent = 'Cuts Off';
-    }
-    draw();
 }
 
 function resetView() {
@@ -11211,27 +11190,13 @@ function closeUpgradeModal() {
     document.getElementById('proUpgradeModal').classList.remove('active');
 }
 
-function handleProPurchase(plan) {
-    if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.purchase) {
-        window.webkit.messageHandlers.purchase.postMessage(plan);
-    } else {
-        // Fallback for dev/testing
-        activateProDev();
-    }
-}
-
-function handleRestorePurchases() {
-    if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.restorePurchases) {
-        window.webkit.messageHandlers.restorePurchases.postMessage('restore');
-    }
-}
-
+// activateProDev kept only for the secret dev tap toggle in Settings
 function activateProDev() {
     proUser = true;
     localStorage.setItem('layit_pro', 'true');
     closeUpgradeModal();
     updateProUI();
-    showToast('✓ LayIt Pro activated', 2000);
+    showToast('✓ LayIt Pro activated (dev)', 2000);
 }
 
 function deactivateProDev() {
