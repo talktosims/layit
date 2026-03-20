@@ -6832,20 +6832,22 @@ function restorePattern() {
 }
 
 function rotateTile() {
-    // Swap width and height
-    var temp = C.tile.w;
-    C.tile.w = C.tile.h;
-    C.tile.h = temp;
+    // Read current form values (could be nominal or actual)
+    var wInput = document.getElementById('tileW');
+    var hInput = document.getElementById('tileH');
+    var tempVal = wInput.value;
+    wInput.value = hInput.value;
+    hInput.value = tempVal;
+
     // Toggle hex orientation
-    if (C.tile.sh === 'hexagon' || (C.tile.sh === 'mosaic' && C.tile.subShape === 'hex')) {
-        C.tile.or = C.tile.or === 'pointy' ? 'flat' : 'pointy';
-    }
-    // Update the form inputs
-    document.getElementById('tileW').value = C.tile.w;
-    document.getElementById('tileH').value = C.tile.h;
     var orientEl = document.getElementById('tileOrient');
-    if (orientEl) orientEl.value = C.tile.or || 'pointy';
-    draw();
+    if (C.tile.sh === 'hexagon' || (C.tile.sh === 'mosaic' && C.tile.subShape === 'hex')) {
+        var newOr = (orientEl.value === 'pointy') ? 'flat' : 'pointy';
+        orientEl.value = newOr;
+    }
+
+    // Apply through the normal updateTile flow (handles nominal mode, etc.)
+    updateTile();
     showToast('Tile rotated', 1000);
 }
 
