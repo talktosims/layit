@@ -1628,7 +1628,7 @@
                     <button class="btn-success" onclick="document.getElementById('scanInstructionModal').style.display='none';document.getElementById('tileScanPhoto').click();" style="width:100%;padding:14px;font-size:15px;">
                         📸 Open Camera
                     </button>
-                    <button class="modal-cancel" onclick="document.getElementById('scanInstructionModal').style.display='none'" style="margin-top:8px;width:100%;">Cancel</button>
+                    <button class="modal-cancel" onclick="document.getElementById('scanInstructionModal').style.display='none';if(window._pendingNextStep==='wall'){showToast('You can scan tile later — let\'s measure your room first',3000);setTimeout(function(){showTab('wall');window._pendingNextStep=null;},500);}" style="margin-top:8px;width:100%;">Skip for now</button>
                 </div>
             </div>
         </div>
@@ -2325,14 +2325,73 @@ var perimeterState = {
 function initPerimeterCanvas() {
     perimeterState.canvas = document.getElementById('perimeterCanvas');
     if (!perimeterState.canvas) return;
-    
+
     perimeterState.ctx = perimeterState.canvas.getContext('2d');
-    
+
     // Set up touch/click handlers
     perimeterState.canvas.addEventListener('click', handlePerimeterClick);
     perimeterState.canvas.addEventListener('touchend', handlePerimeterTouch);
-    
+
+    // If we already have wall dimensions, show a pre-built rectangle with editable inputs
+    if (C.wall.tW > 0 && C.wall.lH > 0 && perimeterState.points.length === 0) {
+        autoPopulatePerimeterRect();
+    }
+
     drawPerimeter();
+}
+
+// Build a closed rectangle perimeter from existing wall dimensions
+function autoPopulatePerimeterRect() {
+    var cw = perimeterState.canvas.width;
+    var ch = perimeterState.canvas.height;
+    var padding = 60;
+
+    var scaleX = (cw - padding * 2) / Math.max(C.wall.tW, 1);
+    var scaleY = (ch - padding * 2) / Math.max(C.wall.lH, 1);
+    var s = Math.min(scaleX, scaleY);
+
+    var w = C.wall.tW * s;
+    var h = C.wall.lH * s;
+    var ox = (cw - w) / 2;
+    var oy = (ch - h) / 2;
+
+    // Create 4 corner points
+    perimeterState.points = [
+        { x: ox, y: oy },
+        { x: ox + w, y: oy },
+        { x: ox + w, y: oy + h },
+        { x: ox, y: oy + h }
+    ];
+    perimeterState.closed = true;
+
+    // Create segments with existing measurements
+    perimeterState.segments = [
+        { p1: perimeterState.points[0], p2: perimeterState.points[1], length: C.wall.tW, measured: true },  // top
+        { p1: perimeterState.points[1], p2: perimeterState.points[2], length: C.wall.lH, measured: true },  // right
+        { p1: perimeterState.points[2], p2: perimeterState.points[3], length: C.wall.tW, measured: true },  // bottom (use tW, could differ with bV)
+        { p1: perimeterState.points[3], p2: perimeterState.points[0], length: C.wall.lH, measured: true }   // left
+    ];
+
+    // If out-of-square, adjust bottom and right
+    if (C.wall.bV > 0) perimeterState.segments[2].length = C.wall.tW + C.wall.bV;
+    if (C.wall.rV > 0) perimeterState.segments[1].length = C.wall.lH + C.wall.rV;
+
+    // Make canvas non-interactive (closed shape)
+    perimeterState.canvas.style.pointerEvents = 'none';
+
+    // Hide the "tap to add corners" hint
+    var hint = document.getElementById('perimeterHint');
+    if (hint) hint.style.display = 'none';
+
+    // Show measurement status
+    var segMeasure = document.getElementById('segmentMeasurements');
+    if (segMeasure) segMeasure.style.display = 'block';
+
+    updatePerimeterUI();
+    updateSegmentsList();
+
+    // Position overlay inputs after a tick (canvas needs to render first)
+    setTimeout(positionSegmentOverlayInputs, 100);
 }
 
 // Set perimeter mode (wall or floor)
@@ -2707,14 +2766,21 @@ function undoMeasurement(index) {
     perimeterState.segments[index].measured = false;
     perimeterState.selectedSegment = index;
     perimeterState.measurementHistory = (perimeterState.measurementHistory || []).filter(function(i) { return i !== index; });
+
+    // Incomplete measurements = no valid layout
+    C.wall.tW = 0;
+    C.wall.lH = 0;
+
     updateSegmentsList();
     updatePerimeterUI();
     drawPerimeter();
-    // Focus the input
+    positionSegmentOverlayInputs();
+
+    // Focus the overlay input
     setTimeout(function() {
-        var input = document.getElementById('segInput' + index);
-        if (input) input.focus();
-    }, 100);
+        var overlayInputs = document.querySelectorAll('#segmentOverlayInputs input');
+        if (overlayInputs[index]) overlayInputs[index].focus();
+    }, 150);
 }
 
 // Undo the last entered measurement
@@ -2747,7 +2813,14 @@ function setSegmentLength(index, value) {
     // Auto-apply when all segments are measured — live layout update
     var allMeasured = perimeterState.segments.every(function(s) { return s.measured && s.length > 0; });
     if (allMeasured) {
-        applyPerimeter(true); // Silent — don't switch tabs, just update layout
+        applyPerimeter(true); // Silent — update layout in background
+        // If all measured and layout has tile set, navigate to layout after brief delay
+        if (C.tile.w > 0 && C.tile.h > 0) {
+            setTimeout(function() {
+                showToast('Layout updated!', 1500);
+                showTab('diagram');
+            }, 800);
+        }
     }
 }
 
@@ -5596,7 +5669,10 @@ function hasBarcodeSupport() {
 
 // ── PRIMARY: AI Label Scanner (photo → AI → auto-populate) ──
 function openTileScanner() {
-    if (!requirePro('Identify Tile')) return;
+    // First scan is free — Pro required after that
+    var scanCount = parseInt(localStorage.getItem('layit_scan_count') || '0');
+    if (scanCount > 0 && !requirePro('Identify Tile')) return;
+
     // Show instruction modal telling user what to photograph
     document.getElementById('scanInstructionModal').style.display = '';
     document.getElementById('scanInstructionModal').classList.add('active');
@@ -5972,6 +6048,9 @@ function applyScannedProduct(product) {
     onNominalToggle();
     updateTile();
     showToast('✅ Applied: ' + (product.brand ? product.brand + ' ' : '') + product.name);
+    // Track scan count for free tier (first scan free)
+    var sc = parseInt(localStorage.getItem('layit_scan_count') || '0');
+    localStorage.setItem('layit_scan_count', String(sc + 1));
     checkPendingNextStep();
 }
 
@@ -6584,23 +6663,26 @@ function draw() {
     cx.fillStyle = '#ffffff';
     cx.fillRect(0, 0, cv.width, cv.height);
     
-    // Check if we have valid dimensions
-    if (!C.wall.lH || !C.wall.tW || !C.tile.w || !C.tile.h) {
+    // Check if we have valid dimensions — perimeter must be closed with all measurements
+    var perimeterReady = C.wall.lH > 0 && C.wall.tW > 0;
+    var tileReady = C.tile.w > 0 && C.tile.h > 0;
+
+    if (!perimeterReady || !tileReady) {
         cx.fillStyle = '#999999';
         cx.font = 'bold 16px sans-serif';
         cx.textAlign = 'center';
         var centerX = cv.width / 4;
         var centerY = cv.height / 4;
-        if (!C.wall.lH || !C.wall.tW) {
-            cx.fillText('Set your wall dimensions first', centerX, centerY - 12);
+        if (!perimeterReady) {
+            cx.fillText('📐 Measure your room first', centerX, centerY - 12);
             cx.font = '13px sans-serif';
             cx.fillStyle = '#aaaaaa';
-            cx.fillText('Go to the Wall tab to enter measurements', centerX, centerY + 14);
+            cx.fillText('Draw or enter your room dimensions on the Wall tab', centerX, centerY + 14);
         } else {
-            cx.fillText('Set your tile size', centerX, centerY - 12);
+            cx.fillText('🔲 Select your tile', centerX, centerY - 12);
             cx.font = '13px sans-serif';
             cx.fillStyle = '#aaaaaa';
-            cx.fillText('Go to the Tile tab to configure tile settings', centerX, centerY + 14);
+            cx.fillText('Scan a tile box or choose a preset on the Tile tab', centerX, centerY + 14);
         }
         return;
     }
@@ -11276,10 +11358,23 @@ function startWithTile() {
     completeOnboarding();
     showTab('tile');
     // Open the tile scanner immediately
-    setTimeout(function() { openTileScanner(); }, 400);
-    // After they finish tile ID, prompt room measurement
-    window._pendingNextStep = 'wall';
+    setTimeout(function() {
+        openTileScanner();
+        // Set pending next step — will trigger after scan completes OR if they skip
+        window._pendingNextStep = 'wall';
+    }, 400);
 }
+
+// Also nudge to next step when they switch tabs manually (in case they skipped the scan)
+var _origShowTab = showTab;
+showTab = function(id) {
+    _origShowTab(id);
+    // If they navigated away from tile tab without scanning, still nudge
+    if (window._pendingNextStep === 'wall' && id !== 'tile' && C.tile.w <= 0) {
+        // They left tile tab without setting a tile — that's fine, just clear the pending
+        // They'll set tile later
+    }
+};
 
 // After completing one step, nudge them to the next
 function checkPendingNextStep() {
