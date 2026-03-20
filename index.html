@@ -903,16 +903,6 @@
         .onboarding-step-content { min-height:200px; display:flex; flex-direction:column; align-items:center; justify-content:center; }
 
         /* ---- PRO UPGRADE MODAL ---- */
-        #upgradeModal {
-            position:fixed; top:0; left:0; right:0; bottom:0;
-            background:rgba(0,0,0,0.85); z-index:9999;
-            display:flex; align-items:center; justify-content:center;
-            padding:20px;
-            animation: upgradeModalFadeIn 0.25s ease;
-        }
-        @keyframes upgradeModalFadeIn {
-            from { opacity:0; } to { opacity:1; }
-        }
         .upgrade-modal-card {
             background:linear-gradient(165deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
             border:1px solid rgba(255,215,0,0.25);
@@ -1270,29 +1260,6 @@
         </div>
     </div>
 
-    <!-- Pro Upgrade Modal -->
-    <div class="modal-overlay" id="upgradeModal" style="display:none;">
-        <div class="upgrade-modal-card">
-            <div class="upgrade-modal-header">⭐ LayIt Pro</div>
-            <div class="upgrade-modal-desc" id="upgradeModalDesc"></div>
-            <div class="upgrade-modal-features-label">Everything you get with Pro:</div>
-            <div class="upgrade-modal-features">
-                <div class="upgrade-feature-row">📦 Barcode box scanner</div>
-                <div class="upgrade-feature-row">✂️ Cut tracking &amp; progress</div>
-                <div class="upgrade-feature-row">📤 Share projects with clients</div>
-                <div class="upgrade-feature-row">🏢 Company branding</div>
-            </div>
-            <div class="upgrade-modal-buttons">
-                <button class="upgrade-price-btn" onclick="handleProPurchase('monthly')">$4.99/month</button>
-                <button class="upgrade-price-btn upgrade-price-btn-alt" onclick="handleProPurchase('annual')">$39.99/year <span style="font-size:11px;opacity:0.85;">(save 33%)</span></button>
-            </div>
-            <div class="upgrade-modal-links">
-                <a href="#" onclick="event.preventDefault(); restoreProPurchases();" class="upgrade-link">Restore Purchases</a>
-                <a href="#" onclick="event.preventDefault(); closeUpgradeModal();" class="upgrade-link">Maybe Later</a>
-            </div>
-        </div>
-    </div>
-
     <!-- Unlock warning modal -->
     <div class="modal-overlay" id="unlockModal">
         <div class="modal-box">
@@ -1556,7 +1523,7 @@
             </div>
 
             <!-- Update Layout button -->
-            <button class="btn-success" onclick="updateLayoutFromPerimeter()" style="width:100%;padding:16px;font-size:15px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:8px;">
+            <button id="applyPerimBtn" class="btn-success" onclick="updateLayoutFromPerimeter()" style="width:100%;padding:16px;font-size:15px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:8px;">
                 📐 Update Layout
             </button>
         </div>
@@ -2142,7 +2109,7 @@ function updateProStatus() {
 
 // Close upgrade modal on overlay click
 document.addEventListener('click', function(e) {
-    if (e.target && e.target.id === 'upgradeModal') {
+    if (e.target && e.target.id === 'proUpgradeModal') {
         closeUpgradeModal();
     }
 });
@@ -2578,24 +2545,26 @@ function closePerimeter() {
     
     document.getElementById('perimeterHint').style.display = 'none';
     document.getElementById('segmentMeasurements').style.display = 'block';
-    
-    // Make canvas non-interactive so overlay inputs receive taps
-    perimeterState.canvas.style.pointerEvents = 'none';
 
     updatePerimeterUI();
     updateSegmentsList();
 
-    drawPerimeter();
-    positionSegmentOverlayInputs();
-
     // iOS WKWebView canvas repaint workaround:
-    // Resize canvas by 1px then restore — forces compositor invalidation
-    var origW = perimeterState.canvas.width;
-    perimeterState.canvas.width = origW + 1;
-    perimeterState.canvas.width = origW;
-    // Redraw after resize (resize clears the canvas)
-    drawPerimeter();
-    positionSegmentOverlayInputs();
+    // WKWebView only repaints canvas after a compositing-layer change.
+    // Tab switch works because the PANEL goes display:none→block (not just canvas).
+    // Replicate exactly that: briefly remove .active from the wall panel,
+    // force reflow so WKWebView tears down the compositing layer,
+    // then restore it and draw in the next frame.
+    var wallPanel = document.getElementById('wall');
+    wallPanel.classList.remove('active');
+    void wallPanel.offsetHeight; // force synchronous reflow — panel is now display:none
+    wallPanel.classList.add('active');
+    setTimeout(function() {
+        drawPerimeter();
+        positionSegmentOverlayInputs();
+        // Now disable touch on canvas so overlay inputs receive taps
+        perimeterState.canvas.style.pointerEvents = 'none';
+    }, 60);
 
     showToast('Shape closed! Enter measurements below.');
 }
