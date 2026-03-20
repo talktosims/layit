@@ -1551,8 +1551,13 @@
             <div id="perimeterStatus" class="hint mb-4">
                 Points: 0 | Tap to start drawing
             </div>
+
+            <!-- Update Layout button -->
+            <button class="btn-success" onclick="updateLayoutFromPerimeter()" style="width:100%;padding:16px;font-size:15px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:8px;">
+                📐 Update Layout
+            </button>
         </div>
-        
+
         <!-- Hidden elements needed by JS -->
         <div id="segmentMeasurements" style="display:none;">
             <div id="measuredCount"></div>
@@ -2316,6 +2321,22 @@ function initPerimeterCanvas() {
 }
 
 // Build a closed rectangle perimeter from existing wall dimensions
+function updateLayoutFromPerimeter() {
+    // Check perimeter is closed
+    if (!perimeterState.closed) {
+        showToast('Close your perimeter first — tap the first point or hit Close', 3000);
+        return;
+    }
+    // Check all segments measured
+    var allMeasured = perimeterState.segments.every(function(s) { return s.measured && s.length > 0; });
+    if (!allMeasured) {
+        showToast('Enter all wall measurements on the draw box above', 3000);
+        return;
+    }
+    // Apply and navigate
+    applyPerimeter(false);
+}
+
 function autoPopulatePerimeterRect() {
     var cw = perimeterState.canvas.width;
     var ch = perimeterState.canvas.height;
@@ -2541,8 +2562,8 @@ function drawPerimeter() {
         ctx.stroke();
     }
     
-    // Draw reference outline from current layout dimensions (if set)
-    if (C.wall.lH > 0 && C.wall.tW > 0) {
+    // Draw reference outline from current layout dimensions (only if no drawn perimeter)
+    if (C.wall.lH > 0 && C.wall.tW > 0 && perimeterState.points.length === 0) {
         var rH = C.wall.lH + C.wall.rV;
         var bW = C.wall.tW + C.wall.bV;
         var maxDim = Math.max(bW, rH, C.wall.tW, C.wall.lH);
@@ -2785,17 +2806,10 @@ function setSegmentLength(index, value) {
     drawPerimeter();
     positionSegmentOverlayInputs(); // Update overlay input styling
 
-    // Auto-apply when all segments are measured — live layout update
+    // Auto-apply when all segments are measured — update layout silently in background
     var allMeasured = perimeterState.segments.every(function(s) { return s.measured && s.length > 0; });
     if (allMeasured) {
-        applyPerimeter(true); // Silent — update layout in background
-        // If all measured and layout has tile set, navigate to layout after brief delay
-        if (C.tile.w > 0 && C.tile.h > 0) {
-            setTimeout(function() {
-                showToast('Layout updated!', 1500);
-                showTab('diagram');
-            }, 800);
-        }
+        applyPerimeter(true);
     }
 }
 
@@ -5226,6 +5240,16 @@ function showTab(id) {
     if (id === 'diagram') draw();
     if (id === 'projects') updateProjectList();
     if (id === 'calc') updateTileCount();
+    if (id === 'wall') {
+        // Re-draw perimeter and reposition overlay inputs when wall tab becomes visible
+        if (C.wall.tW > 0 && C.wall.lH > 0 && perimeterState.points.length === 0) {
+            autoPopulatePerimeterRect();
+        }
+        setTimeout(function() {
+            drawPerimeter();
+            positionSegmentOverlayInputs();
+        }, 50);
+    }
 
     // Show first-visit info popup
     showTabInfoPopup(id);
