@@ -2512,7 +2512,7 @@ function addPerimeterPoint(x, y) {
     if (perimeterState.points.length >= 3) {
         var first = perimeterState.points[0];
         var dist = Math.sqrt((x - first.x) ** 2 + (y - first.y) ** 2);
-        if (dist < 20) {
+        if (dist < 40) { // Generous tap target for closing
             closePerimeter();
             return;
         }
@@ -2600,7 +2600,7 @@ function updatePerimeterUI() {
         var measured = perimeterState.segments.filter(function(s) { return s.measured; }).length;
         status.textContent = 'Shape closed | ' + measured + ' of ' + perimeterState.segments.length + ' segments measured';
     } else {
-        status.textContent = 'Points: ' + pointCount + ' | ' + (pointCount < 3 ? 'Add more points' : 'Tap first point or Close to finish');
+        status.textContent = 'Points: ' + pointCount + ' | ' + (pointCount < 3 ? 'Add more corners' : 'Tap the red dot to close the shape');
     }
     
     undoBtn.disabled = pointCount === 0 || perimeterState.closed;
@@ -2707,12 +2707,24 @@ function drawPerimeter() {
         var p = points[i];
         
         ctx.beginPath();
-        ctx.arc(p.x, p.y, 8, 0, Math.PI * 2);
+        // First point is larger with a ring to show "tap here to close"
+        var pointRadius = (i === 0 && !perimeterState.closed && perimeterState.points.length >= 3) ? 14 : 8;
+        ctx.arc(p.x, p.y, pointRadius, 0, Math.PI * 2);
         ctx.fillStyle = i === 0 ? '#e94560' : '#4CAF50';
         ctx.fill();
         ctx.strokeStyle = '#fff';
         ctx.lineWidth = 2;
         ctx.stroke();
+        // Draw "close" ring around first point when 3+ points drawn
+        if (i === 0 && !perimeterState.closed && perimeterState.points.length >= 3) {
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, 20, 0, Math.PI * 2);
+            ctx.strokeStyle = 'rgba(233, 69, 96, 0.4)';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([4, 4]);
+            ctx.stroke();
+            ctx.setLineDash([]);
+        }
         
         // Point number
         ctx.fillStyle = '#fff';
