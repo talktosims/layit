@@ -1500,7 +1500,18 @@
         </div>
 
         <div class="section">
-            <h3>📐 Surface Perimeter</h3>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+                <h3 style="margin:0;">📐 Surface Perimeter</h3>
+                <div style="display:flex;align-items:center;gap:6px;">
+                    <span style="font-size:11px;font-weight:600;opacity:0.7;" id="unitLabelIn">in</span>
+                    <label style="position:relative;display:inline-block;width:36px;height:20px;cursor:pointer;">
+                        <input type="checkbox" id="cmToggle" onchange="toggleUnits()" style="opacity:0;width:0;height:0;">
+                        <span style="position:absolute;top:0;left:0;right:0;bottom:0;background:var(--bg-elevated);border:2px solid var(--border-default);border-radius:10px;transition:0.2s;"></span>
+                        <span id="unitToggleKnob" style="position:absolute;top:2px;left:2px;width:12px;height:12px;background:var(--success);border-radius:50%;transition:0.2s;"></span>
+                    </label>
+                    <span style="font-size:11px;font-weight:600;opacity:0.4;" id="unitLabelCm">cm</span>
+                </div>
+            </div>
             <p class="hint mb-3" style="text-align:left;">Draw the outline of your wall or floor. Tap corners to create shape, then enter exact measurements.</p>
             
             <!-- Mode Toggle -->
@@ -1542,52 +1553,16 @@
             </div>
         </div>
         
-        <!-- Unit Toggle -->
-        <div class="section" style="padding-bottom:8px;">
-            <div style="display:flex;align-items:center;justify-content:center;gap:8px;">
-                <span style="font-size:12px;font-weight:600;" id="unitLabelIn">Inches</span>
-                <label style="position:relative;display:inline-block;width:44px;height:24px;cursor:pointer;">
-                    <input type="checkbox" id="cmToggle" onchange="toggleUnits()" style="opacity:0;width:0;height:0;">
-                    <span style="position:absolute;top:0;left:0;right:0;bottom:0;background:var(--bg-elevated);border:2px solid var(--border-default);border-radius:12px;transition:0.2s;"></span>
-                    <span id="unitToggleKnob" style="position:absolute;top:2px;left:2px;width:16px;height:16px;background:var(--success);border-radius:50%;transition:0.2s;"></span>
-                </label>
-                <span style="font-size:12px;font-weight:600;" id="unitLabelCm">cm</span>
-            </div>
+        <!-- Hidden elements needed by JS -->
+        <div id="segmentMeasurements" style="display:none;">
+            <div id="measuredCount"></div>
+            <div id="wallSegmentsList"></div>
         </div>
 
-        <!-- Quick Rectangle (prominent, first option) -->
-        <div class="section">
-            <h3>⚡ Quick Rectangle</h3>
-            <p class="hint mb-3" style="text-align:left;font-size:12px;">Enter width and height for a simple rectangular space.</p>
-            <div class="row">
-                <div class="field"><label id="qwLabel">Width (in)</label><input type="number" id="quickWidth" placeholder="58" min="0"></div>
-                <div class="field"><label id="qhLabel">Height (in)</label><input type="number" id="quickHeight" placeholder="70" min="0"></div>
-            </div>
-            <button class="btn-primary" onclick="applyQuickRectangle()" style="width:100%;">
-                Apply Rectangle
-            </button>
-        </div>
-
-        <!-- Measurement status (appears after shape is closed) -->
-        <div class="section" id="segmentMeasurements" style="display:none;">
-            <div id="measurementStatus" class="stat-box">
-                <div class="stat-label">Segments measured</div>
-                <div class="stat-value" id="measuredCount">0 / 0</div>
-            </div>
-            <p class="hint mb-3" style="text-align:left;font-size:12px;">Tap the measurement labels on each wall line above to enter dimensions. Layout updates in real time.</p>
-            <div class="grid-2">
-                <button class="btn-secondary" onclick="undoLastMeasurement()" id="undoMeasureBtn" disabled>
-                    ↩ Undo Last
-                </button>
-                <button class="btn-primary" onclick="applyPerimeter()" id="applyPerimBtn" disabled>
-                    ✓ Apply Dimensions
-                </button>
-            </div>
-            <div id="wallSegmentsList" style="display:none;"></div>
-        </div>
-
-        <!-- Hidden legacy inputs for backward compat -->
+        <!-- Hidden inputs for backward compat -->
         <div style="display:none;">
+            <input type="number" id="quickWidth">
+            <input type="number" id="quickHeight">
             <input type="number" id="leftH" value="70">
             <input type="number" id="rightVar" value="0.5">
             <input type="number" id="topW" value="58">
