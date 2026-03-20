@@ -1622,6 +1622,7 @@
             <div class="field"><label>Preset</label>
                 <div style="display:flex;gap:6px;">
                     <select id="tilePreset" onchange="applyPreset()" style="flex:1;"><option value="custom">Custom (enter below)</option></select>
+                    <button class="btn-secondary" onclick="openTileBrowser()" style="padding:8px 12px;font-size:12px;white-space:nowrap;">🔍 Browse</button>
                 </div>
             </div>
             <div class="row">
@@ -5455,6 +5456,110 @@ function getCustomPresets() {
 
 function saveCustomPresets(list) {
     localStorage.setItem(CUSTOM_PRESETS_KEY, JSON.stringify(list));
+}
+
+// ── Tile Browser (searchable preset list) ──
+function openTileBrowser() {
+    var overlay = document.createElement('div');
+    overlay.id = 'tileBrowserOverlay';
+    overlay.className = 'modal-overlay active';
+    overlay.style.zIndex = '250';
+
+    var shapeIcons = { hexagon:'⬡', rectangle:'▬', square:'◻', herringbone:'⧈', mosaic:'⬡' };
+    var subIcons = { hex:'⬡', penny:'●', fishscale:'🐟', square:'◻', diamond:'◆', octdot:'⬡',
+        arabesque:'❋', picket:'⬬', rhombus:'◇', triangle:'△', capsule:'⬭', quatrefoil:'✤',
+        ogee:'❧', starcross:'✦', kite:'◆', leaf:'🍃', dragonscale:'🐉', rectangle:'▬' };
+
+    var html = '<div class="modal-box" style="max-width:420px;max-height:85vh;display:flex;flex-direction:column;padding:16px;">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">' +
+        '<h3 style="margin:0;">Browse Tiles</h3>' +
+        '<button onclick="document.getElementById(\'tileBrowserOverlay\').remove()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--text-secondary);">✕</button>' +
+        '</div>' +
+        '<input type="text" id="tileBrowserSearch" oninput="filterTileBrowser()" placeholder="Search by name, shape, or brand..." style="padding:10px 12px;border-radius:8px;border:2px solid var(--border-default);background:var(--bg-recessed);color:var(--text-primary);font-size:14px;margin-bottom:8px;">' +
+        '<div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px;" id="tileBrowserFilters">' +
+        '<button class="tbf-btn active" onclick="filterTileBrowserShape(this,\'all\')">All</button>' +
+        '<button class="tbf-btn" onclick="filterTileBrowserShape(this,\'hexagon\')">Hex</button>' +
+        '<button class="tbf-btn" onclick="filterTileBrowserShape(this,\'square\')">Square</button>' +
+        '<button class="tbf-btn" onclick="filterTileBrowserShape(this,\'rectangle\')">Subway</button>' +
+        '<button class="tbf-btn" onclick="filterTileBrowserShape(this,\'mosaic\')">Mosaic</button>' +
+        '<button class="tbf-btn" onclick="filterTileBrowserShape(this,\'herringbone\')">Herring</button>' +
+        '</div>' +
+        '<div id="tileBrowserList" style="flex:1;overflow-y:auto;"></div>' +
+        '</div>';
+
+    overlay.innerHTML = html;
+    // Click outside to close
+    overlay.addEventListener('click', function(e) { if (e.target === overlay) overlay.remove(); });
+    document.body.appendChild(overlay);
+
+    // Add filter button styles
+    var style = document.createElement('style');
+    style.textContent = '.tbf-btn{padding:6px 10px;font-size:11px;border-radius:6px;border:1px solid var(--border-default);background:var(--bg-recessed);color:var(--text-secondary);cursor:pointer;font-weight:600;} .tbf-btn.active{background:var(--success);color:#fff;border-color:var(--success);}';
+    overlay.querySelector('.modal-box').appendChild(style);
+
+    window._tileBrowserShapeFilter = 'all';
+    renderTileBrowserList();
+    setTimeout(function() { document.getElementById('tileBrowserSearch').focus(); }, 200);
+}
+
+window._tileBrowserShapeFilter = 'all';
+
+function filterTileBrowser() { renderTileBrowserList(); }
+
+function filterTileBrowserShape(btn, shape) {
+    window._tileBrowserShapeFilter = shape;
+    document.querySelectorAll('.tbf-btn').forEach(function(b) { b.classList.remove('active'); });
+    btn.classList.add('active');
+    renderTileBrowserList();
+}
+
+function renderTileBrowserList() {
+    var search = (document.getElementById('tileBrowserSearch') || {}).value || '';
+    search = search.toLowerCase();
+    var shapeFilter = window._tileBrowserShapeFilter || 'all';
+    var list = document.getElementById('tileBrowserList');
+    if (!list) return;
+
+    var html = '';
+    var count = 0;
+
+    for (var i = 0; i < TILE_PRESETS.length; i++) {
+        var p = TILE_PRESETS[i];
+        var name = p.name || '';
+        var shape = p.shape || '';
+        var sub = p.subShape || '';
+
+        // Shape filter
+        if (shapeFilter !== 'all' && shape !== shapeFilter) continue;
+
+        // Search filter
+        if (search && name.toLowerCase().indexOf(search) === -1 && shape.indexOf(search) === -1 && sub.indexOf(search) === -1) continue;
+
+        var icon = sub ? (({hex:'⬡',penny:'●',fishscale:'🐟',square:'◻',diamond:'◆',octdot:'⬡',arabesque:'❋',picket:'⬬',rhombus:'◇',triangle:'△',capsule:'⬭',quatrefoil:'✤',ogee:'❧',starcross:'✦',kite:'◆',leaf:'🍃',dragonscale:'🐉',rectangle:'▬'})[sub] || '■') : (({hexagon:'⬡',rectangle:'▬',square:'◻',herringbone:'⧈'})[shape] || '■');
+
+        html += '<div onclick="selectFromBrowser(' + i + ')" style="display:flex;align-items:center;gap:10px;padding:10px;margin-bottom:4px;background:var(--bg-recessed);border-radius:8px;cursor:pointer;border:1px solid var(--border-default);">' +
+            '<span style="font-size:20px;width:28px;text-align:center;">' + icon + '</span>' +
+            '<div style="flex:1;min-width:0;">' +
+            '<div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + name + '</div>' +
+            '<div style="font-size:11px;color:var(--text-muted);">' + shape + (sub ? ' / ' + sub : '') + '</div>' +
+            '</div>' +
+            '</div>';
+        count++;
+    }
+
+    if (count === 0) {
+        html = '<div style="text-align:center;padding:20px;color:var(--text-muted);">No tiles match your search</div>';
+    }
+
+    list.innerHTML = html;
+}
+
+function selectFromBrowser(index) {
+    document.getElementById('tilePreset').value = 'b_' + index;
+    applyPreset();
+    var overlay = document.getElementById('tileBrowserOverlay');
+    if (overlay) overlay.remove();
+    showToast('Applied: ' + TILE_PRESETS[index].name, 1500);
 }
 
 function buildPresetDropdown() {
