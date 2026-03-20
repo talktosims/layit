@@ -2588,17 +2588,14 @@ function closePerimeter() {
     drawPerimeter();
     positionSegmentOverlayInputs();
 
-    // iOS WKWebView won't repaint canvas until tab switch
-    // Simulate it: briefly show diagram tab then snap back to wall
-    setTimeout(function() {
-        document.getElementById('diagram').style.display = 'block';
-        document.getElementById('wall').style.display = 'none';
-        setTimeout(function() {
-            document.getElementById('diagram').style.display = '';
-            document.getElementById('wall').style.display = '';
-            showTab('wall');
-        }, 50);
-    }, 50);
+    // iOS WKWebView canvas repaint workaround:
+    // Resize canvas by 1px then restore — forces compositor invalidation
+    var origW = perimeterState.canvas.width;
+    perimeterState.canvas.width = origW + 1;
+    perimeterState.canvas.width = origW;
+    // Redraw after resize (resize clears the canvas)
+    drawPerimeter();
+    positionSegmentOverlayInputs();
 
     showToast('Shape closed! Enter measurements below.');
 }
