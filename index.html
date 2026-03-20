@@ -6087,7 +6087,8 @@ function previewLabelPhoto(input) {
 
 // Crowdsource — Product Not Found
 // AI Label Scan — sends photo to Claude Vision API to extract tile specs
-var _AI_API_KEY = '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';
+// AI API key loaded from config file (not committed to repo)
+var _AI_API_KEY = localStorage.getItem('layit_ai_key') || '';
 
 function handleAILabelScan(input) {
     if (!input.files || !input.files[0]) return;
