@@ -2667,7 +2667,35 @@ function drawPerimeter() {
 
     var points = perimeterState.points;
     if (points.length === 0) return;
-    
+
+    // Auto-fit: when closed, scale and center points to fit within canvas
+    if (perimeterState.closed && points.length >= 3) {
+        var minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+        for (var fi = 0; fi < points.length; fi++) {
+            minX = Math.min(minX, points[fi].x);
+            maxX = Math.max(maxX, points[fi].x);
+            minY = Math.min(minY, points[fi].y);
+            maxY = Math.max(maxY, points[fi].y);
+        }
+        var shapeW = maxX - minX;
+        var shapeH = maxY - minY;
+        if (shapeW > 0 && shapeH > 0) {
+            var pad = 40;
+            var fitScale = Math.min((canvas.width - pad * 2) / shapeW, (canvas.height - pad * 2) / shapeH);
+            if (fitScale < 0.95 || fitScale > 1.5) { // Only refit if significantly off
+                var cx2 = (minX + maxX) / 2;
+                var cy2 = (minY + maxY) / 2;
+                var newCx = canvas.width / 2;
+                var newCy = canvas.height / 2;
+                for (var fi = 0; fi < points.length; fi++) {
+                    points[fi].x = (points[fi].x - cx2) * fitScale + newCx;
+                    points[fi].y = (points[fi].y - cy2) * fitScale + newCy;
+                }
+                // Update segment references (they point to same objects, so already updated)
+            }
+        }
+    }
+
     // Fill closed shape with semi-transparent color
     if (perimeterState.closed && points.length >= 3) {
         ctx.beginPath();
