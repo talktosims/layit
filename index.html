@@ -5677,7 +5677,7 @@ function markTabVisited(tabId) {
 
 function showTabInfoPopup(tabId) {
     // Don't show during demo mode
-    if (typeof demoRunning !== 'undefined' && demoRunning) return;
+    if (typeof _demoActive !== 'undefined' && _demoActive) return;
     // Don't show if onboarding hasn't been completed
     if (!localStorage.getItem('layit_onboarded')) return;
     // Don't show if already visited
