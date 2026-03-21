@@ -12576,66 +12576,32 @@ function toggleDemoPause() {
     else window.speechSynthesis.resume();
 }
 
-// ==================== DEMO AUDIO — ElevenLabs + Browser Fallback ====================
+// ==================== DEMO AUDIO — Pre-recorded MP3s ====================
 
-var _demoAudioCache = {};
 var _demoCurrentAudio = null;
 var _demoSpeechResolve = null;
-var DEMO_AUDIO_CACHE_KEY = 'layit-demo-audio-cache';
 
-function loadDemoAudioCache() {
-    try {
-        var raw = localStorage.getItem(DEMO_AUDIO_CACHE_KEY);
-        if (!raw) return;
-        var entries = JSON.parse(raw);
-        for (var text in entries) {
-            var binary = atob(entries[text]);
-            var bytes = new Uint8Array(binary.length);
-            for (var i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-            var blob = new Blob([bytes], { type: 'audio/mpeg' });
-            _demoAudioCache[text] = URL.createObjectURL(blob);
-        }
-    } catch(e) {}
-}
-
-function persistDemoAudio(text, arrayBuffer) {
-    try {
-        var existing = {};
-        try { existing = JSON.parse(localStorage.getItem(DEMO_AUDIO_CACHE_KEY) || '{}'); } catch(e) {}
-        var binary = '';
-        var bytes = new Uint8Array(arrayBuffer);
-        for (var i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
-        existing[text] = btoa(binary);
-        localStorage.setItem(DEMO_AUDIO_CACHE_KEY, JSON.stringify(existing));
-    } catch(e) {}
-}
+// Pre-recorded MP3 files — generated once via ElevenLabs, zero API calls at runtime
+var DEMO_AUDIO_FILES = {
+    0: 'demo-audio/step01.mp3',
+    1: 'demo-audio/step02.mp3',
+    2: 'demo-audio/step03.mp3',
+    3: 'demo-audio/step04.mp3',
+    4: 'demo-audio/step05.mp3',
+    5: 'demo-audio/step06.mp3',
+    6: 'demo-audio/step07.mp3',
+    7: 'demo-audio/step08.mp3',
+    8: 'demo-audio/step09.mp3',
+    9: 'demo-audio/step10.mp3',
+};
 
 async function speakDemo(text, signal) {
-    var elKey = localStorage.getItem('layit_elevenlabs_key');
-    if (elKey) {
-        if (_demoAudioCache[text]) return playAudioUrl(_demoAudioCache[text], signal);
-        var voiceId = localStorage.getItem('layit_elevenlabs_voice') || 'pNInz6obpgDQGcFmaJgB';
-        try {
-            var response = await fetch('https://api.elevenlabs.io/v1/text-to-speech/' + voiceId, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'xi-api-key': elKey },
-                body: JSON.stringify({
-                    text: text,
-                    model_id: 'eleven_multilingual_v2',
-                    voice_settings: { stability: 0.65, similarity_boost: 0.75, style: 0.15, use_speaker_boost: true, speed: 1.0 }
-                })
-            });
-            if (!response.ok) return speakBrowserFallback(text, signal);
-            var buf = await response.arrayBuffer();
-            persistDemoAudio(text, buf);
-            var blob = new Blob([buf], { type: 'audio/mpeg' });
-            var url = URL.createObjectURL(blob);
-            _demoAudioCache[text] = url;
-            return playAudioUrl(url, signal);
-        } catch(err) {
-            return speakBrowserFallback(text, signal);
-        }
+    // Play pre-recorded MP3 for current step
+    var audioFile = DEMO_AUDIO_FILES[_demoStepIndex];
+    if (audioFile) {
+        return playAudioUrl(audioFile, signal);
     }
+    // Fallback for any steps without a pre-recorded file
     return speakBrowserFallback(text, signal);
 }
 
@@ -12676,8 +12642,6 @@ function stopDemoAudio() {
     if (_demoSpeechResolve) { _demoSpeechResolve(); _demoSpeechResolve = null; }
     if ('speechSynthesis' in window) window.speechSynthesis.cancel();
 }
-
-loadDemoAudioCache();
 
 // ==================== END DEMO WALKTHROUGH ====================
 </script>
