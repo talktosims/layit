@@ -11497,60 +11497,169 @@ function initTabs() {
 var TAB_ORDER = ['diagram', 'wall', 'tile', 'voids', 'calc', 'projects', 'proj', 'settings'];
 var _swipeStartX = 0;
 var _swipeStartY = 0;
-var _swipeStartTime = 0;
 var _swipeTarget = null;
+var _swiping = false;
+var _swipeDirection = 0; // 0=undecided, 1=horizontal, -1=vertical
+var _swipeCurrentPanel = null;
+var _swipeNextPanel = null;
+var _swipeNextIndex = -1;
+var _swipeWidth = 0;
+
+function isSwipeBlocked(target) {
+    var el = target;
+    while (el) {
+        if (el.id === 'canvas' || el.id === 'canvasContainer' ||
+            el.id === 'detailCanvas' || el.id === 'detailCanvasContainer' ||
+            el.id === 'perimeterCanvas' || el.id === 'perimeterCanvasContainer') return true;
+        if (el.classList && (el.classList.contains('modal-overlay') || el.classList.contains('detail-overlay'))) return true;
+        if (el.id === 'demo-playback' || el.id === 'demo-input-blocker') return true;
+        el = el.parentElement;
+    }
+    return false;
+}
+
+function getCurrentTabIndex() {
+    var activePanel = document.querySelector('.panel.active');
+    if (!activePanel) return -1;
+    return TAB_ORDER.indexOf(activePanel.id);
+}
 
 document.addEventListener('touchstart', function(e) {
     if (typeof _demoActive !== 'undefined' && _demoActive) return;
     _swipeTarget = e.target;
     _swipeStartX = e.changedTouches[0].clientX;
     _swipeStartY = e.changedTouches[0].clientY;
-    _swipeStartTime = Date.now();
+    _swiping = false;
+    _swipeDirection = 0;
+    _swipeCurrentPanel = null;
+    _swipeNextPanel = null;
+    _swipeNextIndex = -1;
+    _swipeWidth = window.innerWidth;
 }, { passive: true });
 
-document.addEventListener('touchend', function(e) {
+document.addEventListener('touchmove', function(e) {
     if (typeof _demoActive !== 'undefined' && _demoActive) return;
+    if (isSwipeBlocked(_swipeTarget)) return;
 
-    var dx = e.changedTouches[0].clientX - _swipeStartX;
-    var dy = e.changedTouches[0].clientY - _swipeStartY;
-    var dt = Date.now() - _swipeStartTime;
+    var cx = e.changedTouches[0].clientX;
+    var cy = e.changedTouches[0].clientY;
+    var dx = cx - _swipeStartX;
+    var dy = cy - _swipeStartY;
 
-    // Must be a quick horizontal swipe: >80px horizontal, <80px vertical, <400ms
-    if (Math.abs(dx) < 80 || Math.abs(dy) > Math.abs(dx) * 0.7 || dt > 400) return;
-
-    // Don't swipe if touch started on the main canvas (Layout tab uses touch for pattern/pan)
-    var el = _swipeTarget;
-    while (el) {
-        if (el.id === 'canvas' || el.id === 'canvasContainer' ||
-            el.id === 'detailCanvas' || el.id === 'detailCanvasContainer' ||
-            el.id === 'perimeterCanvas' || el.id === 'perimeterCanvasContainer') return;
-        // Also skip if inside a modal overlay
-        if (el.classList && el.classList.contains('modal-overlay')) return;
-        el = el.parentElement;
+    // Decide direction on first significant movement
+    if (_swipeDirection === 0) {
+        if (Math.abs(dx) > 15 || Math.abs(dy) > 15) {
+            if (Math.abs(dy) > Math.abs(dx)) {
+                _swipeDirection = -1; // vertical scroll — don't interfere
+                return;
+            }
+            _swipeDirection = 1; // horizontal — we own this gesture
+        } else {
+            return;
+        }
     }
 
-    // Find current tab
-    var currentTab = null;
-    var activePanel = document.querySelector('.panel.active');
-    if (activePanel) currentTab = activePanel.id;
-    if (!currentTab) return;
+    if (_swipeDirection !== 1) return;
 
-    var currentIndex = TAB_ORDER.indexOf(currentTab);
+    // Prevent vertical scroll while swiping horizontally
+    e.preventDefault();
+
+    var currentIndex = getCurrentTabIndex();
     if (currentIndex === -1) return;
 
-    var nextIndex;
-    if (dx < 0) {
-        // Swipe left → next tab
-        nextIndex = currentIndex + 1;
-        if (nextIndex >= TAB_ORDER.length) return; // already at last tab
-    } else {
-        // Swipe right → previous tab
-        nextIndex = currentIndex - 1;
-        if (nextIndex < 0) return; // already at first tab
+    // Determine which panel to show as the "incoming" panel
+    var nextIndex = dx < 0 ? currentIndex + 1 : currentIndex - 1;
+
+    // Clamp at edges — allow rubber-band but don't show a panel
+    if (nextIndex < 0 || nextIndex >= TAB_ORDER.length) {
+        // Rubber band: dampen the movement
+        if (!_swiping) return;
+        dx = dx * 0.3;
     }
 
-    showTab(TAB_ORDER[nextIndex]);
+    // Set up panels on first real swipe movement
+    if (!_swiping) {
+        _swiping = true;
+        _swipeCurrentPanel = document.getElementById(TAB_ORDER[currentIndex]);
+
+        if (nextIndex >= 0 && nextIndex < TAB_ORDER.length) {
+            _swipeNextIndex = nextIndex;
+            _swipeNextPanel = document.getElementById(TAB_ORDER[nextIndex]);
+            // Show the next panel off-screen
+            _swipeNextPanel.style.display = 'block';
+            _swipeNextPanel.style.position = 'fixed';
+            _swipeNextPanel.style.top = '0';
+            _swipeNextPanel.style.left = '0';
+            _swipeNextPanel.style.right = '0';
+            _swipeNextPanel.style.bottom = '0';
+            _swipeNextPanel.style.overflowY = 'auto';
+            _swipeNextPanel.style.paddingTop = '52px'; // below tab bar
+            _swipeNextPanel.style.zIndex = '50';
+        }
+
+        _swipeCurrentPanel.style.transition = 'none';
+        if (_swipeNextPanel) _swipeNextPanel.style.transition = 'none';
+    }
+
+    // Move both panels with finger
+    var clampedDx = Math.max(-_swipeWidth, Math.min(_swipeWidth, dx));
+    _swipeCurrentPanel.style.transform = 'translateX(' + clampedDx + 'px)';
+
+    if (_swipeNextPanel) {
+        var nextOffset = dx < 0 ? (_swipeWidth + clampedDx) : (-_swipeWidth + clampedDx);
+        _swipeNextPanel.style.transform = 'translateX(' + nextOffset + 'px)';
+    }
+}, { passive: false });
+
+document.addEventListener('touchend', function(e) {
+    if (!_swiping) return;
+    _swiping = false;
+
+    var dx = e.changedTouches[0].clientX - _swipeStartX;
+    var threshold = _swipeWidth * 0.25; // 25% of screen width to commit
+    var shouldSwitch = Math.abs(dx) > threshold && _swipeNextPanel && _swipeNextIndex >= 0;
+
+    if (shouldSwitch) {
+        // Animate both panels to their final positions
+        _swipeCurrentPanel.style.transition = 'transform 0.25s ease-out';
+        _swipeNextPanel.style.transition = 'transform 0.25s ease-out';
+
+        _swipeCurrentPanel.style.transform = 'translateX(' + (dx < 0 ? -_swipeWidth : _swipeWidth) + 'px)';
+        _swipeNextPanel.style.transform = 'translateX(0)';
+
+        setTimeout(function() {
+            // Clean up and do the real tab switch
+            resetSwipePanels();
+            showTab(TAB_ORDER[_swipeNextIndex]);
+        }, 260);
+    } else {
+        // Snap back — not enough swipe
+        _swipeCurrentPanel.style.transition = 'transform 0.2s ease-out';
+        _swipeCurrentPanel.style.transform = 'translateX(0)';
+
+        if (_swipeNextPanel) {
+            _swipeNextPanel.style.transition = 'transform 0.2s ease-out';
+            _swipeNextPanel.style.transform = 'translateX(' + (dx < 0 ? _swipeWidth : -_swipeWidth) + 'px)';
+        }
+
+        setTimeout(resetSwipePanels, 220);
+    }
 }, { passive: true });
+
+function resetSwipePanels() {
+    document.querySelectorAll('.panel').forEach(function(p) {
+        p.style.transform = '';
+        p.style.transition = '';
+        p.style.position = '';
+        p.style.top = '';
+        p.style.left = '';
+        p.style.right = '';
+        p.style.bottom = '';
+        p.style.overflowY = '';
+        p.style.paddingTop = '';
+        p.style.zIndex = '';
+    });
+}
 
 // ==================== REMOTE SYNC (Legacy - kept for compatibility) ====================
 var syncRole = null;
