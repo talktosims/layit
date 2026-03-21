@@ -8549,9 +8549,10 @@ function drawMosaicField(ox, oy, s, wall, voidPolys, patternOx, patternOy, projM
         stColIn = subW + subGr;
         stRowIn = subH + subGr;
     } else if (subShape === 'ogee') {
-        // Ogee/provenzal — staggered like arabesque
+        // Ogee/provenzal — interlocking by half height, brick offset
         stColIn = subW + subGr;
         stRowIn = subH * 0.5 + subGr;
+        // Tiles in odd rows rotate 180° (handled in draw loop)
     } else if (subShape === 'starcross') {
         // Star & Cross: 8-pointed stars on a grid, with small rotated squares
         // filling the gaps. Grid spacing = star_size * (1 + 1/sqrt(2))
@@ -8560,16 +8561,17 @@ function drawMosaicField(ox, oy, s, wall, voidPolys, patternOx, patternOy, projM
         stColIn = subW * scFactor + subGr;
         stRowIn = subH * scFactor + subGr;
     } else if (subShape === 'kite') {
+        // Periodic kite: brick offset, alternating rows flip 180°
         stColIn = subW + subGr;
-        stRowIn = subH * 0.75 + subGr;
+        stRowIn = subH * 0.5 + subGr;
     } else if (subShape === 'leaf') {
+        // Teardrop: brick offset, checkerboard 180° rotation
+        stColIn = subW + subGr;
+        stRowIn = subH * 0.5 + subGr;
+    } else if (subShape === 'dragonscale') {
+        // Overlapping scales: brick offset, rows overlap ~25%
         stColIn = subW + subGr;
         stRowIn = subH * 0.75 + subGr;
-    } else if (subShape === 'dragonscale') {
-        // Like fishscale but pointed top
-        stColIn = subW + subGr;
-        var dsRw = subW / 2;
-        stRowIn = dsRw * 0.5 + subGr;
     } else {
         // square
         stColIn = subW + subGr;
@@ -8977,6 +8979,16 @@ function drawMosaicField(ox, oy, s, wall, voidPolys, patternOx, patternOy, projM
                 if (((row % 2 + 2) % 2) === 1) px += stColPx / 2;
             }
 
+            // Determine if this tile should be flipped 180° for proper tessellation
+            var _subFlipped = false;
+            if (subShape === 'leaf' || subShape === 'kite') {
+                // Checkerboard flip: every other tile in both directions
+                _subFlipped = ((row + col) % 2 + 2) % 2 === 1;
+            } else if (subShape === 'ogee' || subShape === 'arabesque') {
+                // Alternate rows flip
+                _subFlipped = ((row % 2 + 2) % 2) === 1;
+            }
+
             // Quick bounding box cull
             if (px < wallMinX || px > wallMaxX || py < wallMinY || py > wallMaxY) continue;
 
@@ -9082,9 +9094,18 @@ function drawMosaicField(ox, oy, s, wall, voidPolys, patternOx, patternOy, projM
                 cx.lineWidth = 1;
             }
 
-            // Draw the sub-tile
+            // Draw the sub-tile (flip 180° if needed for interlocking)
+            if (_subFlipped) {
+                cx.save();
+                cx.translate(px, py);
+                cx.rotate(Math.PI);
+                cx.translate(-px, -py);
+            }
             drawSubTilePath(px, py);
             cx.fill();
+            if (_subFlipped) {
+                cx.restore();
+            }
             // Fishscale tiles overlap, so stroke grout lines explicitly
             if (subShape === 'fishscale') {
                 cx.strokeStyle = '#333';
