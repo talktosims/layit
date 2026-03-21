@@ -8545,9 +8545,9 @@ function drawMosaicField(ox, oy, s, wall, voidPolys, patternOx, patternOy, projM
         stColIn = subW + subGr;
         stRowIn = subH + subGr;
     } else if (subShape === 'quatrefoil') {
-        // 4-lobed clover
-        stColIn = subW + subGr;
-        stRowIn = subH + subGr;
+        // 4-lobed clover on square grid, small diamond fillers at intersections
+        stColIn = subW * 0.85 + subGr;
+        stRowIn = subH * 0.85 + subGr;
     } else if (subShape === 'ogee') {
         // Ogee/provenzal — interlocking by half height, brick offset
         stColIn = subW + subGr;
@@ -9111,6 +9111,28 @@ function drawMosaicField(ox, oy, s, wall, voidPolys, patternOx, patternOy, projM
                 cx.strokeStyle = '#333';
                 cx.lineWidth = Math.max(1, stGrPx);
                 cx.stroke();
+            }
+
+            // Quatrefoil: draw small diamond fillers at grid intersections
+            if (subShape === 'quatrefoil') {
+                var qfSize = stColPx * 0.18;
+                var qfX = px + stColPx / 2;
+                var qfY = py + stRowPx / 2;
+                if (qfX > wallMinX && qfX < wallMaxX && qfY > wallMinY && qfY < wallMaxY) {
+                    if (inPoly([qfX, qfY], wall)) {
+                        cx.fillStyle = isCut ? '#FF9800' : '#81C784';
+                        cx.strokeStyle = isCut ? '#E65100' : '#2E7D32';
+                        cx.lineWidth = 0.5;
+                        cx.beginPath();
+                        cx.moveTo(qfX, qfY - qfSize);
+                        cx.lineTo(qfX + qfSize, qfY);
+                        cx.lineTo(qfX, qfY + qfSize);
+                        cx.lineTo(qfX - qfSize, qfY);
+                        cx.closePath();
+                        cx.fill();
+                        cx.stroke();
+                    }
+                }
             }
 
             // Rhombus / 3D Cube: draw 3 faces per cube for tumbling blocks effect
