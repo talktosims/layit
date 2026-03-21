@@ -1061,6 +1061,156 @@
             transform: scale(0.97);
         }
 
+        /* ==================== DEMO WALKTHROUGH ==================== */
+        #demo-input-blocker {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            z-index: 10001;
+            background: transparent;
+        }
+        #demo-cursor {
+            display: none;
+            position: fixed;
+            z-index: 100003;
+            pointer-events: none;
+            transition: none;
+        }
+        #demo-cursor .cursor-svg {
+            width: 24px;
+            height: 24px;
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.6));
+        }
+        #demo-cursor .pulse-ring {
+            position: absolute;
+            top: 0; left: 0;
+            width: 36px; height: 36px;
+            border: 2px solid rgba(239,68,68,0.7);
+            border-radius: 50%;
+            transform: translate(-6px, -6px);
+            opacity: 0;
+            pointer-events: none;
+        }
+        #demo-cursor .pulse-ring.active {
+            animation: demoPulse 0.6s ease-out;
+        }
+        @keyframes demoPulse {
+            0% { transform: translate(-6px,-6px) scale(0.5); opacity: 1; }
+            100% { transform: translate(-6px,-6px) scale(2.5); opacity: 0; }
+        }
+        #demo-cursor .cursor-label {
+            position: absolute;
+            top: 28px; left: 16px;
+            background: var(--accent);
+            color: #fff;
+            font-size: 10px;
+            font-weight: 700;
+            padding: 3px 8px;
+            border-radius: 6px;
+            white-space: nowrap;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+        #demo-cursor .cursor-label.visible {
+            opacity: 1;
+        }
+        /* Spotlight overlay */
+        #demo-spotlight {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            z-index: 10002;
+            pointer-events: none;
+        }
+        #demo-spotlight .spot-overlay {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.65);
+            transition: clip-path 0.4s ease;
+        }
+        #demo-spotlight .spot-tooltip {
+            position: absolute;
+            background: var(--bg-elevated);
+            color: var(--text-primary);
+            font-size: 12px;
+            line-height: 1.5;
+            padding: 10px 14px;
+            border-radius: 10px;
+            border: 1px solid var(--accent);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+            max-width: 280px;
+            z-index: 10003;
+            pointer-events: none;
+        }
+        /* Playback bar */
+        #demo-playback {
+            display: none;
+            position: fixed;
+            bottom: 0; left: 0; right: 0;
+            height: 48px;
+            z-index: 100004;
+            background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+            border-top: 1px solid rgba(139,92,246,0.4);
+            box-shadow: 0 -4px 16px rgba(0,0,0,0.5);
+            padding: 0 12px;
+            align-items: center;
+            gap: 8px;
+        }
+        #demo-playback .demo-dots {
+            display: flex;
+            gap: 5px;
+            align-items: center;
+            flex-shrink: 0;
+        }
+        #demo-playback .demo-dot {
+            width: 8px; height: 8px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.2);
+            transition: background 0.2s, transform 0.2s;
+        }
+        #demo-playback .demo-dot.active {
+            background: var(--accent);
+            transform: scale(1.3);
+        }
+        #demo-playback .demo-dot.done {
+            background: var(--success);
+        }
+        #demo-playback .demo-caption {
+            flex: 1;
+            font-size: 10px;
+            color: var(--text-secondary);
+            line-height: 1.3;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            margin: 0 6px;
+        }
+        #demo-playback .demo-controls {
+            display: flex;
+            gap: 4px;
+            flex-shrink: 0;
+        }
+        #demo-playback .demo-btn {
+            width: 36px; height: 36px;
+            border-radius: 50%;
+            border: none;
+            background: rgba(255,255,255,0.1);
+            color: #fff;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            -webkit-appearance: none;
+        }
+        #demo-playback .demo-btn:active {
+            background: rgba(255,255,255,0.2);
+        }
+        /* ==================== END DEMO WALKTHROUGH CSS ==================== */
+
     </style>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
@@ -2005,7 +2155,8 @@
             <p class="hint" style="text-align:left;line-height:1.7;margin-bottom:12px;">
                 New to LayIt? Replay the guided walkthrough to learn the basics.
             </p>
-            <button class="btn-secondary" onclick="restartOnboarding()" style="width:100%;">Restart Tutorial</button>
+            <button class="btn-secondary" onclick="restartOnboarding()" style="width:100%;margin-bottom:8px;">Restart Tutorial</button>
+            <button class="btn-secondary" onclick="startDemoMode()" style="width:100%;background:linear-gradient(135deg,rgba(139,92,246,0.2),rgba(239,68,68,0.15));border-color:rgba(139,92,246,0.4);">▶ Watch Demo (2 min)</button>
         </div>
     </div>
 
@@ -12065,9 +12216,382 @@ if (!localStorage.getItem('layit_onboarded')) {
 }
 
 // ==================== END ONBOARDING WIZARD ====================
+
+// ==================== DEMO WALKTHROUGH ====================
+
+const DEMO_SCRIPT = [
+  {
+    tab: 'diagram',
+    target: '.info-bar',
+    narration: 'Welcome to LayIt — the app that plans your entire tile job before you cut a single piece. This is your layout view. Green tiles are full. Orange tiles need cutting.',
+    delay: 7000,
+    waypoints: [
+      { at: 0.2, selector: '#fullCount', label: 'Full Tiles' },
+      { at: 0.5, selector: '#cutCount', label: 'Cut Tiles' },
+      { at: 0.8, selector: '#wastePercentWrap', label: 'Waste %' },
+    ],
+  },
+  {
+    tab: 'diagram',
+    target: '#optimizeBtn',
+    narration: 'Hit Optimize and the app finds the pattern position that wastes the fewest tiles. Fewer cuts, less waste, more money in your pocket.',
+    delay: 6000,
+    waypoints: [
+      { at: 0.5, selector: '#optimizeBtn', label: 'Optimize' },
+    ],
+  },
+  {
+    tab: 'diagram',
+    target: '#lockBtn',
+    narration: 'Lock the pattern to start tracking cuts. Once locked, you can pan and zoom freely without accidentally moving your tiles.',
+    delay: 5500,
+    waypoints: [
+      { at: 0.5, selector: '#lockBtn', label: 'Lock Pattern' },
+    ],
+  },
+  {
+    tab: 'wall',
+    target: '#perimeterCanvasContainer',
+    narration: 'Start by measuring your space on the Wall tab. Draw the outline of your room by tapping corners, then enter the real measurements for each wall.',
+    delay: 7000,
+    waypoints: [
+      { at: 0.3, selector: '#perimeterCanvasContainer', label: 'Draw Perimeter' },
+      { at: 0.7, selector: '#applyPerimBtn', label: 'Update Layout' },
+    ],
+  },
+  {
+    tab: 'tile',
+    target: null,
+    narration: 'Pick your tile on the Tile tab. The fastest way? Photograph the spec sticker on the box. The AI reads dimensions, shape, material, and pieces per box — all in one shot.',
+    delay: 7000,
+    waypoints: [
+      { at: 0.4, selector: '#scanBadge', label: 'AI Tile Scanner' },
+    ],
+  },
+  {
+    tab: 'tile',
+    target: '#tilePreset',
+    narration: 'Or choose from over 250 built-in presets. Search by name or filter by shape — hex, subway, square, herringbone, mosaic. One tap applies it.',
+    delay: 6000,
+    waypoints: [
+      { at: 0.5, selector: '#tilePreset', label: 'Tile Presets' },
+    ],
+  },
+  {
+    tab: 'voids',
+    target: null,
+    narration: 'Got a window, outlet, or shower niche? Add it on the Cutouts tab. The layout automatically tiles around obstacles.',
+    delay: 5000,
+    waypoints: [
+      { at: 0.5, selector: '#voidLabel', label: 'Add Cutout' },
+    ],
+  },
+  {
+    tab: 'calc',
+    target: null,
+    narration: 'The Calculator shows exactly how many tiles and boxes to buy — full count plus cuts plus a breakage buffer. Never overbuy again.',
+    delay: 5500,
+    waypoints: [
+      { at: 0.3, selector: '#calcTotalCount', label: 'Total Tiles' },
+      { at: 0.7, selector: '#boxCountDisplay', label: 'Box Count' },
+    ],
+  },
+  {
+    tab: 'projects',
+    target: null,
+    narration: 'Save your projects, share layouts with your installer, or generate a professional client report with your company branding. Three pages, print-ready.',
+    delay: 6000,
+    waypoints: [
+      { at: 0.5, selector: '#projName', label: 'Project Files' },
+    ],
+  },
+  {
+    tab: 'settings',
+    target: null,
+    narration: 'Upgrade to Pro for unlimited AI scanning, cut tracking with exact measurements, branded client reports, and more. LayIt — every tile in its perfect place.',
+    delay: 6500,
+    waypoints: [
+      { at: 0.5, selector: '#proUpgradeBtn', label: 'Upgrade to Pro' },
+    ],
+  },
+];
+
+// --- Demo state ---
+let _demoActive = false;
+let _demoStepIndex = 0;
+let _demoPaused = false;
+let _demoAbort = null; // AbortController
+let _demoResolve = null;
+
+// --- demoCursor object ---
+const demoCursor = {
+    el: null,
+    labelEl: null,
+    pulseEl: null,
+    init() {
+        this.el = document.getElementById('demo-cursor');
+        this.labelEl = this.el.querySelector('.cursor-label');
+        this.pulseEl = this.el.querySelector('.pulse-ring');
+    },
+    show() { this.el.style.display = 'block'; },
+    hide() { this.el.style.display = 'none'; this.setLabel(''); },
+    setLabel(text) {
+        if (text) {
+            this.labelEl.textContent = text;
+            this.labelEl.classList.add('visible');
+        } else {
+            this.labelEl.classList.remove('visible');
+        }
+    },
+    setPos(x, y) {
+        this.el.style.left = x + 'px';
+        this.el.style.top = y + 'px';
+    },
+    glideTo(x, y, duration, signal) {
+        return new Promise((resolve, reject) => {
+            if (signal && signal.aborted) { reject('aborted'); return; }
+            const startX = parseFloat(this.el.style.left) || window.innerWidth / 2;
+            const startY = parseFloat(this.el.style.top) || window.innerHeight / 2;
+            const startTime = performance.now();
+            const self = this;
+            function tick(now) {
+                if (signal && signal.aborted) { reject('aborted'); return; }
+                const t = Math.min((now - startTime) / duration, 1);
+                const ease = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+                self.el.style.left = (startX + (x - startX) * ease) + 'px';
+                self.el.style.top = (startY + (y - startY) * ease) + 'px';
+                if (t < 1) requestAnimationFrame(tick);
+                else resolve();
+            }
+            requestAnimationFrame(tick);
+        });
+    },
+    glideToElement(selector, label, signal) {
+        const el = document.querySelector(selector);
+        if (!el) return Promise.resolve();
+        const rect = el.getBoundingClientRect();
+        const x = rect.left + rect.width / 2;
+        const y = rect.top + rect.height / 2;
+        if (label) this.setLabel(label);
+        return this.glideTo(x, y, 600, signal);
+    },
+    click() {
+        this.pulseEl.classList.remove('active');
+        void this.pulseEl.offsetWidth;
+        this.pulseEl.classList.add('active');
+    },
+};
+
+// --- Spotlight ---
+function showSpotlight(target) {
+    const spot = document.getElementById('demo-spotlight');
+    const overlay = spot.querySelector('.spot-overlay');
+    spot.style.display = 'block';
+    if (!target) {
+        // No specific target — dim the whole screen lightly
+        overlay.style.clipPath = 'none';
+        overlay.style.background = 'rgba(0,0,0,0.45)';
+        return;
+    }
+    const el = typeof target === 'string' ? document.querySelector(target) : target;
+    if (!el) { overlay.style.clipPath = 'none'; return; }
+    const r = el.getBoundingClientRect();
+    const pad = 6;
+    const x1 = r.left - pad, y1 = r.top - pad, x2 = r.right + pad, y2 = r.bottom + pad;
+    const rad = 8;
+    overlay.style.background = 'rgba(0,0,0,0.65)';
+    overlay.style.clipPath = `polygon(
+        0% 0%, 0% 100%, ${x1}px 100%, ${x1}px ${y1}px,
+        ${x2}px ${y1}px, ${x2}px ${y2}px, ${x1}px ${y2}px,
+        ${x1}px 100%, 100% 100%, 100% 0%
+    )`;
+}
+
+function hideSpotlight() {
+    const spot = document.getElementById('demo-spotlight');
+    spot.style.display = 'none';
+}
+
+// --- Playback bar ---
+function showPlayback() {
+    const bar = document.getElementById('demo-playback');
+    bar.style.display = 'flex';
+    renderDots();
+}
+function hidePlayback() {
+    document.getElementById('demo-playback').style.display = 'none';
+}
+function renderDots() {
+    const container = document.querySelector('#demo-playback .demo-dots');
+    container.innerHTML = '';
+    DEMO_SCRIPT.forEach((_, i) => {
+        const dot = document.createElement('span');
+        dot.className = 'demo-dot' + (i === _demoStepIndex ? ' active' : '') + (i < _demoStepIndex ? ' done' : '');
+        container.appendChild(dot);
+    });
+}
+function setCaption(text) {
+    document.querySelector('#demo-playback .demo-caption').textContent = text;
+}
+
+// --- Run waypoints ---
+function runWaypoints(step, signal) {
+    return new Promise((resolve, reject) => {
+        if (!step.waypoints || step.waypoints.length === 0) { resolve(); return; }
+        const total = step.delay;
+        let completed = 0;
+        step.waypoints.forEach(wp => {
+            const t = wp.at * total;
+            setTimeout(() => {
+                if (signal && signal.aborted) return;
+                demoCursor.glideToElement(wp.selector, wp.label, signal).then(() => {
+                    if (signal && signal.aborted) return;
+                    demoCursor.click();
+                }).catch(() => {});
+                completed++;
+                if (completed >= step.waypoints.length && !signal.aborted) {
+                    // resolved by delay timer, not here
+                }
+            }, t);
+        });
+        setTimeout(() => {
+            if (signal && signal.aborted) { reject('aborted'); return; }
+            demoCursor.setLabel('');
+            resolve();
+        }, total);
+    });
+}
+
+// --- Play a single step ---
+async function playDemoStep(index) {
+    if (index >= DEMO_SCRIPT.length) return;
+    _demoStepIndex = index;
+    const step = DEMO_SCRIPT[index];
+    const signal = _demoAbort ? _demoAbort.signal : null;
+
+    // Navigate to tab
+    showTab(step.tab);
+    await demoWait(300, signal);
+
+    // Update playback bar
+    renderDots();
+    setCaption(step.narration);
+
+    // Show spotlight
+    showSpotlight(step.target);
+
+    // Position cursor at center to start
+    demoCursor.show();
+    if (step.target) {
+        await demoCursor.glideToElement(step.target, '', signal);
+        demoCursor.click();
+    }
+
+    // Run waypoints (timed to narration)
+    await runWaypoints(step, signal);
+
+    // Clear for next step
+    hideSpotlight();
+}
+
+// --- Utility: wait with abort ---
+function demoWait(ms, signal) {
+    return new Promise((resolve, reject) => {
+        if (signal && signal.aborted) { reject('aborted'); return; }
+        const id = setTimeout(() => resolve(), ms);
+        if (signal) signal.addEventListener('abort', () => { clearTimeout(id); reject('aborted'); }, { once: true });
+    });
+}
+
+// --- Wait while paused ---
+function demoWaitWhilePaused(signal) {
+    return new Promise((resolve, reject) => {
+        if (signal && signal.aborted) { reject('aborted'); return; }
+        if (!_demoPaused) { resolve(); return; }
+        const check = setInterval(() => {
+            if (signal && signal.aborted) { clearInterval(check); reject('aborted'); return; }
+            if (!_demoPaused) { clearInterval(check); resolve(); }
+        }, 100);
+    });
+}
+
+// --- Main entry ---
+async function startDemoMode() {
+    if (_demoActive) return;
+    _demoActive = true;
+    _demoPaused = false;
+    _demoStepIndex = 0;
+    _demoAbort = new AbortController();
+
+    demoCursor.init();
+    demoCursor.setPos(window.innerWidth / 2, window.innerHeight / 2);
+
+    // Show blocker + playback
+    document.getElementById('demo-input-blocker').style.display = 'block';
+    showPlayback();
+
+    const signal = _demoAbort.signal;
+
+    try {
+        for (let i = 0; i < DEMO_SCRIPT.length; i++) {
+            await demoWaitWhilePaused(signal);
+            await playDemoStep(i);
+            if (i < DEMO_SCRIPT.length - 1) {
+                await demoWait(500, signal);
+            }
+        }
+        // Finished
+        setCaption('Demo complete!');
+        await demoWait(2000, signal);
+    } catch (e) {
+        // Aborted — that's fine
+    }
+    stopDemoMode();
+}
+
+function stopDemoMode() {
+    _demoActive = false;
+    _demoPaused = false;
+    if (_demoAbort) { _demoAbort.abort(); _demoAbort = null; }
+    demoCursor.hide();
+    hideSpotlight();
+    hidePlayback();
+    document.getElementById('demo-input-blocker').style.display = 'none';
+    showTab('diagram');
+}
+
+function toggleDemoPause() {
+    _demoPaused = !_demoPaused;
+    const btn = document.querySelector('#demo-playback .demo-btn-pause');
+    if (btn) btn.textContent = _demoPaused ? '▶' : '⏸';
+}
+
+// ==================== END DEMO WALKTHROUGH ====================
 </script>
 <script>
 if("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js");
 </script>
+
+<!-- Demo Walkthrough HTML Elements -->
+<div id="demo-input-blocker"></div>
+<div id="demo-spotlight">
+    <div class="spot-overlay"></div>
+</div>
+<div id="demo-cursor">
+    <svg class="cursor-svg" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M4 2L4 20L9.5 14.5L16 22L20 18L13.5 11.5L20 6L4 2Z" fill="white" stroke="#333" stroke-width="1.5" stroke-linejoin="round"/>
+    </svg>
+    <div class="pulse-ring"></div>
+    <span class="cursor-label"></span>
+</div>
+<div id="demo-playback">
+    <div class="demo-dots"></div>
+    <div class="demo-caption">Starting demo...</div>
+    <div class="demo-controls">
+        <button class="demo-btn demo-btn-pause" onclick="toggleDemoPause()" title="Pause/Resume">⏸</button>
+        <button class="demo-btn" onclick="stopDemoMode()" title="Stop Demo">⏹</button>
+    </div>
+</div>
+
 </body>
 </html>
