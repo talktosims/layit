@@ -5720,12 +5720,29 @@ function showTabInfoPopup(tabId) {
     document.body.appendChild(overlay);
 }
 
+// Subtle dark background per tab — each tab gets its own hue
+var TAB_BACKGROUNDS = {
+    diagram:  '#080b12',  // neutral dark (default)
+    wall:     '#0b0f14',  // cool slate
+    tile:     '#0a0d14',  // deep navy
+    voids:    '#0d0b10',  // muted purple
+    calc:     '#0b100d',  // forest hint
+    projects: '#0f0d0b',  // warm espresso
+    proj:     '#080d0f',  // teal dark
+    settings: '#0c0a10',  // violet dark
+};
+
 function showTab(id) {
     document.querySelectorAll('.panel').forEach(function(p) { p.classList.remove('active'); });
     document.querySelectorAll('.tab').forEach(function(t) { t.classList.remove('active'); });
     var panel = document.getElementById(id);
     if (!panel) return;
     panel.classList.add('active');
+
+    // Set tab-specific background color
+    var bg = TAB_BACKGROUNDS[id] || '#080b12';
+    document.body.style.background = bg;
+    document.body.style.transition = 'background 0.3s ease';
 
     // Update active tab button
     document.querySelectorAll('.tab').forEach(function(t) {
@@ -12316,7 +12333,7 @@ const DEMO_SCRIPT = [
   {
     tab: 'settings',
     target: null,
-    narration: 'Upgrade to Pro for unlimited AI scanning, cut tracking with exact measurements, branded client reports, and more. LayIt — every tile in its perfect place.',
+    narration: 'Upgrade to Pro for unlimited AI scanning, cut tracking with exact measurements, branded client reports, and more. LayIt — plan it, cut it, nail it.',
     delay: 6500,
     waypoints: [
       { at: 0.5, selector: '#proUpgradeBtn', label: 'Upgrade to Pro' },
