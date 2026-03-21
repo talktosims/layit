@@ -5167,7 +5167,7 @@ function drawMosaicSheetDetail(tile) {
             ctx.closePath();
         } else if (subShape === 'starcross') {
             var r = (subWd - subGrd) / 2;
-            var ri = r * 0.4;
+            var ri = r * 0.55;
             for (var i = 0; i < 16; i++) {
                 var angle = (i / 16) * Math.PI * 2 - Math.PI / 2;
                 var rad = (i % 2 === 0) ? r : ri;
@@ -8539,9 +8539,12 @@ function drawMosaicField(ox, oy, s, wall, voidPolys, patternOx, patternOy, projM
         stColIn = subW + subGr;
         stRowIn = subH * 0.5 + subGr;
     } else if (subShape === 'starcross') {
-        // Star and cross pattern
-        stColIn = subW + subGr;
-        stRowIn = subH + subGr;
+        // Star & Cross: 8-pointed stars on a grid, with small rotated squares
+        // filling the gaps. Grid spacing = star_size * (1 + 1/sqrt(2))
+        // The cross square sits at the center of every 4 adjacent stars.
+        var scFactor = 1 + 1 / Math.SQRT2; // ~1.707
+        stColIn = subW * scFactor + subGr;
+        stRowIn = subH * scFactor + subGr;
     } else if (subShape === 'kite') {
         stColIn = subW + subGr;
         stRowIn = subH * 0.75 + subGr;
@@ -8704,9 +8707,9 @@ function drawMosaicField(ox, oy, s, wall, voidPolys, patternOx, patternOy, projM
                     [px, py + hh], [px - hw * 0.2, py + hh * 0.6],
                     [px - hw * 0.5, py + hh * 0.2], [px - hw * 0.7, py - hh * 0.3]];
         } else if (subShape === 'starcross') {
-            // 16-point star polygon
+            // 8-pointed star for star & cross pattern
             var r = stWpx / 2;
-            var ri = r * 0.4;
+            var ri = r * 0.55; // inner radius — wider points for proper tessellation
             var pts = [];
             for (var i = 0; i < 16; i++) {
                 var angle = (i / 16) * Math.PI * 2 - Math.PI / 2;
@@ -8879,9 +8882,9 @@ function drawMosaicField(ox, oy, s, wall, voidPolys, patternOx, patternOy, projM
             cx.bezierCurveTo(px - hw, py, px - hw * 0.8, py - hh * 0.5, px, py - hh);
             cx.closePath();
         } else if (subShape === 'starcross') {
-            // 8-pointed star (regular octagram)
+            // 8-pointed star for star & cross tessellation
             var r = (stWpx - stGrPx) / 2;
-            var ri = r * 0.4;
+            var ri = r * 0.55;
             for (var i = 0; i < 16; i++) {
                 var angle = (i / 16) * Math.PI * 2 - Math.PI / 2;
                 var rad = (i % 2 === 0) ? r : ri;
@@ -9073,6 +9076,32 @@ function drawMosaicField(ox, oy, s, wall, voidPolys, patternOx, patternOy, projM
                 cx.strokeStyle = '#333';
                 cx.lineWidth = Math.max(1, stGrPx);
                 cx.stroke();
+            }
+
+            // Star & Cross: draw small rotated square "cross" tiles between stars
+            if (subShape === 'starcross') {
+                var starR = (stWpx - stGrPx) / 2;
+                var crossSize = starR * 0.4 * Math.SQRT2; // cross fills the gap
+                // Cross sits at the bottom-right midpoint of 4 adjacent stars
+                var crossX = px + stColPx / 2;
+                var crossY = py + stRowPx / 2;
+                if (crossX > wallMinX && crossX < wallMaxX && crossY > wallMinY && crossY < wallMaxY) {
+                    var crossInWall = inPoly([crossX, crossY], wall);
+                    if (crossInWall) {
+                        cx.fillStyle = isCut ? '#FF9800' : '#81C784';
+                        cx.strokeStyle = isCut ? '#E65100' : '#2E7D32';
+                        cx.lineWidth = 0.5;
+                        // Draw rotated 45° square
+                        cx.beginPath();
+                        cx.moveTo(crossX, crossY - crossSize);
+                        cx.lineTo(crossX + crossSize, crossY);
+                        cx.lineTo(crossX, crossY + crossSize);
+                        cx.lineTo(crossX - crossSize, crossY);
+                        cx.closePath();
+                        cx.fill();
+                        cx.stroke();
+                    }
+                }
             }
 
             // Octagon + Dot: draw small square "dots" in the corner gaps
