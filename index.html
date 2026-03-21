@@ -2366,6 +2366,121 @@ function updateLayoutFromPerimeter() {
     }
     // Apply and navigate
     applyPerimeter(false);
+
+    // ── Calibration: pair workspace photo with manual measurements ──
+    // This trains the AI to eventually read rooms from photos alone (Patent 2)
+    submitCalibrationPair();
+}
+
+// Submit workspace photo + manual measurements as a calibration training pair
+function submitCalibrationPair() {
+    if (!workspacePhoto) return; // No photo taken, nothing to calibrate
+    if (!_tileDbReady) return; // Firebase not ready
+    if (!perimeterState.segments || perimeterState.segments.length === 0) return;
+
+    // Build ground truth from manual measurements
+    var groundTruth = {
+        segmentCount: perimeterState.segments.length,
+        segments: perimeterState.segments.map(function(s, i) {
+            return {
+                index: i,
+                length: s.length,
+                direction: getSegmentDirection(s)
+            };
+        }),
+        totalWidth: C.wall.tW,
+        totalHeight: C.wall.lH,
+        mode: perimeterState.mode, // 'wall' or 'floor'
+        voids: C.voids.map(function(v) {
+            return { label: v.l, x: v.x, y: v.y, w: v.w, h: v.h };
+        })
+    };
+
+    // Send photo to Opus for AI estimate (background, non-blocking)
+    var imageData = workspacePhoto.split(',')[1];
+    if (!imageData || !_AI_API_KEY) {
+        // No API key or bad image — just save the ground truth without AI estimate
+        saveCalibrationData(null, groundTruth);
+        return;
+    }
+
+    fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'x-api-key': _AI_API_KEY,
+            'anthropic-version': '2023-06-01',
+            'anthropic-dangerous-direct-browser-access': 'true'
+        },
+        body: JSON.stringify({
+            model: 'claude-opus-4-6',
+            max_tokens: 800,
+            messages: [{
+                role: 'user',
+                content: [
+                    { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: imageData } },
+                    { type: 'text', text: 'You are training a spatial measurement AI. Analyze this photo of a ' + perimeterState.mode + ' (wall or floor area) that someone wants to tile.\n\n' +
+                        'Estimate the dimensions as best you can. Return ONLY a JSON object:\n' +
+                        '- estimatedWidth: width in inches (your best guess)\n' +
+                        '- estimatedHeight: height in inches (your best guess)\n' +
+                        '- confidence: 0.0 to 1.0 (how confident you are)\n' +
+                        '- features: array of detected features, each with {type: "window"|"outlet"|"niche"|"door"|"cabinet", estimatedX: inches from left, estimatedY: inches from bottom, estimatedW: inches, estimatedH: inches}\n' +
+                        '- reasoning: one sentence about what visual cues you used (tile size reference, outlet cover size, door frame width, etc.)\n' +
+                        '- referenceObjects: what objects in the photo you used for scale estimation\n\n' +
+                        'IMPORTANT: This estimate will be compared against the user\'s manual tape-measure input to calibrate your accuracy over time. Be honest about confidence. Return ONLY valid JSON.' }
+                ]
+            }]
+        })
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        var aiEstimate = null;
+        try {
+            var text = data.content && data.content[0] && data.content[0].text;
+            if (text) {
+                var jsonMatch = text.match(/\{[\s\S]*\}/);
+                if (jsonMatch) aiEstimate = JSON.parse(jsonMatch[0]);
+            }
+        } catch(e) { /* AI parse failed — still save ground truth */ }
+        saveCalibrationData(aiEstimate, groundTruth);
+    })
+    .catch(function() {
+        // Network error — save ground truth without AI estimate
+        saveCalibrationData(null, groundTruth);
+    });
+}
+
+function saveCalibrationData(aiEstimate, groundTruth) {
+    if (!_tileDbReady) return;
+
+    var entry = {
+        timestamp: Date.now(),
+        date: new Date().toISOString(),
+        groundTruth: groundTruth,
+        aiEstimate: aiEstimate,
+        device: navigator.userAgent.substring(0, 100),
+        photoWidth: null,
+        photoHeight: null
+    };
+
+    // Calculate accuracy metrics if we have both
+    if (aiEstimate && aiEstimate.estimatedWidth && groundTruth.totalWidth) {
+        var widthError = Math.abs(aiEstimate.estimatedWidth - groundTruth.totalWidth);
+        var heightError = Math.abs(aiEstimate.estimatedHeight - groundTruth.totalHeight);
+        entry.accuracy = {
+            widthErrorInches: Math.round(widthError * 100) / 100,
+            heightErrorInches: Math.round(heightError * 100) / 100,
+            widthErrorPercent: Math.round((widthError / groundTruth.totalWidth) * 10000) / 100,
+            heightErrorPercent: Math.round((heightError / groundTruth.totalHeight) * 10000) / 100
+        };
+    }
+
+    // Save to Firebase under calibration/
+    try {
+        firebase.database().ref('calibration').push(entry);
+    } catch(e) {
+        console.warn('Calibration save error:', e);
+    }
 }
 
 function autoPopulatePerimeterRect() {
