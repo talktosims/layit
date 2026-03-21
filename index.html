@@ -2404,6 +2404,46 @@ function submitCalibrationPair() {
         return;
     }
 
+    // Load calibration history to give Opus accuracy context
+    // This is the network effect: past data makes future estimates better
+    var calibrationContext = '';
+    try {
+        firebase.database().ref('simco_spatial_calibration')
+            .orderByChild('timestamp').limitToLast(20)
+            .once('value').then(function(snap) {
+                var entries = [];
+                snap.forEach(function(child) {
+                    var d = child.val();
+                    if (d.accuracy && d.aiEstimate) {
+                        entries.push({
+                            app: d.sourceApp || 'unknown',
+                            type: d.spaceType || d.groundTruth.mode,
+                            actualW: d.groundTruth.totalWidth,
+                            actualH: d.groundTruth.totalHeight,
+                            estimatedW: d.aiEstimate.estimatedWidth,
+                            estimatedH: d.aiEstimate.estimatedHeight,
+                            wErr: d.accuracy.widthErrorPercent + '%',
+                            hErr: d.accuracy.heightErrorPercent + '%'
+                        });
+                    }
+                });
+                if (entries.length > 0) {
+                    var avgWErr = entries.reduce(function(s, e) { return s + parseFloat(e.wErr); }, 0) / entries.length;
+                    var avgHErr = entries.reduce(function(s, e) { return s + parseFloat(e.hErr); }, 0) / entries.length;
+                    calibrationContext = '\n\nCALIBRATION DATA from ' + entries.length + ' previous measurements (from LayIt tile rooms and StageIt store floors):\n' +
+                        'Average width error: ' + avgWErr.toFixed(1) + '%. Average height error: ' + avgHErr.toFixed(1) + '%.\n' +
+                        'Your estimates tend to ' + (avgWErr > 0 ? 'overestimate' : 'underestimate') + ' width. Adjust accordingly.\n' +
+                        'Recent examples: ' + JSON.stringify(entries.slice(-5));
+                }
+                sendCalibrationRequest(imageData, groundTruth, calibrationContext);
+            });
+    } catch(e) {
+        // Firebase read failed — send without calibration context
+        sendCalibrationRequest(imageData, groundTruth, '');
+    }
+}
+
+function sendCalibrationRequest(imageData, groundTruth, calibrationContext) {
     fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
         headers: {
@@ -2419,7 +2459,7 @@ function submitCalibrationPair() {
                 role: 'user',
                 content: [
                     { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: imageData } },
-                    { type: 'text', text: 'You are training a spatial measurement AI. Analyze this photo of a ' + perimeterState.mode + ' (wall or floor area) that someone wants to tile.\n\n' +
+                    { type: 'text', text: 'You are part of SIMCO\'s spatial measurement AI (Patent 2). Analyze this photo of a ' + groundTruth.mode + ' (wall or floor area).\n\n' +
                         'Estimate the dimensions as best you can. Return ONLY a JSON object:\n' +
                         '- estimatedWidth: width in inches (your best guess)\n' +
                         '- estimatedHeight: height in inches (your best guess)\n' +
@@ -2427,7 +2467,10 @@ function submitCalibrationPair() {
                         '- features: array of detected features, each with {type: "window"|"outlet"|"niche"|"door"|"cabinet", estimatedX: inches from left, estimatedY: inches from bottom, estimatedW: inches, estimatedH: inches}\n' +
                         '- reasoning: one sentence about what visual cues you used (tile size reference, outlet cover size, door frame width, etc.)\n' +
                         '- referenceObjects: what objects in the photo you used for scale estimation\n\n' +
-                        'IMPORTANT: This estimate will be compared against the user\'s manual tape-measure input to calibrate your accuracy over time. Be honest about confidence. Return ONLY valid JSON.' }
+                        'REFERENCE SIZES for scale: US duplex outlet cover = 4.5"×2.75". Standard door frame = 32" wide. Light switch plate = 2.75"×4.5". US standard outlet spacing from floor = 12-18". Counter height = 36". Standard ceiling = 96". Tile box = check label dimensions.\n\n' +
+                        'IMPORTANT: This estimate will be compared against the user\'s manual tape-measure input to calibrate your accuracy over time. Be honest about confidence.' +
+                        calibrationContext +
+                        '\n\nReturn ONLY valid JSON.' }
                 ]
             }]
         })
@@ -2475,9 +2518,15 @@ function saveCalibrationData(aiEstimate, groundTruth) {
         };
     }
 
-    // Save to Firebase under calibration/
+    // Save to shared SIMCO spatial calibration pool
+    // Both LayIt (tile rooms) and StageIt (store floors) feed the same pool.
+    // A grocery store aisle is just a room with shelves — the spatial reasoning
+    // is identical. Every calibration pair from either app makes both smarter.
+    // This is the cross-product network effect from Patent 2.
     try {
-        firebase.database().ref('calibration').push(entry);
+        entry.sourceApp = 'layit';
+        entry.spaceType = perimeterState.mode; // 'wall' or 'floor'
+        firebase.database().ref('simco_spatial_calibration').push(entry);
     } catch(e) {
         console.warn('Calibration save error:', e);
     }
