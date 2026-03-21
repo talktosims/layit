@@ -1148,14 +1148,13 @@
             display: none;
             position: fixed;
             bottom: 0; left: 0; right: 0;
-            height: 48px;
             z-index: 100004;
             background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
-            border-top: 1px solid rgba(139,92,246,0.4);
-            box-shadow: 0 -4px 16px rgba(0,0,0,0.5);
-            padding: 0 12px;
-            align-items: center;
-            gap: 8px;
+            border-top: 2px solid rgba(139,92,246,0.4);
+            box-shadow: 0 -4px 20px rgba(0,0,0,0.6);
+            padding: 10px 12px 14px;
+            flex-direction: column;
+            gap: 6px;
         }
         #demo-playback .demo-dots {
             display: flex;
@@ -1177,37 +1176,44 @@
             background: var(--success);
         }
         #demo-playback .demo-caption {
-            flex: 1;
-            font-size: 10px;
-            color: var(--text-secondary);
-            line-height: 1.3;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            display: -webkit-box;
-            -webkit-line-clamp: 2;
-            -webkit-box-orient: vertical;
-            margin: 0 6px;
-        }
-        #demo-playback .demo-controls {
-            display: flex;
-            gap: 4px;
-            flex-shrink: 0;
-        }
-        #demo-playback .demo-btn {
-            width: 36px; height: 36px;
-            border-radius: 50%;
-            border: none;
-            background: rgba(255,255,255,0.1);
-            color: #fff;
-            font-size: 14px;
+            font-size: 13px;
+            color: var(--text-primary);
+            line-height: 1.4;
+            text-align: center;
+            padding: 0 8px;
+            min-height: 36px;
             display: flex;
             align-items: center;
             justify-content: center;
+        }
+        #demo-playback .demo-controls {
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+        }
+        #demo-playback .demo-btn {
+            height: 40px;
+            padding: 0 20px;
+            border-radius: 10px;
+            border: none;
+            background: rgba(255,255,255,0.1);
+            color: #fff;
+            font-size: 13px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
             cursor: pointer;
             -webkit-appearance: none;
+            min-width: 100px;
         }
         #demo-playback .demo-btn:active {
             background: rgba(255,255,255,0.2);
+        }
+        #demo-playback .demo-btn-skip {
+            background: rgba(239,68,68,0.2);
+            color: #fca5a5;
         }
         /* ==================== END DEMO WALKTHROUGH CSS ==================== */
 
@@ -12371,11 +12377,19 @@ const demoCursor = {
     glideToElement(selector, label, signal) {
         const el = document.querySelector(selector);
         if (!el) return Promise.resolve();
-        const rect = el.getBoundingClientRect();
-        const x = rect.left + rect.width / 2;
-        const y = rect.top + rect.height / 2;
-        if (label) this.setLabel(label);
-        return this.glideTo(x, y, 600, signal);
+        // Scroll element into view first so cursor doesn't go off-screen
+        el.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
+        // Wait for scroll to settle, then get position
+        return new Promise((resolve, reject) => {
+            setTimeout(() => {
+                if (signal && signal.aborted) { reject('aborted'); return; }
+                const rect = el.getBoundingClientRect();
+                const x = rect.left + rect.width / 2;
+                const y = rect.top + rect.height / 2;
+                if (label) this.setLabel(label);
+                this.glideTo(x, y, 600, signal).then(resolve).catch(reject);
+            }, 350);
+        });
     },
     click() {
         this.pulseEl.classList.remove('active');
@@ -12471,8 +12485,9 @@ async function playDemoStep(index) {
     const step = DEMO_SCRIPT[index];
     const signal = _demoAbort ? _demoAbort.signal : null;
 
-    // Navigate to tab
+    // Navigate to tab and scroll to top
     showTab(step.tab);
+    window.scrollTo({ top: 0, behavior: 'instant' });
     await demoWait(300, signal);
 
     // Update playback bar
@@ -12531,6 +12546,8 @@ async function startDemoMode() {
     demoCursor.init();
     demoCursor.setPos(window.innerWidth / 2, window.innerHeight / 2);
 
+    // Lock body scroll during demo
+    document.body.style.overflow = 'hidden';
     // Show blocker + playback
     document.getElementById('demo-input-blocker').style.display = 'block';
     showPlayback();
@@ -12563,13 +12580,14 @@ function stopDemoMode() {
     hidePlayback();
     stopDemoAudio();
     document.getElementById('demo-input-blocker').style.display = 'none';
+    document.body.style.overflow = '';
     showTab('diagram');
 }
 
 function toggleDemoPause() {
     _demoPaused = !_demoPaused;
     const btn = document.querySelector('#demo-playback .demo-btn-pause');
-    if (btn) btn.textContent = _demoPaused ? '▶' : '⏸';
+    if (btn) btn.innerHTML = _demoPaused ? '&#9654; Resume' : '&#9208; Pause';
     if (_demoPaused && _demoCurrentAudio) _demoCurrentAudio.pause();
     else if (!_demoPaused && _demoCurrentAudio) _demoCurrentAudio.play();
     if (_demoPaused) window.speechSynthesis.pause();
@@ -12665,8 +12683,8 @@ if("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js");
     <div class="demo-dots"></div>
     <div class="demo-caption">Starting demo...</div>
     <div class="demo-controls">
-        <button class="demo-btn demo-btn-pause" onclick="toggleDemoPause()" title="Pause/Resume">⏸</button>
-        <button class="demo-btn" onclick="stopDemoMode()" title="Stop Demo">⏹</button>
+        <button class="demo-btn demo-btn-pause" onclick="toggleDemoPause()">⏸ Pause</button>
+        <button class="demo-btn demo-btn-skip" onclick="stopDemoMode()">Skip Demo</button>
     </div>
 </div>
 
