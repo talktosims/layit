@@ -5676,6 +5676,8 @@ function markTabVisited(tabId) {
 }
 
 function showTabInfoPopup(tabId) {
+    // Don't show during demo mode
+    if (typeof demoRunning !== 'undefined' && demoRunning) return;
     // Don't show if onboarding hasn't been completed
     if (!localStorage.getItem('layit_onboarded')) return;
     // Don't show if already visited
@@ -12487,8 +12489,11 @@ async function playDemoStep(index) {
         demoCursor.click();
     }
 
-    // Run waypoints (timed to narration)
-    await runWaypoints(step, signal);
+    // Run speech + waypoints in parallel
+    // Speech drives the timing — waypoints animate during it
+    var speechPromise = speakDemo(step.narration, signal);
+    var waypointPromise = runWaypoints(step, signal);
+    await Promise.all([speechPromise, waypointPromise]);
 
     // Clear for next step
     hideSpotlight();
@@ -12556,6 +12561,7 @@ function stopDemoMode() {
     demoCursor.hide();
     hideSpotlight();
     hidePlayback();
+    stopDemoAudio();
     document.getElementById('demo-input-blocker').style.display = 'none';
     showTab('diagram');
 }
@@ -12564,7 +12570,114 @@ function toggleDemoPause() {
     _demoPaused = !_demoPaused;
     const btn = document.querySelector('#demo-playback .demo-btn-pause');
     if (btn) btn.textContent = _demoPaused ? '▶' : '⏸';
+    if (_demoPaused && _demoCurrentAudio) _demoCurrentAudio.pause();
+    else if (!_demoPaused && _demoCurrentAudio) _demoCurrentAudio.play();
+    if (_demoPaused) window.speechSynthesis.pause();
+    else window.speechSynthesis.resume();
 }
+
+// ==================== DEMO AUDIO — ElevenLabs + Browser Fallback ====================
+
+var _demoAudioCache = {};
+var _demoCurrentAudio = null;
+var _demoSpeechResolve = null;
+var DEMO_AUDIO_CACHE_KEY = 'layit-demo-audio-cache';
+
+function loadDemoAudioCache() {
+    try {
+        var raw = localStorage.getItem(DEMO_AUDIO_CACHE_KEY);
+        if (!raw) return;
+        var entries = JSON.parse(raw);
+        for (var text in entries) {
+            var binary = atob(entries[text]);
+            var bytes = new Uint8Array(binary.length);
+            for (var i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+            var blob = new Blob([bytes], { type: 'audio/mpeg' });
+            _demoAudioCache[text] = URL.createObjectURL(blob);
+        }
+    } catch(e) {}
+}
+
+function persistDemoAudio(text, arrayBuffer) {
+    try {
+        var existing = {};
+        try { existing = JSON.parse(localStorage.getItem(DEMO_AUDIO_CACHE_KEY) || '{}'); } catch(e) {}
+        var binary = '';
+        var bytes = new Uint8Array(arrayBuffer);
+        for (var i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+        existing[text] = btoa(binary);
+        localStorage.setItem(DEMO_AUDIO_CACHE_KEY, JSON.stringify(existing));
+    } catch(e) {}
+}
+
+async function speakDemo(text, signal) {
+    var elKey = localStorage.getItem('layit_elevenlabs_key');
+    if (elKey) {
+        if (_demoAudioCache[text]) return playAudioUrl(_demoAudioCache[text], signal);
+        var voiceId = localStorage.getItem('layit_elevenlabs_voice') || 'pNInz6obpgDQGcFmaJgB';
+        try {
+            var response = await fetch('https://api.elevenlabs.io/v1/text-to-speech/' + voiceId, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'xi-api-key': elKey },
+                body: JSON.stringify({
+                    text: text,
+                    model_id: 'eleven_multilingual_v2',
+                    voice_settings: { stability: 0.65, similarity_boost: 0.75, style: 0.15, use_speaker_boost: true, speed: 1.0 }
+                })
+            });
+            if (!response.ok) return speakBrowserFallback(text, signal);
+            var buf = await response.arrayBuffer();
+            persistDemoAudio(text, buf);
+            var blob = new Blob([buf], { type: 'audio/mpeg' });
+            var url = URL.createObjectURL(blob);
+            _demoAudioCache[text] = url;
+            return playAudioUrl(url, signal);
+        } catch(err) {
+            return speakBrowserFallback(text, signal);
+        }
+    }
+    return speakBrowserFallback(text, signal);
+}
+
+function playAudioUrl(url, signal) {
+    return new Promise(function(resolve) {
+        if (signal && signal.aborted) { resolve(); return; }
+        stopDemoAudio();
+        var audio = new Audio(url);
+        _demoCurrentAudio = audio;
+        _demoSpeechResolve = resolve;
+        audio.onended = function() { _demoCurrentAudio = null; _demoSpeechResolve = null; resolve(); };
+        audio.onerror = function() { _demoCurrentAudio = null; _demoSpeechResolve = null; resolve(); };
+        if (signal) signal.addEventListener('abort', function() { audio.pause(); _demoCurrentAudio = null; resolve(); }, { once: true });
+        audio.play().catch(function() { resolve(); });
+    });
+}
+
+function speakBrowserFallback(text, signal) {
+    return new Promise(function(resolve) {
+        if (!('speechSynthesis' in window)) { resolve(); return; }
+        if (signal && signal.aborted) { resolve(); return; }
+        window.speechSynthesis.cancel();
+        var utter = new SpeechSynthesisUtterance(text);
+        utter.rate = 0.9; utter.pitch = 1.0; utter.volume = 1.0;
+        var voices = window.speechSynthesis.getVoices();
+        var preferred = voices.find(function(v) { return v.name.indexOf('Samantha') >= 0 || v.name.indexOf('Daniel') >= 0; });
+        if (preferred) utter.voice = preferred;
+        _demoSpeechResolve = resolve;
+        utter.onend = function() { _demoSpeechResolve = null; resolve(); };
+        utter.onerror = function() { _demoSpeechResolve = null; resolve(); };
+        if (signal) signal.addEventListener('abort', function() { window.speechSynthesis.cancel(); resolve(); }, { once: true });
+        window.speechSynthesis.speak(utter);
+    });
+}
+
+function stopDemoAudio() {
+    if (_demoCurrentAudio) { try { _demoCurrentAudio.pause(); _demoCurrentAudio.src = ''; } catch(e) {} _demoCurrentAudio = null; }
+    if (_demoSpeechResolve) { _demoSpeechResolve(); _demoSpeechResolve = null; }
+    if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+}
+
+loadDemoAudioCache();
 
 // ==================== END DEMO WALKTHROUGH ====================
 </script>
