@@ -1512,6 +1512,9 @@
                 <button class="btn-secondary" onclick="undoPerimeterPoint()" id="undoBtn" disabled style="font-size:12px;padding:10px;">
                     ↩ Undo
                 </button>
+                <button class="btn-success" onclick="closePerimeter()" id="closeBtn" disabled style="font-size:12px;padding:10px;">
+                    ✓ Close
+                </button>
                 <button class="btn-secondary" onclick="clearPerimeter()" style="font-size:12px;padding:10px;flex:1;">
                     🗑 Clear
                 </button>
@@ -1897,6 +1900,20 @@
                 • Battery or plug-in powered<br>
                 • Auto-calibrates with built-in camera
             </div>
+        </div>
+
+        <div class="section">
+            <h3 style="font-size:16px;">Export Layout for Laser</h3>
+            <p class="hint mb-3" style="text-align:left;">Export your tile layout in a format compatible with the LayIt Laser or other tools.</p>
+            <div class="field">
+                <label>Export Format</label>
+                <select id="laserFormat">
+                    <option value="layit">LayIt Laser (.layit)</option>
+                    <option value="svg">SVG Vector</option>
+                    <option value="dxf">DXF (AutoCAD)</option>
+                </select>
+            </div>
+            <button class="btn-success" onclick="exportLaser()" style="width:100%;">Export Layout</button>
         </div>
 
     </div>
