@@ -8523,9 +8523,11 @@ function drawMosaicField(ox, oy, s, wall, voidPolys, patternOx, patternOy, projM
         stColIn = subW + subGr;
         stRowIn = subH * 0.75 + subGr;
     } else if (subShape === 'triangle') {
-        // Equilateral triangles alternate up/down
-        stColIn = subW + subGr;
-        stRowIn = subH * 0.5 + subGr;
+        // Equilateral triangles: up + down pairs fill each grid cell
+        // Column spacing = full tile width (up triangle occupies left half,
+        // down triangle fills the right half gap)
+        stColIn = subW * 2 + subGr;
+        stRowIn = subH + subGr;
     } else if (subShape === 'capsule') {
         // Rounded rectangle (pill shape)
         stColIn = subW + subGr;
@@ -9076,6 +9078,27 @@ function drawMosaicField(ox, oy, s, wall, voidPolys, patternOx, patternOy, projM
                 cx.strokeStyle = '#333';
                 cx.lineWidth = Math.max(1, stGrPx);
                 cx.stroke();
+            }
+
+            // Triangle: draw inverted (down-pointing) triangle to fill the gap
+            if (subShape === 'triangle') {
+                var triHw = (stWpx - stGrPx) / 2;
+                var triHh = (stHpx - stGrPx) / 2;
+                // Down-pointing triangle fills the space to the right
+                var invX = px + triHw + stGrPx / 2;
+                var invY = py;
+                if (invX > wallMinX && invX < wallMaxX && invY > wallMinY && invY < wallMaxY) {
+                    var invInWall = inPoly([invX, invY], wall);
+                    if (invInWall) {
+                        cx.beginPath();
+                        cx.moveTo(invX - triHw, invY - triHh);
+                        cx.lineTo(invX + triHw, invY - triHh);
+                        cx.lineTo(invX, invY + triHh);
+                        cx.closePath();
+                        cx.fill();
+                        cx.stroke();
+                    }
+                }
             }
 
             // Star & Cross: draw small rotated square "cross" tiles between stars
