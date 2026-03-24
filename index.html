@@ -9139,29 +9139,32 @@ function drawMosaicField(ox, oy, s, wall, voidPolys, patternOx, patternOy, projM
                     [px - hw * 0.5, py + hh * 0.6], [px - hw, py + hh * 0.1],
                     [px - hw, py - hh * 0.2], [px - hw * 0.6, py - hh * 0.7]];
         } else if (subShape === 'starcross') {
-            // 8-pointed star (two overlapping squares, p4m symmetry)
-            // Inner radius = R * √(2-√2) ≈ 0.7654R — mathematically exact
-            var r = stWpx / 2;
-            var ri = r * Math.sqrt(2 - Math.SQRT2); // ≈ 0.7654
-            var pts = [];
-            for (var i = 0; i < 16; i++) {
-                var angle = (i / 16) * Math.PI * 2 - Math.PI / 2;
-                var rad = (i % 2 === 0) ? r : ri;
-                pts.push([px + rad * Math.cos(angle), py + rad * Math.sin(angle)]);
-            }
-            return pts;
+            // 4-pointed concave star — tips at cardinal directions, deep concave sides
+            // The concave sides interlock with the rotated cross tile's convex tips
+            var hw = stWpx / 2, hh = stHpx / 2;
+            var cd = 0.20; // concavity depth — how close the curve comes to center
+            return [
+                [px, py - hh],                      // top tip
+                [px + hw * cd, py - hh * cd],        // concavity NE (deepest point)
+                [px + hw, py],                       // right tip
+                [px + hw * cd, py + hh * cd],        // concavity SE
+                [px, py + hh],                       // bottom tip
+                [px - hw * cd, py + hh * cd],        // concavity SW
+                [px - hw, py],                       // left tip
+                [px - hw * cd, py - hh * cd]         // concavity NW
+            ];
         } else if (subShape === 'kite') {
             var hw = stWpx / 2, hh = stHpx / 2;
             var topH = hh * 0.3;
             return [[px, py - hh], [px + hw, py - hh + topH + hh * 0.4],
                     [px, py + hh], [px - hw, py - hh + topH + hh * 0.4]];
         } else if (subShape === 'leaf') {
-            // Approximate leaf with 8 points
+            // Leaf: pointed both ends, widest at center — eye/marquise shape
             var hw = stWpx / 2, hh = stHpx / 2;
-            return [[px, py + hh], [px + hw * 0.9, py + hh * 0.3],
-                    [px + hw, py - hh * 0.3], [px + hw * 0.5, py - hh * 0.8],
-                    [px, py - hh], [px - hw * 0.5, py - hh * 0.8],
-                    [px - hw, py - hh * 0.3], [px - hw * 0.9, py + hh * 0.3]];
+            return [[px, py - hh], [px + hw * 0.6, py - hh * 0.45],
+                    [px + hw * 0.85, py], [px + hw * 0.6, py + hh * 0.45],
+                    [px, py + hh], [px - hw * 0.6, py + hh * 0.45],
+                    [px - hw * 0.85, py], [px - hw * 0.6, py - hh * 0.45]];
         } else if (subShape === 'dragonscale') {
             // Approximate dragonscale with 6 points
             var hw = stWpx / 2, hh = stHpx / 2;
@@ -9326,16 +9329,19 @@ function drawMosaicField(ox, oy, s, wall, voidPolys, patternOx, patternOy, projM
             cx.bezierCurveTo(px - hw, py - hh * 0.4, px - hw * 0.7, py - hh * 0.85, px, py - hh);
             cx.closePath();
         } else if (subShape === 'starcross') {
-            // 8-pointed star (two overlapping squares, p4m symmetry)
-            // Inner radius = R * √(2-√2) — edges form right angles at concavities
-            var r = (stWpx - stGrPx) / 2;
-            var ri = r * Math.sqrt(2 - Math.SQRT2); // ≈ 0.7654
-            for (var i = 0; i < 16; i++) {
-                var angle = (i / 16) * Math.PI * 2 - Math.PI / 2;
-                var rad = (i % 2 === 0) ? r : ri;
-                if (i === 0) cx.moveTo(px + rad * Math.cos(angle), py + rad * Math.sin(angle));
-                else cx.lineTo(px + rad * Math.cos(angle), py + rad * Math.sin(angle));
-            }
+            // 4-pointed star with concave sides — matches real star & cross cement tiles
+            // Tips at cardinal directions, deep concave arcs between tips
+            var hw = (stWpx - stGrPx) / 2;
+            var hh = (stHpx - stGrPx) / 2;
+            cx.moveTo(px, py - hh); // top tip
+            // top → right: concave arc bowing toward center
+            cx.bezierCurveTo(px + hw * 0.03, py - hh * 0.2, px + hw * 0.2, py - hh * 0.03, px + hw, py);
+            // right → bottom
+            cx.bezierCurveTo(px + hw * 0.2, py + hh * 0.03, px + hw * 0.03, py + hh * 0.2, px, py + hh);
+            // bottom → left
+            cx.bezierCurveTo(px - hw * 0.03, py + hh * 0.2, px - hw * 0.2, py + hh * 0.03, px - hw, py);
+            // left → top
+            cx.bezierCurveTo(px - hw * 0.2, py - hh * 0.03, px - hw * 0.03, py - hh * 0.2, px, py - hh);
             cx.closePath();
         } else if (subShape === 'kite') {
             // 4-sided kite: narrow top, wide middle, pointed bottom
@@ -9347,11 +9353,14 @@ function drawMosaicField(ox, oy, s, wall, voidPolys, patternOx, patternOy, projM
             cx.lineTo(px - hw, py - hh + topH + hh * 0.4);
             cx.closePath();
         } else if (subShape === 'leaf') {
-            // Teardrop/leaf: pointed bottom, rounded top
+            // Leaf/teardrop: pointed on BOTH ends, convex S-curve sides
+            // Like a slender eye shape — pointed top and bottom, widest at center
             var hw = (stWpx - stGrPx) / 2, hh = (stHpx - stGrPx) / 2;
-            cx.moveTo(px, py + hh);
-            cx.bezierCurveTo(px + hw * 1.2, py + hh * 0.2, px + hw * 1.2, py - hh * 0.6, px, py - hh);
-            cx.bezierCurveTo(px - hw * 1.2, py - hh * 0.6, px - hw * 1.2, py + hh * 0.2, px, py + hh);
+            cx.moveTo(px, py - hh); // top point
+            // Right side: S-curve from top point down to bottom point, bowing right
+            cx.bezierCurveTo(px + hw * 0.9, py - hh * 0.55, px + hw * 0.9, py + hh * 0.55, px, py + hh);
+            // Left side: S-curve from bottom point back up to top point, bowing left
+            cx.bezierCurveTo(px - hw * 0.9, py + hh * 0.55, px - hw * 0.9, py - hh * 0.55, px, py - hh);
             cx.closePath();
         } else if (subShape === 'dragonscale') {
             // Pointed top, concave sides to stem
@@ -9614,14 +9623,8 @@ function drawMosaicField(ox, oy, s, wall, voidPolys, patternOx, patternOy, projM
                 }
             }
 
-            // Star & Cross: draw small rotated square "cross" tiles between stars
+            // Star & Cross: draw cross tile (same concave shape, rotated 45°) between 4 stars
             if (subShape === 'starcross') {
-                var starR = (stWpx - stGrPx) / 2;
-                // Cross fills diagonal gap between 4 stars
-                // Star inner edge at 45° is at R/√2 from center (proven: ri*cos(π/8) = R/√2)
-                // Cross half-diagonal = distance to cell diagonal midpoint - star edge distance
-                var crossSize = (stColPx / 2 - starR / Math.SQRT2) - stGrPx;
-                // Cross sits at the bottom-right midpoint of 4 adjacent stars
                 var crossX = px + stColPx / 2;
                 var crossY = py + stRowPx / 2;
                 if (crossX > wallMinX && crossX < wallMaxX && crossY > wallMinY && crossY < wallMaxY) {
@@ -9630,15 +9633,22 @@ function drawMosaicField(ox, oy, s, wall, voidPolys, patternOx, patternOy, projM
                         cx.fillStyle = isCut ? '#FF9800' : '#81C784';
                         cx.strokeStyle = isCut ? '#E65100' : '#2E7D32';
                         cx.lineWidth = 0.5;
-                        // Draw rotated 45° square
+                        // Same 4-pointed concave star, rotated 45°, scaled to fit gap
+                        var chw = (stWpx - stGrPx) / 2 * 0.72;
+                        var chh = (stHpx - stGrPx) / 2 * 0.72;
+                        cx.save();
+                        cx.translate(crossX, crossY);
+                        cx.rotate(Math.PI / 4);
                         cx.beginPath();
-                        cx.moveTo(crossX, crossY - crossSize);
-                        cx.lineTo(crossX + crossSize, crossY);
-                        cx.lineTo(crossX, crossY + crossSize);
-                        cx.lineTo(crossX - crossSize, crossY);
+                        cx.moveTo(0, -chh);
+                        cx.bezierCurveTo(chw * 0.03, -chh * 0.2, chw * 0.2, -chh * 0.03, chw, 0);
+                        cx.bezierCurveTo(chw * 0.2, chh * 0.03, chw * 0.03, chh * 0.2, 0, chh);
+                        cx.bezierCurveTo(-chw * 0.03, chh * 0.2, -chw * 0.2, chh * 0.03, -chw, 0);
+                        cx.bezierCurveTo(-chw * 0.2, -chh * 0.03, -chw * 0.03, -chh * 0.2, 0, -chh);
                         cx.closePath();
                         cx.fill();
                         cx.stroke();
+                        cx.restore();
                     }
                 }
             }
