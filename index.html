@@ -9364,19 +9364,29 @@ function drawMosaicField(ox, oy, s, wall, voidPolys, patternOx, patternOy, projM
             cx.lineTo(px - hw, py - hh + topH + hh * 0.4);
             cx.closePath();
         } else if (subShape === 'leaf') {
-            // Leaf — proportions from SAM 2.1 trace of real marble leaf tile
-            // SAM measured: max half-width = 0.465 × tile height (aspect 1:2.15)
-            // Uses 2 clean cubic beziers for smooth curves (not jagged polygon)
+            // Leaf — 4-segment bezier: sharp tips + fat belly
+            // SAM measured proportions: max half-width = 0.465 × tile height
+            // Split each side into 2 curves: tip→belly and belly→tip
+            // This gives sharp taper near tips (impossible with single bezier per side)
             var hw = (stWpx - stGrPx) / 2, hh = (stHpx - stGrPx) / 2;
-            // Leaf width scales with HEIGHT (real tiles are proportional)
-            // Cap at 95% of hw to prevent overlap with neighbors
             var leafHW = Math.min(hh * 0.465, hw * 0.95);
-            var cp = leafHW * 1.333; // bezier control point offset (gives max width = leafHW)
             cx.moveTo(px, py - hh); // top point
-            // Right side: smooth S-curve from top to bottom, belly bows right
-            cx.bezierCurveTo(px + cp, py - hh * 0.33, px + cp, py + hh * 0.33, px, py + hh);
-            // Left side: mirror
-            cx.bezierCurveTo(px - cp, py + hh * 0.33, px - cp, py - hh * 0.33, px, py - hh);
+            // Right upper: top tip → belly (sharp taper: stays narrow, then widens fast)
+            cx.bezierCurveTo(px + leafHW * 0.05, py - hh * 0.75,
+                             px + leafHW * 0.85, py - hh * 0.25,
+                             px + leafHW, py);
+            // Right lower: belly → bottom tip (widens fast, then sharp taper)
+            cx.bezierCurveTo(px + leafHW * 0.85, py + hh * 0.25,
+                             px + leafHW * 0.05, py + hh * 0.75,
+                             px, py + hh);
+            // Left lower: bottom tip → belly (mirror)
+            cx.bezierCurveTo(px - leafHW * 0.05, py + hh * 0.75,
+                             px - leafHW * 0.85, py + hh * 0.25,
+                             px - leafHW, py);
+            // Left upper: belly → top tip (mirror)
+            cx.bezierCurveTo(px - leafHW * 0.85, py - hh * 0.25,
+                             px - leafHW * 0.05, py - hh * 0.75,
+                             px, py - hh);
             cx.closePath();
         } else if (subShape === 'dragonscale') {
             // Pointed top, concave sides to stem
