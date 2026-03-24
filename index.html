@@ -9161,12 +9161,13 @@ function drawMosaicField(ox, oy, s, wall, voidPolys, patternOx, patternOy, projM
             return [[px, py - hh], [px + hw, py - hh + topH + hh * 0.4],
                     [px, py + hh], [px - hw, py - hh + topH + hh * 0.4]];
         } else if (subShape === 'leaf') {
-            // Leaf: pointed both ends, FAT plump belly — wide at center
+            // Leaf: SAM-proportioned — width scales with height
             var hw = stWpx / 2, hh = stHpx / 2;
-            return [[px, py - hh], [px + hw * 0.8, py - hh * 0.35],
-                    [px + hw * 1.05, py], [px + hw * 0.8, py + hh * 0.35],
-                    [px, py + hh], [px - hw * 0.8, py + hh * 0.35],
-                    [px - hw * 1.05, py], [px - hw * 0.8, py - hh * 0.35]];
+            var leafHW = Math.min(hh * 0.465, hw * 0.95);
+            return [[px, py - hh], [px + leafHW * 0.7, py - hh * 0.4],
+                    [px + leafHW, py], [px + leafHW * 0.7, py + hh * 0.4],
+                    [px, py + hh], [px - leafHW * 0.7, py + hh * 0.4],
+                    [px - leafHW, py], [px - leafHW * 0.7, py - hh * 0.4]];
         } else if (subShape === 'dragonscale') {
             // Approximate dragonscale with 6 points
             var hw = stWpx / 2, hh = stHpx / 2;
@@ -9363,31 +9364,19 @@ function drawMosaicField(ox, oy, s, wall, voidPolys, patternOx, patternOy, projM
             cx.lineTo(px - hw, py - hh + topH + hh * 0.4);
             cx.closePath();
         } else if (subShape === 'leaf') {
-            // Leaf — SAM-traced from real marble leaf mosaic tile reference image
-            // 21 control points extracted via SAM 2.1 contour detection
+            // Leaf — proportions from SAM 2.1 trace of real marble leaf tile
+            // SAM measured: max half-width = 0.465 × tile height (aspect 1:2.15)
+            // Uses 2 clean cubic beziers for smooth curves (not jagged polygon)
             var hw = (stWpx - stGrPx) / 2, hh = (stHpx - stGrPx) / 2;
-            cx.moveTo(px + hw * 0.0412, py + hh * -0.8660);
-            cx.quadraticCurveTo(px + hw * 0.0206, py + hh * -1.0000, px + hw * -0.0206, py + hh * -0.9794);
-            cx.quadraticCurveTo(px + hw * -0.0619, py + hh * -0.9588, px + hw * -0.0928, py + hh * -0.8041);
-            cx.quadraticCurveTo(px + hw * -0.1237, py + hh * -0.6495, px + hw * -0.1856, py + hh * -0.5670);
-            cx.quadraticCurveTo(px + hw * -0.2474, py + hh * -0.4845, px + hw * -0.2268, py + hh * -0.4639);
-            cx.quadraticCurveTo(px + hw * -0.2062, py + hh * -0.4433, px + hw * -0.2784, py + hh * -0.3918);
-            cx.quadraticCurveTo(px + hw * -0.3505, py + hh * -0.3402, px + hw * -0.3814, py + hh * -0.2165);
-            cx.quadraticCurveTo(px + hw * -0.4124, py + hh * -0.0928, px + hw * -0.3918, py + hh * 0.1031);
-            cx.quadraticCurveTo(px + hw * -0.3711, py + hh * 0.2990, px + hw * -0.3402, py + hh * 0.3608);
-            cx.quadraticCurveTo(px + hw * -0.3093, py + hh * 0.4227, px + hw * -0.2680, py + hh * 0.4330);
-            cx.quadraticCurveTo(px + hw * -0.2268, py + hh * 0.4433, px + hw * -0.2474, py + hh * 0.4536);
-            cx.quadraticCurveTo(px + hw * -0.2680, py + hh * 0.4639, px + hw * -0.1856, py + hh * 0.5876);
-            cx.quadraticCurveTo(px + hw * -0.1031, py + hh * 0.7113, px + hw * -0.0619, py + hh * 0.8557);
-            cx.quadraticCurveTo(px + hw * -0.0206, py + hh * 1.0000, px + hw * -0.0309, py + hh * 0.9381);
-            cx.quadraticCurveTo(px + hw * -0.0412, py + hh * 0.8763, px + hw * 0.0000, py + hh * 0.8660);
-            cx.quadraticCurveTo(px + hw * 0.0412, py + hh * 0.8557, px + hw * 0.0309, py + hh * 0.8144);
-            cx.quadraticCurveTo(px + hw * 0.0206, py + hh * 0.7732, px + hw * 0.0515, py + hh * 0.7732);
-            cx.quadraticCurveTo(px + hw * 0.0825, py + hh * 0.7732, px + hw * 0.1856, py + hh * 0.6186);
-            cx.quadraticCurveTo(px + hw * 0.2887, py + hh * 0.4639, px + hw * 0.3505, py + hh * 0.2990);
-            cx.quadraticCurveTo(px + hw * 0.4124, py + hh * 0.1340, px + hw * 0.3918, py + hh * -0.0619);
-            cx.quadraticCurveTo(px + hw * 0.3711, py + hh * -0.2577, px + hw * 0.2165, py + hh * -0.4948);
-            cx.quadraticCurveTo(px + hw * 0.0619, py + hh * -0.7320, px + hw * 0.0412, py + hh * -0.8660);
+            // Leaf width scales with HEIGHT (real tiles are proportional)
+            // Cap at 95% of hw to prevent overlap with neighbors
+            var leafHW = Math.min(hh * 0.465, hw * 0.95);
+            var cp = leafHW * 1.333; // bezier control point offset (gives max width = leafHW)
+            cx.moveTo(px, py - hh); // top point
+            // Right side: smooth S-curve from top to bottom, belly bows right
+            cx.bezierCurveTo(px + cp, py - hh * 0.33, px + cp, py + hh * 0.33, px, py + hh);
+            // Left side: mirror
+            cx.bezierCurveTo(px - cp, py + hh * 0.33, px - cp, py - hh * 0.33, px, py - hh);
             cx.closePath();
         } else if (subShape === 'dragonscale') {
             // Pointed top, concave sides to stem
