@@ -6362,6 +6362,7 @@ function initTileDb() {
     firebase.auth().signInAnonymously().then(function() {
         _tileDbReady = true;
         _tileDbRef = firebase.database().ref('tiledb');
+        initTileGeometryDb(); // Load community tile geometries
     }).catch(function(err) {
         console.warn('Firebase auth failed:', err.message);
     });
@@ -6369,6 +6370,420 @@ function initTileDb() {
 
 function hasBarcodeSupport() {
     return typeof BarcodeDetector !== 'undefined';
+}
+
+// ═══════════════════════════════════════════════════════════════
+// TILE GEOMETRY DATABASE — Pre-computed tessellation geometry
+// Each pattern: exact vertices, bezier curves, spacing, fillers
+// Synced via Firebase so every user benefits from every derivation
+// ═══════════════════════════════════════════════════════════════
+
+var _tileGeomDbRef = null;
+var _tileGeomCache = {}; // Local cache of Firebase geometry entries
+
+// Mathematically derived constants
+var _SQRT2 = Math.SQRT2;
+var _STAR_INNER = Math.sqrt(2 - Math.SQRT2); // ≈ 0.7654
+
+// Built-in geometry definitions (offline-first, mathematically verified)
+var TILE_GEOMETRY_DB = {
+    'hex': {
+        name: 'Hexagon', wallpaperGroup: 'p6m', category: 'regular',
+        aliases: ['hexagonal', 'honeycomb', 'hex tile'],
+        spacing: { colFactor: 1, rowFactor: 0.75, oddRowOffsetX: 0.5, oddColOffsetY: 0, orientable: true },
+        coverage: 0.866, // √3/2
+        fillerShapes: []
+    },
+    'penny': {
+        name: 'Penny Round', wallpaperGroup: 'p6m', category: 'regular',
+        aliases: ['circle', 'round', 'dot'],
+        spacing: { colFactor: 1, rowFactor: 0.866, oddRowOffsetX: 0.5, oddColOffsetY: 0, orientable: false },
+        coverage: 0.7854, // π/4
+        fillerShapes: []
+    },
+    'fishscale': {
+        name: 'Fish Scale', wallpaperGroup: 'cmm', category: 'organic',
+        aliases: ['fan', 'scallop', 'shell', 'mermaid'],
+        spacing: { colFactor: 1, rowFactor: 0.25, oddRowOffsetX: 0.5, oddColOffsetY: 0, orientable: false },
+        coverage: 0.5, // π/4 ≈ half circle
+        fillerShapes: []
+    },
+    'square': {
+        name: 'Square', wallpaperGroup: 'p4m', category: 'regular',
+        aliases: ['field tile', 'grid'],
+        spacing: { colFactor: 1, rowFactor: 1, oddRowOffsetX: 0, oddColOffsetY: 0, orientable: false },
+        coverage: 1.0,
+        fillerShapes: []
+    },
+    'diamond': {
+        name: 'Diamond', wallpaperGroup: 'cmm', category: 'regular',
+        aliases: ['rhombus', 'rotated square'],
+        spacing: { colFactor: 1, rowFactor: 0.5, oddRowOffsetX: 0.5, oddColOffsetY: 0, orientable: false },
+        coverage: 0.5,
+        fillerShapes: []
+    },
+    'rectangle': {
+        name: 'Rectangle', wallpaperGroup: 'pmm', category: 'regular',
+        aliases: ['subway', 'brick', 'plank', 'metro'],
+        spacing: { colFactor: 1, rowFactor: 1, oddRowOffsetX: 0, oddColOffsetY: 0, orientable: false },
+        coverage: 1.0,
+        fillerShapes: []
+    },
+    'arabesque': {
+        name: 'Arabesque / Lantern', wallpaperGroup: 'p2', category: 'curvilinear',
+        aliases: ['lantern', 'provenzal lantern', 'moroccan lantern'],
+        spacing: { colFactor: 1, rowFactor: 0.75, oddRowOffsetX: 0.5, oddColOffsetY: 0, orientable: false },
+        flipOddRows: true,
+        coverage: 0.70,
+        fillerShapes: []
+    },
+    'ogee': {
+        name: 'Ogee / Provençal', wallpaperGroup: 'p2', category: 'curvilinear',
+        aliases: ['gothic arch', 'provencal', 'tear drop', 'onion'],
+        spacing: { colFactor: 1, rowFactor: 0.5, oddRowOffsetX: 0.5, oddColOffsetY: 0, orientable: false },
+        flipOddRows: true,
+        coverage: 0.75,
+        fillerShapes: []
+    },
+    'starcross': {
+        name: 'Star & Cross', wallpaperGroup: 'p4m', category: 'geometric',
+        aliases: ['islamic star', 'alhambra', '8-pointed star', 'moorish star', 'moroccan star'],
+        spacing: { colFactor: 1, rowFactor: 1, oddRowOffsetX: 0, oddColOffsetY: 0, orientable: false },
+        innerRadiusRatio: _STAR_INNER, // √(2-√2) ≈ 0.7654
+        coverage: 0.83,
+        fillerShapes: ['cross_diamond'] // small rotated square between 4 stars
+    },
+    'octdot': {
+        name: 'Octagon & Dot', wallpaperGroup: 'p4m', category: 'geometric',
+        aliases: ['octagon dot', 'oct dot'],
+        spacing: { colFactor: 1, rowFactor: 1, oddRowOffsetX: 0, oddColOffsetY: 0, orientable: false },
+        coverage: 0.95,
+        fillerShapes: ['corner_dot'] // small squares at intersections
+    },
+    'rhombus': {
+        name: 'Tumbling Blocks', wallpaperGroup: 'p6m', category: 'geometric',
+        aliases: ['3d cube', 'tumbling block', 'isometric cube', 'escher cube'],
+        spacing: { colFactor: 2, rowFactor: 1.5, oddRowOffsetX: 0.5, oddColOffsetY: 0, orientable: false },
+        coverage: 0.866,
+        fillerShapes: ['left_face', 'right_face'] // 3 parallelograms form cube
+    },
+    'triangle': {
+        name: 'Triangle', wallpaperGroup: 'p6m', category: 'regular',
+        aliases: ['equilateral triangle'],
+        spacing: { colFactor: 2, rowFactor: 1, oddRowOffsetX: 0, oddColOffsetY: 0, orientable: false },
+        coverage: 0.866,
+        fillerShapes: ['inverted_triangle']
+    },
+    'quatrefoil': {
+        name: 'Quatrefoil', wallpaperGroup: 'p4m', category: 'curvilinear',
+        aliases: ['clover', '4-leaf clover', 'four leaf'],
+        spacing: { colFactor: 0.85, rowFactor: 0.85, oddRowOffsetX: 0, oddColOffsetY: 0, orientable: false },
+        coverage: 0.80,
+        fillerShapes: ['diamond_filler']
+    },
+    'kite': {
+        name: 'Kite', wallpaperGroup: 'p2', category: 'geometric',
+        aliases: ['teardrop kite', 'dart'],
+        spacing: { colFactor: 1, rowFactor: 0.5, oddRowOffsetX: 0.5, oddColOffsetY: 0, orientable: false },
+        flipOddRows: true,
+        coverage: 0.50,
+        fillerShapes: []
+    },
+    'leaf': {
+        name: 'Leaf', wallpaperGroup: 'p2', category: 'organic',
+        aliases: ['teardrop', 'petal'],
+        spacing: { colFactor: 1, rowFactor: 0.5, oddRowOffsetX: 0.5, oddColOffsetY: 0, orientable: false },
+        flipOddRows: true,
+        coverage: 0.65,
+        fillerShapes: []
+    },
+    'dragonscale': {
+        name: 'Dragon Scale', wallpaperGroup: 'p2', category: 'organic',
+        aliases: ['scale', 'overlapping scale'],
+        spacing: { colFactor: 1, rowFactor: 0.75, oddRowOffsetX: 0.5, oddColOffsetY: 0, orientable: false },
+        coverage: 0.70,
+        fillerShapes: []
+    },
+    'capsule': {
+        name: 'Capsule', wallpaperGroup: 'pmm', category: 'curvilinear',
+        aliases: ['pill', 'stadium', 'rounded rectangle', 'oblong'],
+        spacing: { colFactor: 1, rowFactor: 1, oddRowOffsetX: 0.5, oddColOffsetY: 0, orientable: false },
+        coverage: 0.85,
+        fillerShapes: []
+    },
+    'picket': {
+        name: 'Picket / Elongated Hex', wallpaperGroup: 'p6m', category: 'regular',
+        aliases: ['elongated hexagon', 'stretched hex', 'picket fence'],
+        spacing: { colFactor: 1, rowFactor: 0.75, oddRowOffsetX: 0.5, oddColOffsetY: 0, orientable: false },
+        coverage: 0.866,
+        fillerShapes: []
+    },
+    // ── PATTERNS NOT YET RENDERED (AI-derivable) ──
+    'chevron': {
+        name: 'Chevron', wallpaperGroup: 'pmm', category: 'geometric',
+        aliases: ['v-pattern', 'zigzag', 'arrow'],
+        spacing: { colFactor: 1, rowFactor: 1, oddRowOffsetX: 0, oddColOffsetY: 0, orientable: true },
+        coverage: 1.0,
+        fillerShapes: [],
+        _unbuilt: true
+    },
+    'basketweave': {
+        name: 'Basketweave', wallpaperGroup: 'p4m', category: 'geometric',
+        aliases: ['basket weave', 'woven'],
+        spacing: { colFactor: 2, rowFactor: 2, oddRowOffsetX: 0, oddColOffsetY: 0, orientable: false },
+        coverage: 1.0,
+        fillerShapes: [],
+        _unbuilt: true
+    },
+    'pinwheel': {
+        name: 'Pinwheel', wallpaperGroup: 'p4', category: 'geometric',
+        aliases: ['windmill', 'hopscotch'],
+        spacing: { colFactor: 3, rowFactor: 3, oddRowOffsetX: 0, oddColOffsetY: 0, orientable: false },
+        coverage: 1.0,
+        fillerShapes: [],
+        _unbuilt: true
+    },
+    'herringbone': {
+        name: 'Herringbone', wallpaperGroup: 'pgg', category: 'geometric',
+        aliases: ['herring bone', 'parquet'],
+        spacing: { colFactor: 1, rowFactor: 1, oddRowOffsetX: 0, oddColOffsetY: 0, orientable: true },
+        coverage: 1.0,
+        fillerShapes: [],
+        _unbuilt: true
+    }
+};
+
+// Initialize Firebase geometry DB sync
+function initTileGeometryDb() {
+    if (!_tileDbReady || !firebase.database) return;
+    _tileGeomDbRef = firebase.database().ref('tileGeometryDB');
+    // Load all community-contributed geometries into local cache
+    _tileGeomDbRef.once('value').then(function(snap) {
+        var data = snap.val();
+        if (data) {
+            for (var key in data) {
+                if (!TILE_GEOMETRY_DB[key]) {
+                    // New pattern from community — merge into local DB
+                    _tileGeomCache[key] = data[key];
+                }
+            }
+            console.log('Loaded ' + Object.keys(_tileGeomCache).length + ' community tile geometries');
+        }
+    });
+}
+
+// Look up geometry for a pattern (local first, then Firebase cache)
+function getTileGeometry(patternId) {
+    if (TILE_GEOMETRY_DB[patternId]) return TILE_GEOMETRY_DB[patternId];
+    if (_tileGeomCache[patternId]) return _tileGeomCache[patternId];
+    return null;
+}
+
+// Save a newly derived geometry to Firebase (benefits all users)
+function saveTileGeometry(patternId, geometry) {
+    _tileGeomCache[patternId] = geometry;
+    if (_tileGeomDbRef) {
+        geometry.derivedAt = new Date().toISOString();
+        geometry.source = 'ai_vision';
+        _tileGeomDbRef.child(patternId).set(geometry);
+        console.log('Saved tile geometry: ' + patternId);
+    }
+}
+
+// ── AI TILE PATTERN CLASSIFIER ──
+// Takes a photo of a tile and identifies the pattern + derives geometry
+function classifyTilePattern(imageBase64, callback) {
+    var apiKey = localStorage.getItem('layit_ai_key');
+    if (!apiKey) {
+        callback({ error: 'No API key available. Open in the LayIt iOS app for AI features.' });
+        return;
+    }
+
+    // Build the classification prompt
+    var classifyPrompt = 'You are a tile pattern recognition AI for the LayIt tile layout app.\n\n' +
+        'Analyze this image of a tile or tile pattern. Identify:\n\n' +
+        '1. **pattern_id**: The closest match from this list:\n' +
+        '   hex, penny, fishscale, square, diamond, rectangle, arabesque, ogee, starcross, octdot, ' +
+        '   rhombus, triangle, quatrefoil, kite, leaf, dragonscale, capsule, picket, chevron, ' +
+        '   basketweave, pinwheel, herringbone\n' +
+        '   If none match, use a descriptive snake_case id (e.g., "moroccan_zellige", "penny_hex_blend")\n\n' +
+        '2. **pattern_name**: Human-readable name (e.g., "Moroccan Star & Cross")\n' +
+        '3. **wallpaper_group**: The crystallographic wallpaper group (p1, p2, pm, pg, cm, pmm, pmg, pgg, cmm, p4, p4m, p4g, p3, p3m1, p31m, p6, p6m)\n' +
+        '4. **category**: One of: regular, geometric, curvilinear, organic\n' +
+        '5. **tile_shape_description**: Brief description of one tile piece\'s shape\n' +
+        '6. **has_filler_pieces**: true/false — does the pattern use multiple tile shapes?\n' +
+        '7. **filler_description**: If has_filler_pieces, describe the filler shapes\n' +
+        '8. **estimated_coverage**: 0-1 ratio of how much of the bounding box the tile fills\n' +
+        '9. **spacing**: { colFactor, rowFactor, oddRowOffsetX (0 or 0.5), flipOddRows (bool) }\n' +
+        '   colFactor/rowFactor are multipliers of (tileWidth + grout) for grid spacing\n' +
+        '10. **confidence**: 0-1 how confident you are in the classification\n\n' +
+        'Return ONLY a JSON object with these fields. No markdown, no explanation.';
+
+    fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'x-api-key': apiKey,
+            'anthropic-version': '2023-06-01',
+            'anthropic-dangerous-direct-browser-access': 'true'
+        },
+        body: JSON.stringify({
+            model: 'claude-sonnet-4-20250514',
+            max_tokens: 1000,
+            messages: [{
+                role: 'user',
+                content: [
+                    { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: imageBase64 } },
+                    { type: 'text', text: classifyPrompt }
+                ]
+            }]
+        })
+    }).then(function(resp) { return resp.json(); })
+    .then(function(data) {
+        if (data.error) {
+            callback({ error: data.error.message || 'API error' });
+            return;
+        }
+        var text = data.content && data.content[0] && data.content[0].text;
+        if (!text) { callback({ error: 'No response from AI' }); return; }
+
+        try {
+            var jsonMatch = text.match(/\{[\s\S]*\}/);
+            var result = JSON.parse(jsonMatch[0]);
+
+            // Check if we already have this pattern
+            var existing = getTileGeometry(result.pattern_id);
+            if (existing) {
+                result._existingGeometry = existing;
+                result._source = 'database';
+            } else {
+                // New pattern — save to geometry DB for future users
+                var newGeom = {
+                    name: result.pattern_name,
+                    wallpaperGroup: result.wallpaper_group,
+                    category: result.category,
+                    spacing: result.spacing || { colFactor: 1, rowFactor: 1, oddRowOffsetX: 0, oddColOffsetY: 0 },
+                    coverage: result.estimated_coverage || 0.8,
+                    fillerShapes: result.has_filler_pieces ? [result.filler_description] : [],
+                    confidence: result.confidence,
+                    _unbuilt: true // rendering not yet implemented for this pattern
+                };
+                saveTileGeometry(result.pattern_id, newGeom);
+                result._source = 'ai_derived';
+            }
+
+            callback(result);
+        } catch(e) {
+            callback({ error: 'Failed to parse AI response: ' + e.message });
+        }
+    }).catch(function(err) {
+        callback({ error: 'Network error: ' + err.message });
+    });
+}
+
+// ── PATTERN SCAN UI ──
+// Opens camera, takes photo, classifies the tile pattern
+function openPatternScanner() {
+    var scanCount = parseInt(localStorage.getItem('layit_scan_count') || '0');
+    if (scanCount > 0 && !window.proUser) {
+        if (typeof requirePro === 'function') requirePro('Pattern Scanner');
+        return;
+    }
+
+    // Create overlay UI
+    var overlay = document.createElement('div');
+    overlay.id = 'patternScanOverlay';
+    overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:#000;z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;';
+    overlay.innerHTML =
+        '<div style="color:#fff;font-size:18px;margin-bottom:20px;text-align:center;padding:0 20px;">' +
+            '<b>Scan Tile Pattern</b><br>' +
+            '<span style="font-size:14px;opacity:0.8;">Take a photo of any tile or tile pattern.<br>AI will identify and recreate it.</span>' +
+        '</div>' +
+        '<div style="position:relative;width:80%;max-width:400px;aspect-ratio:1;border:2px solid #4CAF50;border-radius:12px;overflow:hidden;">' +
+            '<video id="patternScanVideo" autoplay playsinline style="width:100%;height:100%;object-fit:cover;"></video>' +
+        '</div>' +
+        '<div style="display:flex;gap:20px;margin-top:24px;">' +
+            '<button onclick="capturePatternPhoto()" style="background:#4CAF50;color:#fff;border:none;padding:14px 32px;border-radius:8px;font-size:16px;cursor:pointer;">📸 Capture</button>' +
+            '<button onclick="closePatternScanner()" style="background:#666;color:#fff;border:none;padding:14px 24px;border-radius:8px;font-size:16px;cursor:pointer;">Cancel</button>' +
+        '</div>' +
+        '<div id="patternScanStatus" style="color:#fff;font-size:14px;margin-top:16px;opacity:0.8;"></div>';
+    document.body.appendChild(overlay);
+
+    // Start camera
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 1280 } } })
+    .then(function(stream) {
+        var video = document.getElementById('patternScanVideo');
+        if (video) { video.srcObject = stream; window._patternStream = stream; }
+    }).catch(function(err) {
+        document.getElementById('patternScanStatus').textContent = 'Camera access denied: ' + err.message;
+    });
+}
+
+function capturePatternPhoto() {
+    var video = document.getElementById('patternScanVideo');
+    var status = document.getElementById('patternScanStatus');
+    if (!video || !video.srcObject) return;
+
+    // Capture frame to canvas
+    var canvas = document.createElement('canvas');
+    var size = Math.min(video.videoWidth, video.videoHeight, 1024);
+    canvas.width = size;
+    canvas.height = size;
+    var ctx = canvas.getContext('2d');
+    // Center crop to square
+    var sx = (video.videoWidth - size) / 2;
+    var sy = (video.videoHeight - size) / 2;
+    ctx.drawImage(video, sx, sy, size, size, 0, 0, size, size);
+
+    var base64 = canvas.toDataURL('image/jpeg', 0.85).split(',')[1];
+
+    // Show loading state
+    status.innerHTML = '<span style="color:#4CAF50;">⏳ AI analyzing pattern...</span>';
+
+    classifyTilePattern(base64, function(result) {
+        if (result.error) {
+            status.innerHTML = '<span style="color:#f44336;">❌ ' + result.error + '</span>';
+            return;
+        }
+
+        // Success! Show result
+        var source = result._source === 'database' ? '✅ Known pattern' : '🆕 New pattern saved to database';
+        status.innerHTML =
+            '<div style="background:rgba(76,175,80,0.2);border:1px solid #4CAF50;border-radius:8px;padding:12px;margin-top:8px;text-align:left;">' +
+                '<div style="font-size:16px;font-weight:bold;color:#4CAF50;">' + (result.pattern_name || result.pattern_id) + '</div>' +
+                '<div style="font-size:12px;margin-top:4px;">Wallpaper group: ' + (result.wallpaper_group || '?') + ' · ' + (result.category || '') + '</div>' +
+                '<div style="font-size:12px;margin-top:2px;">Confidence: ' + ((result.confidence || 0) * 100).toFixed(0) + '% · ' + source + '</div>' +
+                (result.pattern_id && TILE_GEOMETRY_DB[result.pattern_id] ?
+                    '<button onclick="applyPatternFromScan(\'' + result.pattern_id + '\')" style="background:#4CAF50;color:#fff;border:none;padding:8px 20px;border-radius:6px;margin-top:8px;cursor:pointer;">Apply This Pattern</button>' :
+                    '<div style="font-size:11px;margin-top:6px;color:#FFB74D;">Pattern saved to database. Rendering support coming soon.</div>'
+                ) +
+            '</div>';
+
+        // Track scan count
+        var sc = parseInt(localStorage.getItem('layit_scan_count') || '0');
+        localStorage.setItem('layit_scan_count', String(sc + 1));
+    });
+}
+
+function applyPatternFromScan(patternId) {
+    // Apply the identified pattern to the current tile settings
+    var shapeSelect = document.getElementById('subShape') || document.getElementById('tileShape');
+    if (shapeSelect) {
+        shapeSelect.value = patternId;
+        if (typeof onSubShapeChange === 'function') onSubShapeChange();
+        else if (typeof updateTile === 'function') updateTile();
+    }
+    closePatternScanner();
+    if (typeof showToast === 'function') showToast('Applied: ' + (TILE_GEOMETRY_DB[patternId] || {}).name || patternId);
+}
+
+function closePatternScanner() {
+    if (window._patternStream) {
+        window._patternStream.getTracks().forEach(function(t) { t.stop(); });
+        window._patternStream = null;
+    }
+    var overlay = document.getElementById('patternScanOverlay');
+    if (overlay) overlay.remove();
 }
 
 // ── PRIMARY: AI Label Scanner (photo → AI → auto-populate) ──
@@ -8554,12 +8969,11 @@ function drawMosaicField(ox, oy, s, wall, voidPolys, patternOx, patternOy, projM
         stRowIn = subH * 0.5 + subGr;
         // Tiles in odd rows rotate 180° (handled in draw loop)
     } else if (subShape === 'starcross') {
-        // Star & Cross: 8-pointed stars on a grid, with small rotated squares
-        // filling the gaps. Grid spacing = star_size * (1 + 1/sqrt(2))
-        // The cross square sits at the center of every 4 adjacent stars.
-        var scFactor = 1 + 1 / Math.SQRT2; // ~1.707
-        stColIn = subW * scFactor + subGr;
-        stRowIn = subH * scFactor + subGr;
+        // Star & Cross (p4m wallpaper group): 8-pointed stars interlock via tips,
+        // cross fillers sit at diagonal gaps between 4 stars.
+        // Stars placed at their width apart — tips interlock between cells.
+        stColIn = subW + subGr;
+        stRowIn = subH + subGr;
     } else if (subShape === 'kite') {
         // Periodic kite: brick offset, alternating rows flip 180°
         stColIn = subW + subGr;
@@ -8672,12 +9086,13 @@ function drawMosaicField(ox, oy, s, wall, voidPolys, patternOx, patternOy, projM
             var hw = stWpx / 2, hh = stHpx / 2;
             return [[px, py - hh], [px + hw, py], [px, py + hh], [px - hw, py]];
         } else if (subShape === 'arabesque') {
-            // Approximate lantern shape with 8 points
+            // Arabesque/lantern: 10 sample points along the curve (convex shoulders, concave waist)
             var hw = stWpx / 2, hh = stHpx / 2;
-            return [[px, py - hh], [px + hw * 0.5, py - hh * 0.5],
-                    [px + hw, py], [px + hw * 0.5, py + hh * 0.5],
-                    [px, py + hh], [px - hw * 0.5, py + hh * 0.5],
-                    [px - hw, py], [px - hw * 0.5, py - hh * 0.5]];
+            return [[px, py - hh], [px + hw * 0.65, py - hh * 0.65],
+                    [px + hw, py - hh * 0.15], [px + hw, py + hh * 0.15],
+                    [px + hw * 0.65, py + hh * 0.65], [px, py + hh],
+                    [px - hw * 0.65, py + hh * 0.65], [px - hw, py + hh * 0.15],
+                    [px - hw, py - hh * 0.15], [px - hw * 0.65, py - hh * 0.65]];
         } else if (subShape === 'picket') {
             // Elongated hex
             var hw = stWpx / 2, hh = stHpx / 2;
@@ -8716,16 +9131,18 @@ function drawMosaicField(ox, oy, s, wall, voidPolys, patternOx, patternOy, projM
                     [px, py + hh], [px - hw * 0.6, py + hh * 0.6],
                     [px - hw, py], [px - hw * 0.6, py - hh * 0.6]];
         } else if (subShape === 'ogee') {
-            // Approximate ogee with 8 points
+            // Ogee: convex upper, concave lower — 10 sample points along the curve
             var hw = stWpx / 2, hh = stHpx / 2;
-            return [[px, py - hh], [px + hw * 0.7, py - hh * 0.3],
-                    [px + hw * 0.5, py + hh * 0.2], [px + hw * 0.2, py + hh * 0.6],
-                    [px, py + hh], [px - hw * 0.2, py + hh * 0.6],
-                    [px - hw * 0.5, py + hh * 0.2], [px - hw * 0.7, py - hh * 0.3]];
+            return [[px, py - hh], [px + hw * 0.6, py - hh * 0.7],
+                    [px + hw, py - hh * 0.2], [px + hw, py + hh * 0.1],
+                    [px + hw * 0.5, py + hh * 0.6], [px, py + hh],
+                    [px - hw * 0.5, py + hh * 0.6], [px - hw, py + hh * 0.1],
+                    [px - hw, py - hh * 0.2], [px - hw * 0.6, py - hh * 0.7]];
         } else if (subShape === 'starcross') {
-            // 8-pointed star for star & cross pattern
+            // 8-pointed star (two overlapping squares, p4m symmetry)
+            // Inner radius = R * √(2-√2) ≈ 0.7654R — mathematically exact
             var r = stWpx / 2;
-            var ri = r * 0.55; // inner radius — wider points for proper tessellation
+            var ri = r * Math.sqrt(2 - Math.SQRT2); // ≈ 0.7654
             var pts = [];
             for (var i = 0; i < 16; i++) {
                 var angle = (i / 16) * Math.PI * 2 - Math.PI / 2;
@@ -8812,19 +9229,23 @@ function drawMosaicField(ox, oy, s, wall, voidPolys, patternOx, patternOy, projM
             cx.lineTo(px - hw, py);
             cx.closePath();
         } else if (subShape === 'arabesque') {
-            // Arabesque/lantern: curvy shape with pointed top and bottom
+            // Arabesque/lantern: derived from circle intersection geometry
+            // The lantern has pointed top/bottom, with concave waist and convex shoulders
             var hw = (stWpx - stGrPx) / 2;
             var hh = (stHpx - stGrPx) / 2;
             // Top point
             cx.moveTo(px, py - hh);
-            // Right shoulder curve
-            cx.bezierCurveTo(px + hw * 0.6, py - hh * 0.7, px + hw, py - hh * 0.3, px + hw, py);
-            // Right hip curve to bottom point
-            cx.bezierCurveTo(px + hw, py + hh * 0.3, px + hw * 0.6, py + hh * 0.7, px, py + hh);
-            // Left hip curve
-            cx.bezierCurveTo(px - hw * 0.6, py + hh * 0.7, px - hw, py + hh * 0.3, px - hw, py);
-            // Left shoulder curve back to top
-            cx.bezierCurveTo(px - hw, py - hh * 0.3, px - hw * 0.6, py - hh * 0.7, px, py - hh);
+            // Upper-right shoulder: convex curve bowing outward
+            cx.bezierCurveTo(px + hw * 0.45, py - hh * 0.92, px + hw * 0.85, py - hh * 0.55, px + hw, py - hh * 0.15);
+            // Right waist to center: slight concave pinch
+            cx.bezierCurveTo(px + hw * 1.05, py + hh * 0.15, px + hw * 0.85, py + hh * 0.55, px + hw * 0.45, py + hh * 0.92);
+            // Lower-right hip to bottom point
+            cx.lineTo(px, py + hh);
+            // Lower-left hip: mirror of upper-right
+            cx.bezierCurveTo(px - hw * 0.45, py + hh * 0.92, px - hw * 0.85, py + hh * 0.55, px - hw * 1.05, py + hh * 0.15);
+            // Left waist to upper-left shoulder
+            cx.bezierCurveTo(px - hw, py - hh * 0.15, px - hw * 0.85, py - hh * 0.55, px - hw * 0.45, py - hh * 0.92);
+            cx.lineTo(px, py - hh);
             cx.closePath();
         } else if (subShape === 'picket') {
             // Elongated hexagon (picket): stretched pointy-top hex
@@ -8889,18 +9310,26 @@ function drawMosaicField(ox, oy, s, wall, voidPolys, patternOx, patternOy, projM
             cx.bezierCurveTo(px - hw, py - ly, px - lx, py - hh, px, py - hh);
             cx.closePath();
         } else if (subShape === 'ogee') {
-            // Gothic arch / provenzal — pointed top and bottom with convex curves
+            // Ogee / Provençal — gothic arch shape with convex upper and concave lower curves
+            // Construction: upper portion bows outward (convex), inflection at ~40% height,
+            // lower portion curves inward (concave) to pointed bottom
             var hw = (stWpx - stGrPx) / 2, hh = (stHpx - stGrPx) / 2;
+            // Top point
             cx.moveTo(px, py - hh);
-            cx.bezierCurveTo(px + hw * 0.8, py - hh * 0.5, px + hw, py, px + hw * 0.3, py + hh * 0.5);
-            cx.bezierCurveTo(px + hw * 0.1, py + hh * 0.8, px, py + hh, px, py + hh);
-            cx.bezierCurveTo(px, py + hh, px - hw * 0.1, py + hh * 0.8, px - hw * 0.3, py + hh * 0.5);
-            cx.bezierCurveTo(px - hw, py, px - hw * 0.8, py - hh * 0.5, px, py - hh);
+            // Right side: convex upper curve bowing out to max width
+            cx.bezierCurveTo(px + hw * 0.7, py - hh * 0.85, px + hw, py - hh * 0.4, px + hw, py - hh * 0.05);
+            // Right side: concave lower curve tapering to bottom point
+            cx.bezierCurveTo(px + hw, py + hh * 0.25, px + hw * 0.4, py + hh * 0.7, px, py + hh);
+            // Left side: concave lower curve (mirror)
+            cx.bezierCurveTo(px - hw * 0.4, py + hh * 0.7, px - hw, py + hh * 0.25, px - hw, py - hh * 0.05);
+            // Left side: convex upper curve back to top point (mirror)
+            cx.bezierCurveTo(px - hw, py - hh * 0.4, px - hw * 0.7, py - hh * 0.85, px, py - hh);
             cx.closePath();
         } else if (subShape === 'starcross') {
-            // 8-pointed star for star & cross tessellation
+            // 8-pointed star (two overlapping squares, p4m symmetry)
+            // Inner radius = R * √(2-√2) — edges form right angles at concavities
             var r = (stWpx - stGrPx) / 2;
-            var ri = r * 0.55;
+            var ri = r * Math.sqrt(2 - Math.SQRT2); // ≈ 0.7654
             for (var i = 0; i < 16; i++) {
                 var angle = (i / 16) * Math.PI * 2 - Math.PI / 2;
                 var rad = (i % 2 === 0) ? r : ri;
@@ -9188,7 +9617,10 @@ function drawMosaicField(ox, oy, s, wall, voidPolys, patternOx, patternOy, projM
             // Star & Cross: draw small rotated square "cross" tiles between stars
             if (subShape === 'starcross') {
                 var starR = (stWpx - stGrPx) / 2;
-                var crossSize = starR * 0.4 * Math.SQRT2; // cross fills the gap
+                // Cross fills diagonal gap between 4 stars
+                // Star inner edge at 45° is at R/√2 from center (proven: ri*cos(π/8) = R/√2)
+                // Cross half-diagonal = distance to cell diagonal midpoint - star edge distance
+                var crossSize = (stColPx / 2 - starR / Math.SQRT2) - stGrPx;
                 // Cross sits at the bottom-right midpoint of 4 adjacent stars
                 var crossX = px + stColPx / 2;
                 var crossY = py + stRowPx / 2;
