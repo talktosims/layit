@@ -9157,12 +9157,12 @@ function drawMosaicField(ox, oy, s, wall, voidPolys, patternOx, patternOy, projM
             return [[px, py - hh], [px + hw, py - hh + topH + hh * 0.4],
                     [px, py + hh], [px - hw, py - hh + topH + hh * 0.4]];
         } else if (subShape === 'leaf') {
-            // Leaf: pointed both ends, widest at center — eye/marquise shape
+            // Leaf: pointed both ends, FAT plump belly — wide at center
             var hw = stWpx / 2, hh = stHpx / 2;
-            return [[px, py - hh], [px + hw * 0.6, py - hh * 0.45],
-                    [px + hw * 0.85, py], [px + hw * 0.6, py + hh * 0.45],
-                    [px, py + hh], [px - hw * 0.6, py + hh * 0.45],
-                    [px - hw * 0.85, py], [px - hw * 0.6, py - hh * 0.45]];
+            return [[px, py - hh], [px + hw * 0.8, py - hh * 0.35],
+                    [px + hw * 1.05, py], [px + hw * 0.8, py + hh * 0.35],
+                    [px, py + hh], [px - hw * 0.8, py + hh * 0.35],
+                    [px - hw * 1.05, py], [px - hw * 0.8, py - hh * 0.35]];
         } else if (subShape === 'dragonscale') {
             // Approximate dragonscale with 6 points
             var hw = stWpx / 2, hh = stHpx / 2;
@@ -9351,14 +9351,14 @@ function drawMosaicField(ox, oy, s, wall, voidPolys, patternOx, patternOy, projM
             cx.lineTo(px - hw, py - hh + topH + hh * 0.4);
             cx.closePath();
         } else if (subShape === 'leaf') {
-            // Leaf/teardrop: pointed on BOTH ends, convex S-curve sides
-            // Like a slender eye shape — pointed top and bottom, widest at center
+            // Leaf/teardrop: pointed both ends, FAT plump belly in the middle
+            // Control points push BEYOND bounding box to create the wide organic bulge
             var hw = (stWpx - stGrPx) / 2, hh = (stHpx - stGrPx) / 2;
             cx.moveTo(px, py - hh); // top point
-            // Right side: S-curve from top point down to bottom point, bowing right
-            cx.bezierCurveTo(px + hw * 0.9, py - hh * 0.55, px + hw * 0.9, py + hh * 0.55, px, py + hh);
-            // Left side: S-curve from bottom point back up to top point, bowing left
-            cx.bezierCurveTo(px - hw * 0.9, py + hh * 0.55, px - hw * 0.9, py - hh * 0.55, px, py - hh);
+            // Right side: plump curve — belly bulges out wide, sharp tips
+            cx.bezierCurveTo(px + hw * 1.15, py - hh * 0.33, px + hw * 1.15, py + hh * 0.33, px, py + hh);
+            // Left side: mirror
+            cx.bezierCurveTo(px - hw * 1.15, py + hh * 0.33, px - hw * 1.15, py - hh * 0.33, px, py - hh);
             cx.closePath();
         } else if (subShape === 'dragonscale') {
             // Pointed top, concave sides to stem
