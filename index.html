@@ -5091,6 +5091,7 @@ function drawMosaicSheetDetail(tile) {
             var r = (subWd - subGrd) / 2;
             ctx.arc(dx, dy, r, 0, Math.PI * 2);
         } else if (subShape === 'fishscale') {
+            // Fishscale preview — matches main renderer
             var rw = (subWd - subGrd) / 2;
             var fsStemLen = rw * 0.5;
             var fsTotalH = rw + fsStemLen;
@@ -5098,8 +5099,8 @@ function drawMosaicSheetDetail(tile) {
             var stemY = dy + fsTotalH / 2;
             var stemLen = stemY - flatY;
             ctx.arc(dx, flatY, rw, Math.PI, 2 * Math.PI, false);
-            ctx.quadraticCurveTo(dx + rw * 0.08, flatY + stemLen * 0.38, dx, stemY);
-            ctx.quadraticCurveTo(dx - rw * 0.08, flatY + stemLen * 0.38, dx - rw, flatY);
+            ctx.quadraticCurveTo(dx + rw * 0.15, flatY + stemLen * 0.45, dx, stemY);
+            ctx.quadraticCurveTo(dx - rw * 0.15, flatY + stemLen * 0.45, dx - rw, flatY);
             ctx.closePath();
         } else if (subShape === 'diamond') {
             var hw = (subWd - subGrd) / 2, hh = (subHd - subGrd) / 2;
@@ -5109,12 +5110,13 @@ function drawMosaicSheetDetail(tile) {
             ctx.lineTo(dx - hw, dy);
             ctx.closePath();
         } else if (subShape === 'arabesque') {
+            // Arabesque preview — matches main renderer's shoulder/waist lantern
             var hw = (subWd - subGrd) / 2, hh = (subHd - subGrd) / 2;
             ctx.moveTo(dx, dy - hh);
-            ctx.bezierCurveTo(dx + hw * 0.6, dy - hh * 0.7, dx + hw, dy - hh * 0.3, dx + hw, dy);
-            ctx.bezierCurveTo(dx + hw, dy + hh * 0.3, dx + hw * 0.6, dy + hh * 0.7, dx, dy + hh);
-            ctx.bezierCurveTo(dx - hw * 0.6, dy + hh * 0.7, dx - hw, dy + hh * 0.3, dx - hw, dy);
-            ctx.bezierCurveTo(dx - hw, dy - hh * 0.3, dx - hw * 0.6, dy - hh * 0.7, dx, dy - hh);
+            ctx.bezierCurveTo(dx + hw * 0.45, dy - hh * 0.92, dx + hw * 0.95, dy - hh * 0.5, dx + hw * 0.68, dy);
+            ctx.bezierCurveTo(dx + hw * 0.95, dy + hh * 0.5, dx + hw * 0.45, dy + hh * 0.92, dx, dy + hh);
+            ctx.bezierCurveTo(dx - hw * 0.45, dy + hh * 0.92, dx - hw * 0.95, dy + hh * 0.5, dx - hw * 0.68, dy);
+            ctx.bezierCurveTo(dx - hw * 0.95, dy - hh * 0.5, dx - hw * 0.45, dy - hh * 0.92, dx, dy - hh);
             ctx.closePath();
         } else if (subShape === 'picket') {
             var hw = (subWd - subGrd) / 2, hh = (subHd - subGrd) / 2;
@@ -5169,22 +5171,23 @@ function drawMosaicSheetDetail(tile) {
             ctx.bezierCurveTo(dx - hw, dy - ly, dx - lx, dy - hh, dx, dy - hh);
             ctx.closePath();
         } else if (subShape === 'ogee') {
+            // Ogee preview — matches main renderer's S-curve
             var hw = (subWd - subGrd) / 2, hh = (subHd - subGrd) / 2;
             ctx.moveTo(dx, dy - hh);
-            ctx.bezierCurveTo(dx + hw * 0.8, dy - hh * 0.5, dx + hw, dy, dx + hw * 0.3, dy + hh * 0.5);
-            ctx.bezierCurveTo(dx + hw * 0.1, dy + hh * 0.8, dx, dy + hh, dx, dy + hh);
-            ctx.bezierCurveTo(dx, dy + hh, dx - hw * 0.1, dy + hh * 0.8, dx - hw * 0.3, dy + hh * 0.5);
-            ctx.bezierCurveTo(dx - hw, dy, dx - hw * 0.8, dy - hh * 0.5, dx, dy - hh);
+            ctx.bezierCurveTo(dx + hw * 0.7, dy - hh * 0.88, dx + hw, dy - hh * 0.45, dx + hw, dy - hh * 0.05);
+            ctx.bezierCurveTo(dx + hw, dy + hh * 0.3, dx + hw * 0.35, dy + hh * 0.75, dx, dy + hh);
+            ctx.bezierCurveTo(dx - hw * 0.35, dy + hh * 0.75, dx - hw, dy + hh * 0.3, dx - hw, dy - hh * 0.05);
+            ctx.bezierCurveTo(dx - hw, dy - hh * 0.45, dx - hw * 0.7, dy - hh * 0.88, dx, dy - hh);
             ctx.closePath();
         } else if (subShape === 'starcross') {
-            var r = (subWd - subGrd) / 2;
-            var ri = r * 0.55;
-            for (var i = 0; i < 16; i++) {
-                var angle = (i / 16) * Math.PI * 2 - Math.PI / 2;
-                var rad = (i % 2 === 0) ? r : ri;
-                if (i === 0) ctx.moveTo(dx + rad * Math.cos(angle), dy + rad * Math.sin(angle));
-                else ctx.lineTo(dx + rad * Math.cos(angle), dy + rad * Math.sin(angle));
-            }
+            // Star preview — matches main renderer's quadratic bezier math
+            var hw = (subWd - subGrd) / 2, hh = (subHd - subGrd) / 2;
+            var k = 0.18;
+            ctx.moveTo(dx, dy - hh);
+            ctx.quadraticCurveTo(dx + hw * k, dy - hh * k, dx + hw, dy);
+            ctx.quadraticCurveTo(dx + hw * k, dy + hh * k, dx, dy + hh);
+            ctx.quadraticCurveTo(dx - hw * k, dy + hh * k, dx - hw, dy);
+            ctx.quadraticCurveTo(dx - hw * k, dy - hh * k, dx, dy - hh);
             ctx.closePath();
         } else if (subShape === 'kite') {
             var hw = (subWd - subGrd) / 2, hh = (subHd - subGrd) / 2;
@@ -5195,10 +5198,14 @@ function drawMosaicSheetDetail(tile) {
             ctx.lineTo(dx - hw, dy - hh + topH + hh * 0.4);
             ctx.closePath();
         } else if (subShape === 'leaf') {
+            // Leaf preview — matches main renderer's symmetric 4-curve leaf
             var hw = (subWd - subGrd) / 2, hh = (subHd - subGrd) / 2;
-            ctx.moveTo(dx, dy + hh);
-            ctx.bezierCurveTo(dx + hw * 1.2, dy + hh * 0.2, dx + hw * 1.2, dy - hh * 0.6, dx, dy - hh);
-            ctx.bezierCurveTo(dx - hw * 1.2, dy - hh * 0.6, dx - hw * 1.2, dy + hh * 0.2, dx, dy + hh);
+            var leafW = Math.min(hw, hh * 0.465);
+            ctx.moveTo(dx, dy - hh);
+            ctx.bezierCurveTo(dx + leafW * 0.55, dy - hh * 0.85, dx + leafW * 0.95, dy - hh * 0.35, dx + leafW, dy);
+            ctx.bezierCurveTo(dx + leafW * 0.95, dy + hh * 0.35, dx + leafW * 0.55, dy + hh * 0.85, dx, dy + hh);
+            ctx.bezierCurveTo(dx - leafW * 0.55, dy + hh * 0.85, dx - leafW * 0.95, dy + hh * 0.35, dx - leafW, dy);
+            ctx.bezierCurveTo(dx - leafW * 0.95, dy - hh * 0.35, dx - leafW * 0.55, dy - hh * 0.85, dx, dy - hh);
             ctx.closePath();
         } else if (subShape === 'dragonscale') {
             var hw = (subWd - subGrd) / 2, hh = (subHd - subGrd) / 2;
@@ -5206,6 +5213,15 @@ function drawMosaicSheetDetail(tile) {
             ctx.lineTo(dx + hw, dy - hh * 0.2);
             ctx.quadraticCurveTo(dx + hw * 0.1, dy + hh * 0.3, dx, dy + hh);
             ctx.quadraticCurveTo(dx - hw * 0.1, dy + hh * 0.3, dx - hw, dy - hh * 0.2);
+            ctx.closePath();
+        } else if (subShape === 'chevron') {
+            // Chevron preview — right-leaning parallelogram
+            var hw = (subWd - subGrd) / 2, hh = (subHd - subGrd) / 2;
+            var sk = Math.min(hw, hh) * 0.45;
+            ctx.moveTo(dx - hw + sk, dy - hh);
+            ctx.lineTo(dx + hw + sk, dy - hh);
+            ctx.lineTo(dx + hw - sk, dy + hh);
+            ctx.lineTo(dx - hw - sk, dy + hh);
             ctx.closePath();
         } else {
             // square
@@ -5915,7 +5931,11 @@ var TILE_PRESETS = [
     {name:'Leaf / Teardrop (10×12)', shape:'mosaic', nomW:10, nomH:12, actW:10, actH:12, grout:0.125,
      subShape:'leaf', subW:1.5, subH:4, subGr:0.0625},
     {name:'Dragon Scale (12×12)', shape:'mosaic', nomW:12, nomH:12, actW:12, actH:12, grout:0.125,
-     subShape:'dragonscale', subW:2, subH:2.5, subGr:0.0625}
+     subShape:'dragonscale', subW:2, subH:2.5, subGr:0.0625},
+    {name:'Chevron Wood-Look (2×8)', shape:'mosaic', nomW:12, nomH:12, actW:12, actH:12, grout:0.125,
+     subShape:'chevron', subW:2, subH:8, subGr:0.125},
+    {name:'Chevron Marble (3×6)', shape:'mosaic', nomW:12, nomH:12, actW:12, actH:12, grout:0.125,
+     subShape:'chevron', subW:3, subH:6, subGr:0.0625}
 ];
 
 var CUSTOM_PRESETS_KEY = 'layit-custom-presets';
@@ -6522,10 +6542,9 @@ var TILE_GEOMETRY_DB = {
     'chevron': {
         name: 'Chevron', wallpaperGroup: 'pmm', category: 'geometric',
         aliases: ['v-pattern', 'zigzag', 'arrow'],
-        spacing: { colFactor: 1, rowFactor: 1, oddRowOffsetX: 0, oddColOffsetY: 0, orientable: true },
+        spacing: { colFactor: 1.45, rowFactor: 1, oddRowOffsetX: 0, oddColOffsetY: 0, orientable: true },
         coverage: 1.0,
-        fillerShapes: [],
-        _unbuilt: true
+        fillerShapes: []
     },
     'basketweave': {
         name: 'Basketweave', wallpaperGroup: 'p4m', category: 'geometric',
@@ -8986,6 +9005,12 @@ function drawMosaicField(ox, oy, s, wall, voidPolys, patternOx, patternOy, projM
         // Overlapping scales: brick offset, rows overlap ~25%
         stColIn = subW + subGr;
         stRowIn = subH * 0.75 + subGr;
+    } else if (subShape === 'chevron') {
+        // Chevron V-pattern: parallelogram tiles alternate ±lean in columns
+        // Column spacing accounts for skew so tiles interlock without overlap
+        var chevSkew = Math.min(subW, subH) * 0.45;
+        stColIn = subW + chevSkew + subGr;
+        stRowIn = subH + subGr;
     } else {
         // square
         stColIn = subW + subGr;
@@ -9177,6 +9202,14 @@ function drawMosaicField(ox, oy, s, wall, voidPolys, patternOx, patternOy, projM
             return [[px, py - hh], [px + hw, py - hh * 0.2],
                     [px + hw * 0.3, py + hh * 0.4], [px, py + hh],
                     [px - hw * 0.3, py + hh * 0.4], [px - hw, py - hh * 0.2]];
+        } else if (subShape === 'chevron') {
+            // Chevron parallelogram — 4 vertices accounting for column-based lean
+            var hw = stWpx / 2, hh = stHpx / 2;
+            var chevSkew = Math.min(hw, hh) * 0.45;
+            var isRight = ((col % 2 + 2) % 2) === 0;
+            var sk = isRight ? chevSkew : -chevSkew;
+            return [[px - hw + sk, py - hh], [px + hw + sk, py - hh],
+                    [px + hw - sk, py + hh], [px - hw - sk, py + hh]];
         } else {
             // square
             var hw = stWpx / 2 - stGrPx / 2;
@@ -9370,6 +9403,18 @@ function drawMosaicField(ox, oy, s, wall, voidPolys, patternOx, patternOy, projM
             cx.lineTo(px + hw, py - hh * 0.2);
             cx.quadraticCurveTo(px + hw * 0.1, py + hh * 0.3, px, py + hh);
             cx.quadraticCurveTo(px - hw * 0.1, py + hh * 0.3, px - hw, py - hh * 0.2);
+            cx.closePath();
+        } else if (subShape === 'chevron') {
+            // Chevron / V-pattern — parallelogram tiles alternating lean by column
+            // Even cols lean right, odd cols lean left → creates zigzag V
+            var hw = (stWpx - stGrPx) / 2, hh = (stHpx - stGrPx) / 2;
+            var chevSkew = Math.min(hw, hh) * 0.45;
+            var isRight = ((col % 2 + 2) % 2) === 0;
+            var sk = isRight ? chevSkew : -chevSkew;
+            cx.moveTo(px - hw + sk, py - hh);    // top-left
+            cx.lineTo(px + hw + sk, py - hh);    // top-right
+            cx.lineTo(px + hw - sk, py + hh);    // bottom-right
+            cx.lineTo(px - hw - sk, py + hh);    // bottom-left
             cx.closePath();
         } else {
             // square
