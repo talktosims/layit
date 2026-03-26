@@ -5184,14 +5184,15 @@ function drawMosaicSheetDetail(tile) {
             ctx.bezierCurveTo(dx - hw, dy - hh * 0.45, dx - hw * 0.7, dy - hh * 0.88, dx, dy - hh);
             ctx.closePath();
         } else if (subShape === 'starcross') {
-            // Star preview — matches main renderer's quadratic bezier math
-            var hw = (subWd - subGrd) / 2, hh = (subHd - subGrd) / 2;
-            var k = 0.42;
-            ctx.moveTo(dx, dy - hh);
-            ctx.quadraticCurveTo(dx + hw * k, dy - hh * k, dx + hw, dy);
-            ctx.quadraticCurveTo(dx + hw * k, dy + hh * k, dx, dy + hh);
-            ctx.quadraticCurveTo(dx - hw * k, dy + hh * k, dx - hw, dy);
-            ctx.quadraticCurveTo(dx - hw * k, dy - hh * k, dx, dy - hh);
+            // 8-pointed star preview — 16-vertex polygon matching main renderer
+            var R = Math.min(subWd, subHd) / 2 - subGrd / 2;
+            var ri = R * 0.7654;
+            ctx.moveTo(dx, dy - R);
+            for (var si = 1; si < 16; si++) {
+                var sa = si * Math.PI / 8 - Math.PI / 2;
+                var sr = (si % 2 === 0) ? R : ri;
+                ctx.lineTo(dx + sr * Math.cos(sa), dy + sr * Math.sin(sa));
+            }
             ctx.closePath();
         } else if (subShape === 'kite') {
             var hw = (subWd - subGrd) / 2, hh = (subHd - subGrd) / 2;
@@ -9174,19 +9175,16 @@ function drawMosaicField(ox, oy, s, wall, voidPolys, patternOx, patternOy, projM
                     [px - hw * 0.5, py + hh * 0.6], [px - hw, py + hh * 0.1],
                     [px - hw, py - hh * 0.2], [px - hw * 0.6, py - hh * 0.7]];
         } else if (subShape === 'starcross') {
-            // Star — sample points along 4 mathematically derived quadratic arcs
-            var hw = stWpx / 2, hh = stHpx / 2;
-            var k = 0.42, m = (1 + 2 * k) / 4; // midpoint factor
-            return [
-                [px, py - hh],                // top tip
-                [px + hw * m, py - hh * m],   // top→right arc midpoint
-                [px + hw, py],                // right tip
-                [px + hw * m, py + hh * m],   // right→bottom arc midpoint
-                [px, py + hh],                // bottom tip
-                [px - hw * m, py + hh * m],   // bottom→left arc midpoint
-                [px - hw, py],                // left tip
-                [px - hw * m, py - hh * m]    // left→top arc midpoint
-            ];
+            // 8-pointed star — 16 vertices for precise hit testing
+            var R = Math.min(stWpx, stHpx) / 2;
+            var ri = R * 0.7654;
+            var pts = [];
+            for (var si = 0; si < 16; si++) {
+                var sa = si * Math.PI / 8 - Math.PI / 2;
+                var sr = (si % 2 === 0) ? R : ri;
+                pts.push([px + sr * Math.cos(sa), py + sr * Math.sin(sa)]);
+            }
+            return pts;
         } else if (subShape === 'kite') {
             var hw = stWpx / 2, hh = stHpx / 2;
             var topH = hh * 0.3;
@@ -9390,17 +9388,16 @@ function drawMosaicField(ox, oy, s, wall, voidPolys, patternOx, patternOy, projM
                              px, py - hh);
             cx.closePath();
         } else if (subShape === 'starcross') {
-            // Star — mathematically derived 4-fold symmetric (p4m wallpaper group)
-            // 4 quadratic bezier arcs between cardinal tips.
-            // k controls concavity: 0=max concave, 0.5=diamond (straight sides)
-            // Cross filler uses exact complement curves for zero-gap tessellation.
-            var hw = (stWpx - stGrPx) / 2, hh = (stHpx - stGrPx) / 2;
-            var k = 0.42;
-            cx.moveTo(px, py - hh);                                          // top tip
-            cx.quadraticCurveTo(px + hw * k, py - hh * k, px + hw, py);     // top → right
-            cx.quadraticCurveTo(px + hw * k, py + hh * k, px, py + hh);     // right → bottom
-            cx.quadraticCurveTo(px - hw * k, py + hh * k, px - hw, py);     // bottom → left
-            cx.quadraticCurveTo(px - hw * k, py - hh * k, px, py - hh);     // left → top
+            // 8-pointed star — Islamic geometric construction (two overlapping squares)
+            // 16-vertex polygon: 8 tips at R, 8 notches at ri = R * √(2-√2) = R * 0.7654
+            var R = Math.min(stWpx, stHpx) / 2 - stGrPx / 2;
+            var ri = R * 0.7654;
+            cx.moveTo(px, py - R);
+            for (var si = 1; si < 16; si++) {
+                var sa = si * Math.PI / 8 - Math.PI / 2;
+                var sr = (si % 2 === 0) ? R : ri;
+                cx.lineTo(px + sr * Math.cos(sa), py + sr * Math.sin(sa));
+            }
             cx.closePath();
         } else if (subShape === 'kite') {
             // 4-sided kite: narrow top, wide middle, pointed bottom
@@ -9710,17 +9707,23 @@ function drawMosaicField(ox, oy, s, wall, voidPolys, patternOx, patternOy, projM
                         cx.fillStyle = isCut ? '#FF9800' : '#81C784';
                         cx.strokeStyle = isCut ? '#E65100' : '#2E7D32';
                         cx.lineWidth = 0.5;
-                        // Cross — mathematically derived complement of star (exact interlock)
-                        // Uses same k parameter; convex arcs are the negative space of star's concave arcs
-                        var chw = (stWpx - stGrPx) / 2;
-                        var chh = (stHpx - stGrPx) / 2;
-                        var ck = 0.42; // must match star's k for zero-gap tessellation
+                        // Cross — 12-vertex + polygon, arm width from star's sin(π/8) geometry
+                        var cR = Math.min(stWpx, stHpx) / 2 - stGrPx / 2;
+                        var armHW = cR * 0.383; // sin(π/8), matches star notch spacing
+                        var armHL = cR * 0.92;
                         cx.beginPath();
-                        cx.moveTo(crossX, crossY - chh);                                                                   // top vertex
-                        cx.quadraticCurveTo(crossX + chw * (1 - ck), crossY + chh * (ck - 1), crossX + chw, crossY);       // top → right
-                        cx.quadraticCurveTo(crossX + chw * (1 - ck), crossY + chh * (1 - ck), crossX, crossY + chh);       // right → bottom
-                        cx.quadraticCurveTo(crossX + chw * (ck - 1), crossY + chh * (1 - ck), crossX - chw, crossY);       // bottom → left
-                        cx.quadraticCurveTo(crossX + chw * (ck - 1), crossY + chh * (ck - 1), crossX, crossY - chh);       // left → top
+                        cx.moveTo(crossX - armHW, crossY - armHL);
+                        cx.lineTo(crossX + armHW, crossY - armHL);
+                        cx.lineTo(crossX + armHW, crossY - armHW);
+                        cx.lineTo(crossX + armHL, crossY - armHW);
+                        cx.lineTo(crossX + armHL, crossY + armHW);
+                        cx.lineTo(crossX + armHW, crossY + armHW);
+                        cx.lineTo(crossX + armHW, crossY + armHL);
+                        cx.lineTo(crossX - armHW, crossY + armHL);
+                        cx.lineTo(crossX - armHW, crossY + armHW);
+                        cx.lineTo(crossX - armHL, crossY + armHW);
+                        cx.lineTo(crossX - armHL, crossY - armHW);
+                        cx.lineTo(crossX - armHW, crossY - armHW);
                         cx.closePath();
                         cx.fill();
                         cx.stroke();
