@@ -5110,13 +5110,17 @@ function drawMosaicSheetDetail(tile) {
             ctx.lineTo(dx - hw, dy);
             ctx.closePath();
         } else if (subShape === 'arabesque') {
-            // Arabesque preview — matches main renderer's shoulder/waist lantern
+            // Arabesque preview — matches main renderer's 8-curve lantern
             var hw = (subWd - subGrd) / 2, hh = (subHd - subGrd) / 2;
             ctx.moveTo(dx, dy - hh);
-            ctx.bezierCurveTo(dx + hw * 0.45, dy - hh * 0.92, dx + hw * 0.95, dy - hh * 0.5, dx + hw * 0.68, dy);
-            ctx.bezierCurveTo(dx + hw * 0.95, dy + hh * 0.5, dx + hw * 0.45, dy + hh * 0.92, dx, dy + hh);
-            ctx.bezierCurveTo(dx - hw * 0.45, dy + hh * 0.92, dx - hw * 0.95, dy + hh * 0.5, dx - hw * 0.68, dy);
-            ctx.bezierCurveTo(dx - hw * 0.95, dy - hh * 0.5, dx - hw * 0.45, dy - hh * 0.92, dx, dy - hh);
+            ctx.bezierCurveTo(dx + hw*0.4, dy - hh*0.95, dx + hw*0.85, dy - hh*0.7, dx + hw, dy - hh*0.25);
+            ctx.bezierCurveTo(dx + hw*1.02, dy + hh*0.05, dx + hw*0.52, dy - hh*0.02, dx + hw*0.38, dy);
+            ctx.bezierCurveTo(dx + hw*0.52, dy + hh*0.02, dx + hw*1.02, dy - hh*0.05, dx + hw, dy + hh*0.25);
+            ctx.bezierCurveTo(dx + hw*0.85, dy + hh*0.7, dx + hw*0.4, dy + hh*0.95, dx, dy + hh);
+            ctx.bezierCurveTo(dx - hw*0.4, dy + hh*0.95, dx - hw*0.85, dy + hh*0.7, dx - hw, dy + hh*0.25);
+            ctx.bezierCurveTo(dx - hw*1.02, dy - hh*0.05, dx - hw*0.52, dy + hh*0.02, dx - hw*0.38, dy);
+            ctx.bezierCurveTo(dx - hw*0.52, dy - hh*0.02, dx - hw*1.02, dy + hh*0.05, dx - hw, dy - hh*0.25);
+            ctx.bezierCurveTo(dx - hw*0.85, dy - hh*0.7, dx - hw*0.4, dy - hh*0.95, dx, dy - hh);
             ctx.closePath();
         } else if (subShape === 'picket') {
             var hw = (subWd - subGrd) / 2, hh = (subHd - subGrd) / 2;
@@ -5182,7 +5186,7 @@ function drawMosaicSheetDetail(tile) {
         } else if (subShape === 'starcross') {
             // Star preview — matches main renderer's quadratic bezier math
             var hw = (subWd - subGrd) / 2, hh = (subHd - subGrd) / 2;
-            var k = 0.18;
+            var k = 0.42;
             ctx.moveTo(dx, dy - hh);
             ctx.quadraticCurveTo(dx + hw * k, dy - hh * k, dx + hw, dy);
             ctx.quadraticCurveTo(dx + hw * k, dy + hh * k, dx, dy + hh);
@@ -9110,16 +9114,20 @@ function drawMosaicField(ox, oy, s, wall, voidPolys, patternOx, patternOy, projM
             var hw = stWpx / 2, hh = stHpx / 2;
             return [[px, py - hh], [px + hw, py], [px, py + hh], [px - hw, py]];
         } else if (subShape === 'arabesque') {
-            // Arabesque — shoulder/waist/hip sample points
+            // Arabesque — shoulder/waist/hip sample points (8-curve lantern)
             var hw = stWpx / 2, hh = stHpx / 2;
             return [[px, py - hh],
-                    [px + hw * 0.75, py - hh * 0.55],   // right shoulder
-                    [px + hw * 0.68, py],                 // right waist (narrower)
-                    [px + hw * 0.75, py + hh * 0.55],   // right hip
+                    [px + hw * 0.85, py - hh * 0.5],    // right shoulder
+                    [px + hw, py - hh * 0.25],            // right shoulder peak
+                    [px + hw * 0.38, py],                  // right waist (narrow)
+                    [px + hw, py + hh * 0.25],            // right hip peak
+                    [px + hw * 0.85, py + hh * 0.5],
                     [px, py + hh],
-                    [px - hw * 0.75, py + hh * 0.55],
-                    [px - hw * 0.68, py],
-                    [px - hw * 0.75, py - hh * 0.55]];
+                    [px - hw * 0.85, py + hh * 0.5],
+                    [px - hw, py + hh * 0.25],
+                    [px - hw * 0.38, py],
+                    [px - hw, py - hh * 0.25],
+                    [px - hw * 0.85, py - hh * 0.5]];
         } else if (subShape === 'picket') {
             // Elongated hex
             var hw = stWpx / 2, hh = stHpx / 2;
@@ -9168,7 +9176,7 @@ function drawMosaicField(ox, oy, s, wall, voidPolys, patternOx, patternOy, projM
         } else if (subShape === 'starcross') {
             // Star — sample points along 4 mathematically derived quadratic arcs
             var hw = stWpx / 2, hh = stHpx / 2;
-            var k = 0.18, m = (1 + 2 * k) / 4; // midpoint factor
+            var k = 0.42, m = (1 + 2 * k) / 4; // midpoint factor
             return [
                 [px, py - hh],                // top tip
                 [px + hw * m, py - hh * m],   // top→right arc midpoint
@@ -9266,20 +9274,43 @@ function drawMosaicField(ox, oy, s, wall, voidPolys, patternOx, patternOy, projM
             cx.lineTo(px - hw, py);
             cx.closePath();
         } else if (subShape === 'arabesque') {
-            // Arabesque/lantern — symmetric: bilateral (L=R) and rotational (top=flip of bottom)
-            // Pointed top/bottom, convex shoulders at ±0.4*hh, concave waist at center
-            // Shoulders reach ~0.92*hw, waist narrows to ~0.68*hw for pronounced lantern shape
+            // Arabesque/lantern — 8 cubic bezier curves for proper shoulder-waist-hip profile
+            // Bilateral + rotational symmetry. Shoulder reaches hw, waist narrows to 0.38*hw.
             var hw = (stWpx - stGrPx) / 2;
             var hh = (stHpx - stGrPx) / 2;
             cx.moveTo(px, py - hh);                                                                           // top point
-            cx.bezierCurveTo(px + hw * 0.45, py - hh * 0.92, px + hw * 0.95, py - hh * 0.5,                 // upper-right shoulder
-                             px + hw * 0.68, py);                                                              // right waist
-            cx.bezierCurveTo(px + hw * 0.95, py + hh * 0.5, px + hw * 0.45, py + hh * 0.92,                 // lower-right hip
+            // Upper-right: top → shoulder peak
+            cx.bezierCurveTo(px + hw * 0.4, py - hh * 0.95,
+                             px + hw * 0.85, py - hh * 0.7,
+                             px + hw, py - hh * 0.25);                                                        // right shoulder
+            // Right: shoulder → waist (concave inward)
+            cx.bezierCurveTo(px + hw * 1.02, py + hh * 0.05,
+                             px + hw * 0.52, py - hh * 0.02,
+                             px + hw * 0.38, py);                                                              // right waist
+            // Right: waist → hip (mirror of shoulder→waist)
+            cx.bezierCurveTo(px + hw * 0.52, py + hh * 0.02,
+                             px + hw * 1.02, py - hh * 0.05,
+                             px + hw, py + hh * 0.25);                                                        // right hip
+            // Lower-right: hip → bottom point
+            cx.bezierCurveTo(px + hw * 0.85, py + hh * 0.7,
+                             px + hw * 0.4, py + hh * 0.95,
                              px, py + hh);                                                                     // bottom point
-            cx.bezierCurveTo(px - hw * 0.45, py + hh * 0.92, px - hw * 0.95, py + hh * 0.5,                 // lower-left hip
-                             px - hw * 0.68, py);                                                              // left waist
-            cx.bezierCurveTo(px - hw * 0.95, py - hh * 0.5, px - hw * 0.45, py - hh * 0.92,                 // upper-left shoulder
-                             px, py - hh);                                                                     // back to top
+            // Lower-left: bottom → hip (mirror)
+            cx.bezierCurveTo(px - hw * 0.4, py + hh * 0.95,
+                             px - hw * 0.85, py + hh * 0.7,
+                             px - hw, py + hh * 0.25);
+            // Left: hip → waist
+            cx.bezierCurveTo(px - hw * 1.02, py - hh * 0.05,
+                             px - hw * 0.52, py + hh * 0.02,
+                             px - hw * 0.38, py);
+            // Left: waist → shoulder
+            cx.bezierCurveTo(px - hw * 0.52, py - hh * 0.02,
+                             px - hw * 1.02, py + hh * 0.05,
+                             px - hw, py - hh * 0.25);
+            // Upper-left: shoulder → top
+            cx.bezierCurveTo(px - hw * 0.85, py - hh * 0.7,
+                             px - hw * 0.4, py - hh * 0.95,
+                             px, py - hh);
             cx.closePath();
         } else if (subShape === 'picket') {
             // Elongated hexagon (picket): stretched pointy-top hex
@@ -9364,7 +9395,7 @@ function drawMosaicField(ox, oy, s, wall, voidPolys, patternOx, patternOy, projM
             // k controls concavity: 0=max concave, 0.5=diamond (straight sides)
             // Cross filler uses exact complement curves for zero-gap tessellation.
             var hw = (stWpx - stGrPx) / 2, hh = (stHpx - stGrPx) / 2;
-            var k = 0.18;
+            var k = 0.42;
             cx.moveTo(px, py - hh);                                          // top tip
             cx.quadraticCurveTo(px + hw * k, py - hh * k, px + hw, py);     // top → right
             cx.quadraticCurveTo(px + hw * k, py + hh * k, px, py + hh);     // right → bottom
@@ -9683,7 +9714,7 @@ function drawMosaicField(ox, oy, s, wall, voidPolys, patternOx, patternOy, projM
                         // Uses same k parameter; convex arcs are the negative space of star's concave arcs
                         var chw = (stWpx - stGrPx) / 2;
                         var chh = (stHpx - stGrPx) / 2;
-                        var ck = 0.18; // must match star's k for zero-gap tessellation
+                        var ck = 0.42; // must match star's k for zero-gap tessellation
                         cx.beginPath();
                         cx.moveTo(crossX, crossY - chh);                                                                   // top vertex
                         cx.quadraticCurveTo(crossX + chw * (1 - ck), crossY + chh * (ck - 1), crossX + chw, crossY);       // top → right
