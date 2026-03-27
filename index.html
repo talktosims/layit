@@ -9388,7 +9388,7 @@ function drawMosaicField(ox, oy, s, wall, voidPolys, patternOx, patternOy, projM
             var halfCell = Math.min(stColPx, stRowPx) / 2;
             var g2 = stGrPx / 2;
             var s = halfCell - g2;
-            var R = s * 1.14;             // star extends 14% past cell (interlocks with crosses)
+            var R = s * 1.35;             // star extends past cell to interlock (exact 1/8" grout)
             var ri = R * 0.76;            // inner notch (~135° angle)
             if (_isStarCell) {
                 // 8-pointed star: 16 vertices alternating tips (R) and notches (ri)
@@ -9401,8 +9401,8 @@ function drawMosaicField(ox, oy, s, wall, voidPolys, patternOx, patternOy, projM
             } else {
                 // Tilted cross: tuned to interlock with star
                 var sq2 = 1.4142;
-                var hw = s * 0.77 / 2;            // arm half-width
-                var armL = s * 1.00;               // parallel section length
+                var hw = s * 0.91 / 2;            // arm half-width (exact 1/8" grout)
+                var armL = s * 1.34;               // parallel section length
                 var triH = hw * sq2 * 0.73;        // pointed tip height
                 var D = armL + triH;
                 // 4 notch vertices between arms (on cardinal axes)
