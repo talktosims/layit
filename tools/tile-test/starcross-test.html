@@ -1,15 +1,14 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>Star & Cross Lab v4</title>
+<title>Star & Cross Tuner</title>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
-body { background: #1a1a1a; color: #eee; font-family: 'SF Mono', 'Menlo', monospace; font-size: 13px; }
+body { background: #1a1a1a; color: #eee; font-family: 'SF Mono', monospace; font-size: 13px; }
 .layout { display: flex; height: 100vh; }
-.sidebar { width: 300px; padding: 12px; overflow-y: auto; background: #222; border-right: 1px solid #444; flex-shrink: 0; }
+.sidebar { width: 280px; padding: 12px; overflow-y: auto; background: #222; border-right: 1px solid #444; flex-shrink: 0; }
 .main { flex: 1; display: flex; flex-direction: column; }
-canvas { flex: 1; cursor: grab; }
-canvas.dragging { cursor: grabbing; }
+canvas { flex: 1; }
 h2 { font-size: 15px; margin-bottom: 8px; color: #7fdbca; }
 h3 { font-size: 11px; margin: 10px 0 5px; color: #c792ea; text-transform: uppercase; letter-spacing: 1px; }
 .row { display: flex; align-items: center; margin: 3px 0; gap: 6px; }
@@ -17,282 +16,145 @@ h3 { font-size: 11px; margin: 10px 0 5px; color: #c792ea; text-transform: upperc
 .row input[type=range] { flex: 1; }
 .row .val { flex: 0 0 40px; text-align: right; color: #ffcb6b; font-size: 11px; }
 .info { padding: 6px 12px; background: #2a2a2a; border-top: 1px solid #444; font-size: 11px; color: #888; }
-.color-row { display: flex; gap: 6px; align-items: center; margin: 3px 0; }
-.color-row label { flex: 0 0 50px; color: #999; font-size: 12px; }
-.color-row input[type=color] { width: 30px; height: 18px; border: none; cursor: pointer; }
-.hint { color: #555; font-size: 10px; margin: 2px 0 4px; }
-.metrics { background: #1e2d1e; border: 1px solid #3a5a3a; border-radius: 4px; padding: 6px; margin: 6px 0; font-size: 10px; line-height: 1.5; }
+.hint { color: #555; font-size: 10px; margin: 2px 0; }
 </style>
 </head>
 <body>
 <div class="layout">
   <div class="sidebar">
-    <h2>Star & Cross v4</h2>
-    <div class="hint">Cubic bezier: shoulder (fat body) + notch (concave pinch)</div>
+    <h2>Star & Cross Tuner</h2>
+    <div class="hint">8-pointed star + tilted cross, checkerboard</div>
 
-    <h3>Geometry</h3>
-    <div class="row"><label>Cell Size</label><input type="range" id="cellSize" min="60" max="400" step="2" value="160"><span class="val" id="cellSizeV">160</span></div>
-    <div class="row"><label>Star Ratio</label><input type="range" id="starRatio" min="0.80" max="1.00" step="0.01" value="0.96"><span class="val" id="starRatioV">0.96</span></div>
-    <div class="row"><label>Shoulder</label><input type="range" id="shoulder" min="0.20" max="0.90" step="0.01" value="0.62"><span class="val" id="shoulderV">0.62</span></div>
-    <div class="row"><label>Notch</label><input type="range" id="notch" min="0.05" max="0.60" step="0.01" value="0.18"><span class="val" id="notchV">0.18</span></div>
-    <div class="row"><label>Grout</label><input type="range" id="grout" min="0" max="10" step="0.5" value="2"><span class="val" id="groutV">2</span></div>
-    <div class="hint">Shoulder: how wide the star bulges (high=fat)<br>Notch: how deep the pinch at diagonals (low=deep)</div>
+    <h3>Star</h3>
+    <div class="row"><label>Star Size</label><input type="range" id="starSize" min="0.80" max="1.50" step="0.01" value="1.00"><span class="val" id="starSizeV">1.00</span></div>
+    <div class="row"><label>Notch Ratio</label><input type="range" id="notchR" min="0.60" max="0.90" step="0.01" value="0.76"><span class="val" id="notchRV">0.76</span></div>
+
+    <h3>Cross</h3>
+    <div class="row"><label>Arm Width</label><input type="range" id="armW" min="0.20" max="0.90" step="0.01" value="0.50"><span class="val" id="armWV">0.50</span></div>
+    <div class="row"><label>Arm Length</label><input type="range" id="armL" min="0.30" max="1.20" step="0.01" value="0.60"><span class="val" id="armLV">0.60</span></div>
+    <div class="row"><label>Tip Height</label><input type="range" id="tipH" min="0.50" max="2.00" step="0.01" value="0.95"><span class="val" id="tipHV">0.95</span></div>
+
+    <h3>Grid</h3>
+    <div class="row"><label>Cell Size</label><input type="range" id="cellSize" min="60" max="300" step="2" value="140"><span class="val" id="cellSizeV">140</span></div>
+    <div class="row"><label>Grout</label><input type="range" id="grout" min="0" max="8" step="0.5" value="2"><span class="val" id="groutV">2</span></div>
 
     <h3>Colors</h3>
-    <div class="color-row"><label>Star</label><input type="color" id="starColor" value="#5a8a9a"></div>
-    <div class="color-row"><label>Cross</label><input type="color" id="crossColor" value="#d4c4a0"></div>
-    <div class="color-row"><label>Grout</label><input type="color" id="groutColor" value="#888880"></div>
+    <div class="row"><label>Star</label><input type="color" id="starColor" value="#5a8a9a"></div>
+    <div class="row"><label>Cross</label><input type="color" id="crossColor" value="#d4c4a0"></div>
+    <div class="row"><label>Grout</label><input type="color" id="groutColor" value="#888880"></div>
 
     <h3>Overlay</h3>
-    <div class="hint">Drop image anywhere. Drag canvas to move, scroll to scale.</div>
-    <div class="row"><label>Opacity</label><input type="range" id="overlayOpacity" min="0" max="100" step="5" value="0"><span class="val" id="overlayOpacityV">0</span></div>
+    <div class="hint">Drop image anywhere. Drag to move, scroll to scale.</div>
+    <div class="row"><label>Opacity</label><input type="range" id="opacity" min="0" max="100" step="5" value="0"><span class="val" id="opacityV">0</span></div>
 
-    <h3>Measurements</h3>
-    <div class="metrics" id="metrics"></div>
+    <h3 id="params" style="color:#ffcb6b; font-size:10px; word-break:break-all;"></h3>
   </div>
   <div class="main">
     <canvas id="c"></canvas>
-    <div class="info" id="statusBar">Drop reference image, drag to position, scroll to scale</div>
+    <div class="info" id="status"></div>
   </div>
 </div>
-
 <script>
 var canvas = document.getElementById('c');
 var ctx = canvas.getContext('2d');
 var refImg = null, refX = 0, refY = 0, refScale = 1.0;
-var isDragging = false, dsx = 0, dsy = 0, drx = 0, dry = 0;
+var isDrag = false, dsx, dsy, drx, dry;
 
-// ─── Drop anywhere ───
-document.addEventListener('dragover', function(e) { e.preventDefault(); });
-document.addEventListener('drop', function(e) {
+document.addEventListener('dragover', function(e){e.preventDefault();});
+document.addEventListener('drop', function(e){
   e.preventDefault();
-  if (e.dataTransfer && e.dataTransfer.files[0]) {
-    var img = new Image();
-    img.onload = function() {
-      refImg = img;
-      refX = (canvas.clientWidth - img.width) / 2;
-      refY = (canvas.clientHeight - img.height) / 2;
-      refScale = 1.0;
-      document.getElementById('overlayOpacity').value = 50;
-      document.getElementById('overlayOpacityV').textContent = '50';
-      draw();
-    };
-    img.src = URL.createObjectURL(e.dataTransfer.files[0]);
+  if(e.dataTransfer&&e.dataTransfer.files[0]){
+    var img=new Image();
+    img.onload=function(){refImg=img;refX=(canvas.clientWidth-img.width)/2;refY=(canvas.clientHeight-img.height)/2;
+      document.getElementById('opacity').value=50;document.getElementById('opacityV').textContent='50';draw();};
+    img.src=URL.createObjectURL(e.dataTransfer.files[0]);
   }
 });
+canvas.addEventListener('mousedown',function(e){if(!refImg)return;isDrag=true;dsx=e.clientX;dsy=e.clientY;drx=refX;dry=refY;});
+window.addEventListener('mousemove',function(e){if(!isDrag)return;refX=drx+(e.clientX-dsx);refY=dry+(e.clientY-dsy);draw();});
+window.addEventListener('mouseup',function(){isDrag=false;});
+canvas.addEventListener('wheel',function(e){if(!refImg)return;e.preventDefault();refScale+=e.deltaY>0?-0.03:0.03;refScale=Math.max(0.1,Math.min(5,refScale));draw();},{passive:false});
 
-// ─── Drag to move overlay ───
-canvas.addEventListener('mousedown', function(e) {
-  if (!refImg) return;
-  isDragging = true; dsx = e.clientX; dsy = e.clientY; drx = refX; dry = refY;
-  canvas.classList.add('dragging');
+function resize(){canvas.width=canvas.clientWidth*devicePixelRatio;canvas.height=canvas.clientHeight*devicePixelRatio;ctx.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0);draw();}
+window.addEventListener('resize',resize);
+
+['starSize','notchR','armW','armL','tipH','cellSize','grout','opacity'].forEach(function(id){
+  document.getElementById(id).addEventListener('input',function(){document.getElementById(id+'V').textContent=this.value;draw();});
 });
-window.addEventListener('mousemove', function(e) {
-  if (!isDragging) return;
-  refX = drx + (e.clientX - dsx);
-  refY = dry + (e.clientY - dsy);
-  draw();
-});
-window.addEventListener('mouseup', function() { isDragging = false; canvas.classList.remove('dragging'); });
+['starColor','crossColor','groutColor'].forEach(function(id){document.getElementById(id).addEventListener('input',draw);});
 
-// ─── Scroll to scale overlay ───
-canvas.addEventListener('wheel', function(e) {
-  if (!refImg) return;
-  e.preventDefault();
-  refScale += e.deltaY > 0 ? -0.03 : 0.03;
-  refScale = Math.max(0.1, Math.min(5.0, refScale));
-  draw();
-}, { passive: false });
+function draw(){
+  var W=canvas.clientWidth, H=canvas.clientHeight;
+  var cell=parseFloat(document.getElementById('cellSize').value);
+  var g=parseFloat(document.getElementById('grout').value);
+  var starSizeMul=parseFloat(document.getElementById('starSize').value);
+  var notchR=parseFloat(document.getElementById('notchR').value);
+  var armWFrac=parseFloat(document.getElementById('armW').value);
+  var armLFrac=parseFloat(document.getElementById('armL').value);
+  var tipHMul=parseFloat(document.getElementById('tipH').value);
+  var opacity=parseInt(document.getElementById('opacity').value)/100;
 
-// ─── Resize ───
-function resize() {
-  canvas.width = canvas.clientWidth * devicePixelRatio;
-  canvas.height = canvas.clientHeight * devicePixelRatio;
-  ctx.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0);
-  draw();
-}
-window.addEventListener('resize', resize);
+  var halfCell=cell/2;
+  var s=halfCell-g/2;
+  var R=s*starSizeMul;
+  var ri=R*notchR;
+  var hw=s*armWFrac/2;
+  var sq2=1.4142;
+  var armL_px=s*armLFrac;
+  var triH=hw*sq2*tipHMul;
+  var D=armL_px+triH;
 
-// ─── Controls ───
-['cellSize','starRatio','shoulder','notch','grout','overlayOpacity'].forEach(function(id) {
-  document.getElementById(id).addEventListener('input', function() {
-    document.getElementById(id + 'V').textContent = this.value;
-    draw();
-  });
-});
-['starColor','crossColor','groutColor'].forEach(function(id) {
-  document.getElementById(id).addEventListener('input', draw);
-});
+  ctx.fillStyle=document.getElementById('groutColor').value;
+  ctx.fillRect(0,0,W,H);
 
-// ═══════════════════════════════════════════
-// CUBIC BEZIER star edge with S-curve profile
-// The edge from tip A to tip B:
-//   - Bulges OUTWARD near each tip (shoulder)
-//   - Pinches INWARD at the diagonal midpoint (notch)
-// ═══════════════════════════════════════════
+  if(refImg&&opacity>0){ctx.save();ctx.globalAlpha=opacity*0.5;ctx.drawImage(refImg,refX,refY,refImg.width*refScale,refImg.height*refScale);ctx.restore();}
 
-function drawStarCubicEdge(cx, cy, R, ax, ay, bx, by, shoulder, notch) {
-  // For edge from A to B:
-  // P1 (near A): push perpendicular to the A-to-center direction, creating outward bulge
-  // P2 (near B): pull toward center at the diagonal, creating inward pinch
+  var cols=Math.ceil(W/cell)+2, rows=Math.ceil(H/cell)+2;
 
-  // Vector from center to A
-  var cax = ax - cx, cay = ay - cy;
-  // Vector from center to B
-  var cbx = bx - cx, cby = by - cy;
+  for(var row=-1;row<rows;row++){
+    for(var col=-1;col<cols;col++){
+      var px=halfCell+col*cell, py=halfCell+row*cell;
+      var isStar=((row+col)%2+2)%2===0;
 
-  // P1: offset from A in the direction of B, scaled by shoulder
-  // This makes the curve leave tip A heading toward B, but pushed outward
-  var p1x = ax + (bx - ax) * shoulder;
-  var p1y = ay + (by - ay) * shoulder;
-  // But keep P1 at distance R from center (on the cell boundary circle)
-  var p1dx = p1x - cx, p1dy = p1y - cy;
-  var p1dist = Math.sqrt(p1dx * p1dx + p1dy * p1dy);
-  if (p1dist > 0) {
-    p1x = cx + p1dx / p1dist * R * 0.97;  // slightly inside R
-    p1y = cy + p1dy / p1dist * R * 0.97;
-  }
-
-  // P2: same idea but from B toward A, kept on the boundary
-  var p2x = bx + (ax - bx) * shoulder;
-  var p2y = by + (ay - by) * shoulder;
-  var p2dx = p2x - cx, p2dy = p2y - cy;
-  var p2dist = Math.sqrt(p2dx * p2dx + p2dy * p2dy);
-  if (p2dist > 0) {
-    p2x = cx + p2dx / p2dist * R * 0.97;
-    p2y = cy + p2dy / p2dist * R * 0.97;
-  }
-
-  // Now pull P1 and P2 INWARD toward center by (1-notch)
-  // notch=1.0 means no pull (stays on boundary), notch=0.0 means pulled to center
-  var midx = (ax + bx) / 2, midy = (ay + by) / 2;
-  var diagDx = cx - midx, diagDy = cy - midy;
-
-  p1x += diagDx * (1 - notch) * 0.5;
-  p1y += diagDy * (1 - notch) * 0.5;
-  p2x += diagDx * (1 - notch) * 0.5;
-  p2y += diagDy * (1 - notch) * 0.5;
-
-  ctx.bezierCurveTo(p1x, p1y, p2x, p2y, bx, by);
-}
-
-// ─── Draw Star (tips at DIAGONALS: NE, SE, SW, NW) ───
-function drawStar(cx, cy, R, shoulder, notch, g) {
-  var r = R - g / 2;
-  var d = r * 0.7071; // r / sqrt(2) — tip distance along each axis
-  // Tips at 45° angles (diagonal directions)
-  var tips = [
-    [cx + d, cy - d],   // NE tip
-    [cx + d, cy + d],   // SE tip
-    [cx - d, cy + d],   // SW tip
-    [cx - d, cy - d]    // NW tip
-  ];
-  ctx.beginPath();
-  ctx.moveTo(tips[0][0], tips[0][1]);
-  for (var i = 0; i < 4; i++) {
-    var a = tips[i], b = tips[(i + 1) % 4];
-    drawStarCubicEdge(cx, cy, r, a[0], a[1], b[0], b[1], shoulder, notch);
-  }
-  ctx.closePath();
-}
-
-// ─── Draw Cross (complement) ───
-function drawCross(cx, cy, S, R, shoulder, notch, g) {
-  var b = Math.max(S/2 - R + g/2, 0.5);
-  var arm = S/2 - g/2;
-
-  ctx.beginPath();
-  ctx.moveTo(cx - b, cy - arm);
-  ctx.lineTo(cx + b, cy - arm);
-
-  // NE star at (cx+S/2, cy-S/2): edge from its left tip to bottom tip
-  var ne_cx = cx + S/2, ne_cy = cy - S/2;
-  var ne_r = R;
-  drawStarCubicEdge(ne_cx, ne_cy, ne_r,
-    ne_cx - ne_r, ne_cy,    // left tip of NE star
-    ne_cx, ne_cy + ne_r,    // bottom tip of NE star
-    shoulder, notch);
-
-  ctx.lineTo(cx + arm, cy - b);
-  ctx.lineTo(cx + arm, cy + b);
-
-  // SE star
-  var se_cx = cx + S/2, se_cy = cy + S/2;
-  drawStarCubicEdge(se_cx, se_cy, R,
-    se_cx, se_cy - R, se_cx - R, se_cy, shoulder, notch);
-
-  ctx.lineTo(cx + b, cy + arm);
-  ctx.lineTo(cx - b, cy + arm);
-
-  // SW star
-  var sw_cx = cx - S/2, sw_cy = cy + S/2;
-  drawStarCubicEdge(sw_cx, sw_cy, R,
-    sw_cx + R, sw_cy, sw_cx, sw_cy - R, shoulder, notch);
-
-  ctx.lineTo(cx - arm, cy + b);
-  ctx.lineTo(cx - arm, cy - b);
-
-  // NW star
-  var nw_cx = cx - S/2, nw_cy = cy - S/2;
-  drawStarCubicEdge(nw_cx, nw_cy, R,
-    nw_cx, nw_cy + R, nw_cx + R, nw_cy, shoulder, notch);
-
-  ctx.closePath();
-}
-
-// ─── Main Draw ───
-function draw() {
-  var W = canvas.clientWidth, H = canvas.clientHeight;
-  var S = parseFloat(document.getElementById('cellSize').value);
-  var sr = parseFloat(document.getElementById('starRatio').value);
-  var sh = parseFloat(document.getElementById('shoulder').value);
-  var nt = parseFloat(document.getElementById('notch').value);
-  var g = parseFloat(document.getElementById('grout').value);
-  var opacity = parseInt(document.getElementById('overlayOpacity').value) / 100;
-  var R = S * sr / 2;
-
-  ctx.fillStyle = document.getElementById('groutColor').value;
-  ctx.fillRect(0, 0, W, H);
-
-  // Ref behind
-  if (refImg && opacity > 0) {
-    ctx.save(); ctx.globalAlpha = opacity * 0.6;
-    ctx.drawImage(refImg, refX, refY, refImg.width * refScale, refImg.height * refScale);
-    ctx.restore();
-  }
-
-  var cols = Math.ceil(W / S) + 2, rows = Math.ceil(H / S) + 2;
-  var ox = S / 2, oy = S / 2;
-
-  ctx.fillStyle = document.getElementById('starColor').value;
-  for (var r = -1; r < rows; r++)
-    for (var c = -1; c < cols; c++) {
-      drawStar(ox + c * S, oy + r * S, R, sh, nt, g);
-      ctx.fill();
+      if(isStar){
+        ctx.beginPath();
+        ctx.moveTo(px,py-R);
+        for(var i=1;i<16;i++){
+          var a=i*Math.PI/8-Math.PI/2;
+          var r=(i%2===0)?R:ri;
+          ctx.lineTo(px+r*Math.cos(a),py+r*Math.sin(a));
+        }
+        ctx.closePath();
+        ctx.fillStyle=document.getElementById('starColor').value;
+        ctx.fill();
+        ctx.strokeStyle='#444';ctx.lineWidth=0.5;ctx.stroke();
+      } else {
+        var notches=[[0,-hw*sq2],[hw*sq2,0],[0,hw*sq2],[-hw*sq2,0]];
+        var angles=[-45,45,135,225];
+        ctx.beginPath();
+        ctx.moveTo(px+notches[0][0],py+notches[0][1]);
+        for(var ai=0;ai<4;ai++){
+          var aa=angles[ai]*Math.PI/180;
+          var dx=Math.cos(aa),dy=Math.sin(aa);
+          var lx=dy,ly=-dx;
+          ctx.lineTo(px+lx*hw+dx*armL_px,py+ly*hw+dy*armL_px);
+          ctx.lineTo(px+dx*D,py+dy*D);
+          ctx.lineTo(px-lx*hw+dx*armL_px,py-ly*hw+dy*armL_px);
+          if(ai<3)ctx.lineTo(px+notches[ai+1][0],py+notches[ai+1][1]);
+        }
+        ctx.closePath();
+        ctx.fillStyle=document.getElementById('crossColor').value;
+        ctx.fill();
+        ctx.strokeStyle='#444';ctx.lineWidth=0.5;ctx.stroke();
+      }
     }
-
-  ctx.fillStyle = document.getElementById('crossColor').value;
-  for (var r = -1; r < rows; r++)
-    for (var c = -1; c < cols; c++) {
-      drawCross(ox + c * S + S/2, oy + r * S + S/2, S, R, sh, nt, g);
-      ctx.fill();
-    }
-
-  // Ref on top
-  if (refImg && opacity > 0) {
-    ctx.save(); ctx.globalAlpha = opacity * 0.4;
-    ctx.drawImage(refImg, refX, refY, refImg.width * refScale, refImg.height * refScale);
-    ctx.restore();
   }
 
-  document.getElementById('metrics').innerHTML =
-    'Cell: ' + S + 'px | R: ' + R.toFixed(0) + 'px (' + (sr*100).toFixed(0) + '%)<br>' +
-    'Shoulder: ' + sh + ' | Notch: ' + nt + '<br>' +
-    'Tip gap: ' + (S - 2*R).toFixed(1) + 'px | Grout: ' + g + 'px';
-  document.getElementById('statusBar').textContent =
-    'Cell=' + S + ' ratio=' + sr + ' shoulder=' + sh + ' notch=' + nt + ' grout=' + g;
-}
+  if(refImg&&opacity>0){ctx.save();ctx.globalAlpha=opacity*0.5;ctx.drawImage(refImg,refX,refY,refImg.width*refScale,refImg.height*refScale);ctx.restore();}
 
+  document.getElementById('params').textContent='starSize='+starSizeMul+' notch='+notchR+' armW='+armWFrac+' armL='+armLFrac+' tipH='+tipHMul;
+  document.getElementById('status').textContent='Cell='+cell+' R='+R.toFixed(1)+' ri='+ri.toFixed(1)+' hw='+hw.toFixed(1)+' armL='+armL_px.toFixed(1)+' D='+D.toFixed(1);
+}
 resize();
 </script>
 </body>
