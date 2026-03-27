@@ -1,0 +1,39 @@
+Reference,Quantity,Description,Value,Package/Footprint,Manufacturer,MPN,DigiKey PN,Mouser PN,Est. Unit Cost,Notes
+U3,1,ESP32-S3 WiFi+BLE MCU Module (16MB Flash / 8MB PSRAM),ESP32-S3-WROOM-1-N16R8,Module,Espressif,ESP32-S3-WROOM-1-N16R8,2904-ESP32-S3-WROOM-1-N16R8-ND,356-ESP32S3WRM1N16R8,$3.90,Main microcontroller. Ensure N16R8 variant (16MB flash + 8MB OPI PSRAM)
+U1,1,5.0V LDO Voltage Regulator 1A,AMS1117-5.0,SOT-223-3,Advanced Monolithic Systems,AMS1117-5.0,AMS1117-5.0CT-ND,621-AMS1117-5.0,$0.45,12V → 5V. Powers DAC and op-amp VDD
+U2,1,3.3V LDO Voltage Regulator 1A,AMS1117-3.3,SOT-223-3,Advanced Monolithic Systems,AMS1117-3.3,AMS1117-3.3CT-ND,621-AMS1117-3.3,$0.45,5V → 3.3V. Powers ESP32-S3 and camera
+U4,1,Dual 12-bit SPI DAC (Internal Vref),MCP4822,DIP-8 / SOIC-8,Microchip,MCP4822-E/P,MCP4822-E/P-ND,579-MCP4822-E/P,$3.50,"Channel A = Galvo X, Channel B = Galvo Y. 0-4.096V output at 2x gain"
+U5,1,Dual JFET-Input Op-Amp,TL072,DIP-8 / SOIC-8,Texas Instruments,TL072CP,296-1775-5-ND,595-TL072CP,$0.65,Buffer/amplifier for DAC → Galvo signal conditioning
+Q1,1,N-Channel MOSFET (Logic Level),2N7000,TO-92,ON Semiconductor,2N7000,2N7000FS-ND,512-2N7000,$0.35,Level shifter for 3.3V ESP32 → 12V laser TTL control
+D1,1,Schottky Rectifier Diode 3A 40V,SS34,SMA (DO-214AC),Vishay,SS34-E3/57T,SS34-E3/57TGICT-ND,625-SS34-E3,$0.30,Reverse polarity protection on 12V input
+F1,1,PTC Resettable Fuse 3A,MF-R300,1206 SMD,Bourns,MF-R300,MF-R300-ND,652-MF-R300,$0.25,Overcurrent protection. Self-resets after fault
+LED1,1,Addressable RGB LED,WS2812B,PLCC-4 5x5mm,Worldsemi,WS2812B,N/A,N/A,$0.15,Status indicator LED. Driven from GPIO48
+J1,1,DC Barrel Jack 5.5x2.1mm,DC-005,Through-hole horizontal,CUI Devices,PJ-002A,CP-002A-ND,490-PJ-002A,$0.75,12V 3A DC power input
+J2,1,USB Type-C Receptacle (USB 2.0),USB-C,SMD,GCT,USB4085-GF-A,2073-USB4085-GF-ACT-ND,N/A,$0.60,Debug and firmware updates only. Not for power
+J3,1,JST-XH 3-Pin Header Vertical,JST-XH 3P,2.5mm pitch,JST,B3B-XH-A,455-2248-ND,N/A,$0.20,"Laser module connector: +12V, TTL, GND"
+J4,1,JST-XH 6-Pin Header Vertical,JST-XH 6P,2.5mm pitch,JST,B6B-XH-A,455-2251-ND,N/A,$0.25,"Galvo driver connector: X+, X-, Y+, Y-, +12V, GND"
+J5,1,FPC Connector 24-Pin 0.5mm,FPC 24P,SMD bottom-contact,Molex,5034802400,WM11378CT-ND,538-5034802400,$0.80,OV5640 camera ribbon cable connector. Verify pin count with actual camera module
+SW1,1,Tactile Push Button (BOOT),6x6mm,SMD or THT,Various,TL3342,CKN12221-1-ND,N/A,$0.10,Hold during reset to enter firmware download mode
+SW2,1,Tactile Push Button (RESET),6x6mm,SMD or THT,Various,TL3342,CKN12221-1-ND,N/A,$0.10,Resets ESP32-S3
+SW3,1,Microswitch (Safety Interlock),Normally Closed,Panel mount lever,Omron,SS-5GL,Z4647-ND,653-SS-5GL,$1.50,"Enclosure lid switch. NC when lid closed, opens when lid removed"
+"R1,R2,R13,R14,R15",5,Resistor 10K Ohm 1% 1/8W,10K,0805 SMD,Various,RC0805FR-0710KL,311-10.0KCRCT-ND,N/A,$0.01,Pull-up / pull-down resistors
+"R3,R4",2,Resistor 5.1K Ohm 1% 1/8W,5.1K,0805 SMD,Various,RC0805FR-075K1L,311-5.10KCRCT-ND,N/A,$0.01,USB-C CC1/CC2 pull-downs (device identification)
+"R5,R7",2,Resistor 10K Ohm 1% 1/8W (Op-Amp Input),10K,0805 SMD,Various,RC0805FR-0710KL,311-10.0KCRCT-ND,N/A,$0.01,Op-amp input resistors (gain network)
+"R6,R8",2,Resistor 24K Ohm 1% 1/8W (Op-Amp Feedback),24K,0805 SMD,Various,RC0805FR-0724KL,311-24.0KCRCT-ND,N/A,$0.01,Op-amp feedback resistors (sets gain = 2.4x)
+R9,1,Resistor 4.7K Ohm 1% 1/8W,4.7K,0805 SMD,Various,RC0805FR-074K7L,311-4.70KCRCT-ND,N/A,$0.01,Laser TTL pull-up to 12V rail
+R10,1,Resistor 100 Ohm 1% 1/8W,100R,0805 SMD,Various,RC0805FR-07100RL,311-100CRCT-ND,N/A,$0.01,MOSFET gate series resistor (limits ringing)
+"R11,R12",2,Resistor 4.7K Ohm 1% 1/8W (I2C Pull-up),4.7K,0805 SMD,Various,RC0805FR-074K7L,311-4.70KCRCT-ND,N/A,$0.01,Camera SCCB/I2C pull-ups to 3.3V
+C1,1,Electrolytic Capacitor 470uF 25V,470uF,Radial D10xL12.5mm,Nichicon,UVR1E471MPD1TD,493-15507-ND,647-UVR1E471MPD1TD,$0.50,Bulk input filter for 12V rail
+"C3,C5",2,Ceramic/Tantalum Capacitor 22uF 10V,22uF,1206 SMD or Tantalum,Samsung/Various,CL31A226KPHNNNE,1276-2867-1-ND,N/A,$0.15,Output capacitors for voltage regulators
+C7,1,Ceramic Capacitor 10uF 10V,10uF,0805 SMD,Samsung,CL21A106KOQNNNG,1276-1060-1-ND,N/A,$0.08,ESP32-S3 bulk bypass capacitor
+"C2,C4,C6,C8,C9,C10,C11,C12",8,Ceramic Capacitor 100nF (0.1uF) 25V,100nF,0805 SMD,Various,CL21B104KBCNNNC,1276-1003-1-ND,N/A,$0.02,"Bypass/decoupling capacitors. Place close to each IC's power pins"
+,,,,,,,,,,
+EXTERNAL COMPONENTS (not on PCB),,,,,,,,,,
+,,,,,,,,,,
+EXT1,1,Laser Module 520nm 200mW 12V TTL,Laserland 4060-530D-200,Cylindrical module,Laserland,4060-530D-200,N/A,N/A,$38.00,"Direct diode, 15kHz TTL. Buy from laserlands.net. Connects via J3"
+EXT2,1,Galvanometer Scanner Set with Driver,20K PPS Dual-Axis + Driver Board,Set,Various (AliExpress),20K Galvo Set,N/A,N/A,$70.00,"Search AliExpress for '20K galvo scanner set'. Includes: 2x galvo motors, 2x mirrors, 1x driver board. Connects via J4"
+EXT3,1,Camera Module OV5640 5MP 160-degree DVP,OV5640 Wide-Angle,FPC ribbon,Various (AliExpress),OV5640 DVP 160,N/A,N/A,$15.00,"Search for 'OV5640 wide angle DVP module'. Ensure 24-pin FPC connector matches J5"
+EXT4,1,12V 3A DC Power Adapter with 5.5x2.1mm barrel,12V 3A DC,Barrel plug,Various (Amazon),12V 3A Adapter,N/A,N/A,$8.00,"Standard wall adapter, center-positive"
+EXT5,1,Aluminum Project Enclosure 6x4x3 inches,Enclosure,Extruded aluminum,Hammond Mfg,1455N1601BK,HM2195-ND,546-1455N1601BK,$25.00,"Needs drilling for: barrel jack, USB-C, laser aperture, camera lens, status LED, tripod mount"
+EXT6,1,1/4-20 Threaded Insert for Tripod Mount,Tripod Mount,Brass insert,Various (Amazon),1/4-20 Insert,N/A,N/A,$2.00,Press-fit or epoxy into enclosure bottom
+EXT7,1,USB-C Cable for Debug/FW Update,USB-C to USB-A/C,6ft cable,Various (Amazon),USB-C Cable,N/A,N/A,$5.00,For firmware updates and serial debugging

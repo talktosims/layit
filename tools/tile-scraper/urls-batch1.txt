@@ -1,0 +1,26 @@
+# LayIt Tile Scraper — Batch 1: Hex Mosaic Tiles
+# Run with: ANTHROPIC_API_KEY=sk-... node scrape.js --batch urls-batch1.txt
+
+# Home Depot — Merola 2" Hex White
+https://www.homedepot.com/p/Merola-Tile-Metro-2-in-Hex-Matte-White-11-1-8-in-x-12-5-8-in-Porcelain-Mosaic-Tile-10-0-sq-ft-Case-FXLM2HMW/203684368
+
+# Home Depot — MSI White Hexagon 11x11
+https://www.homedepot.com/p/MSI-White-Hexagon-11-in-x-11-in-x-6mm-Glazed-Porcelain-Mesh-Mounted-Mosaic-Tile-0-83-sq-ft-PT-WHThex/206638553
+
+# Home Depot — Daltile Penny Round White
+https://www.homedepot.com/p/Daltile-Restore-Bright-White-Penny-Round-11-in-x-10-in-x-6-35mm-Glazed-Ceramic-Mosaic-Tile-0-76-sq-ft-piece-RE15PNYRDMS1P/312227498
+
+# Home Depot — Merola 1" Hex White
+https://www.homedepot.com/p/Merola-Tile-Metro-1-in-Hex-Matte-White-10-1-4-in-x-11-3-4-in-Porcelain-Mosaic-Tile-8-56-sq-ft-Case-FXLMHW/205765498
+
+# Home Depot — Merola 2" Hex Matte Black
+https://www.homedepot.com/p/Merola-Tile-Metro-2-in-Hex-Matte-Black-11-1-8-in-x-12-5-8-in-Porcelain-Mosaic-Tile-10-0-sq-ft-Case-FXLM2HMB/203684352
+
+# Home Depot — MSI Penny Round White
+https://www.homedepot.com/p/MSI-White-Penny-Round-11-3-in-x-12-2-in-x-6mm-Glazed-Porcelain-Mesh-Mounted-Mosaic-Tile-14-36-sq-ft-case-PT-?"?"?"?"pny/?"
+
+# Daltile — direct site
+https://www.daltile.com/tile/mosaic-tile
+
+# MSI Surfaces — mosaic catalog
+https://www.msisurfaces.com/mosaic-tile

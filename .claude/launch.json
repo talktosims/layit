@@ -1,0 +1,23 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "layit-preview",
+      "runtimeExecutable": "/bin/bash",
+      "runtimeArgs": ["/Users/Sims/Desktop/layit/.claude/worktrees/inspiring-lamarr/serve.sh"],
+      "port": 8083
+    },
+    {
+      "name": "simco-preview",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": ["-m", "http.server", "8082", "--bind", "127.0.0.1", "--directory", "/Users/Sims/Downloads/simcopaint_deploy_v2_1"],
+      "port": 8082
+    },
+    {
+      "name": "stageit-icons",
+      "runtimeExecutable": "/opt/homebrew/bin/node",
+      "runtimeArgs": ["/Users/Sims/Desktop/stageit/icons/serve.js"],
+      "port": 8090
+    }
+  ]
+}

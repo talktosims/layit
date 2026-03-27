@@ -1,0 +1,3451 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<link rel="apple-touch-icon" href="simco-icon.png">
+<title>Paint Calc</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#1a1a1a;color:#e8e4de;font-family:'SF Mono','Fira Code','Consolas',monospace;font-size:13px}
+input,select,button{font-family:inherit}
+input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
+input[type=number]{-moz-appearance:textfield}
+@media print{
+  body{background:#fff!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  #app{max-width:100%!important}
+  #app>*:not(.invoice-view){display:none!important}
+  .invoice-view{margin:0!important;padding:0!important;border-radius:0!important}
+  .no-print{display:none!important}
+}
+@keyframes wizFadeIn{from{opacity:0}to{opacity:1}}
+@keyframes wizSlideUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+@keyframes wizPulse{0%,100%{opacity:1}50%{opacity:0.4}}
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+</head>
+<body>
+<div id="app" style="max-width:600px;margin:0 auto;min-height:100vh"></div>
+<script>
+(function(){
+"use strict";
+
+/* ── Constants ── */
+var COV = {sqft:350, linear:150, primerSqft:300, primerLinear:130};
+var ENAMEL_RATE = 4;
+var SURFACE_CONDITIONS = [
+  {v:"bare", l:"Bare / New drywall", mult:0.85},
+  {v:"color_change", l:"Dark \u2192 Light color change", mult:1.0},
+  {v:"primed", l:"Primed / Previously painted", mult:1.3}
+];
+function surfaceMultiplier(cond){
+  for(var i=0;i<SURFACE_CONDITIONS.length;i++) if(SURFACE_CONDITIONS[i].v===cond) return SURFACE_CONDITIONS[i].mult;
+  return 1.0;
+}
+
+/* ── Product Database with real coverage rates from manufacturer TDS ── */
+var PRODUCTS = [
+  // Benjamin Moore
+  {name:"BM Advance Semi-Gloss", coverage:450},
+  {name:"BM Advance Satin", coverage:450},
+  {name:"BM Advance High Gloss", coverage:450},
+  {name:"BM Regal Select Eggshell", coverage:425},
+  {name:"BM Regal Select Flat", coverage:425},
+  {name:"BM Regal Select Semi-Gloss", coverage:425},
+  {name:"BM Aura Matte", coverage:375},
+  {name:"BM Aura Eggshell", coverage:375},
+  {name:"BM Aura Satin", coverage:375},
+  {name:"BM Ceiling Paint Ultra Flat", coverage:425},
+  {name:"BM Scuff-X Eggshell", coverage:375},
+  {name:"BM Scuff-X Matte", coverage:400},
+  {name:"BM Scuff-X Satin", coverage:375},
+  {name:"BM ben Eggshell", coverage:425},
+  {name:"BM ben Matte", coverage:425},
+  {name:"BM ben Semi-Gloss", coverage:425},
+  {name:"BM ben Satin", coverage:425},
+  {name:"BEN Eggshell", coverage:425},
+  {name:"BEN Matte", coverage:425},
+  {name:"BEN Semi-Gloss", coverage:425},
+  {name:"BEN Satin", coverage:425},
+  {name:"BM Fresh Start Acrylic Primer", coverage:425},
+  // Sherwin-Williams
+  {name:"SW Duration Interior Flat", coverage:375},
+  {name:"SW Duration Interior Satin", coverage:375},
+  {name:"SW Duration Interior Semi-Gloss", coverage:375},
+  {name:"SW ProClassic Semi-Gloss", coverage:375},
+  {name:"SW ProClassic Satin", coverage:375},
+  {name:"SW Emerald Interior Flat", coverage:375},
+  {name:"SW Emerald Interior Satin", coverage:375},
+  {name:"SW SuperPaint Interior Flat", coverage:375},
+  {name:"SW SuperPaint Interior Satin", coverage:375},
+  // Primers
+  {name:"Kilz Original", coverage:350},
+  {name:"Kilz 2 All-Purpose", coverage:350},
+  {name:"Zinsser BIN Shellac Primer", coverage:400},
+  {name:"Zinsser Bulls Eye 1-2-3", coverage:400},
+  {name:"PVA Drywall Primer", coverage:350},
+  {name:"PVA Drywall primer and sealer", coverage:350},
+];
+
+function findProductCoverage(productName){
+  if(!productName) return 0;
+  var lc = productName.trim().toLowerCase();
+  // Exact match first
+  for(var i = 0; i < PRODUCTS.length; i++){
+    if(PRODUCTS[i].name.toLowerCase() === lc) return PRODUCTS[i].coverage;
+  }
+  // Fuzzy: check if typed name contains a known product or vice versa
+  for(var i = 0; i < PRODUCTS.length; i++){
+    var pLc = PRODUCTS[i].name.toLowerCase();
+    if(lc.indexOf(pLc) >= 0 || pLc.indexOf(lc) >= 0) return PRODUCTS[i].coverage;
+  }
+  return 0;
+}
+var SKEY = "paint-calc-jobs-v4";
+var SKEY_OLD = "paint-calc-jobs-v3";
+
+var TYPES = [
+  {v:"wall", l:"Wall", u:"sqft"},
+  {v:"ceiling", l:"Ceiling", u:"sqft"},
+  {v:"baseboard", l:"Baseboard", u:"linear"},
+  {v:"trim", l:"Trim", u:"linear"},
+  {v:"door_face", l:"Door (face)", u:"fixed"},
+  {v:"door_frame", l:"Door Frame", u:"fixed"},
+  {v:"window_frame", l:"Window Frame", u:"fixed"}
+];
+
+var EXTRA_TYPES = TYPES.filter(function(t){
+  return t.v !== "wall" && t.v !== "ceiling" && t.v !== "baseboard";
+});
+
+var _counter = Date.now();
+function uid(){ return "id_" + (_counter++) + "_" + Math.random().toString(36).slice(2,7); }
+function pf(v){ return parseFloat(v) || 0; }
+function pi2(v){ return parseInt(v) || 0; }
+function c1(v){ return (Math.ceil(v * 10) / 10).toFixed(1); }
+function titleCase(s){ return s.replace(/\S+/g, function(w){ return w.charAt(0).toUpperCase() + w.slice(1).toLowerCase(); }); }
+function findType(v){ for(var i=0;i<TYPES.length;i++) if(TYPES[i].v===v) return TYPES[i]; return null; }
+
+/* ── Unit Mode (inches vs feet+inches) ── */
+var unitMode = localStorage.getItem("paint-calc-unitMode") || "in"; // "in" or "ftin"
+
+function setUnitMode(mode){
+  unitMode = mode;
+  localStorage.setItem("paint-calc-unitMode", mode);
+  render();
+}
+
+// Convert total inches to {ft, in} object
+function inchesToFtIn(totalInches){
+  var t = pf(totalInches);
+  if(t <= 0) return {ft:"", inch:""};
+  var ft = Math.floor(t / 12);
+  var inch = +(t % 12).toFixed(2);
+  return {ft: ft > 0 ? String(ft) : "", inch: inch > 0 ? String(inch) : ""};
+}
+
+// Convert ft + in to total inches string
+function ftInToInches(ft, inch){
+  var total = (pf(ft) * 12) + pf(inch);
+  return total > 0 ? String(total) : "";
+}
+
+// Create a dimension input (inches or ft+in based on unitMode)
+// value: total inches string, onChange: receives total inches string
+function dimInput(value, onChange, widthPx){
+  if(unitMode === "ftin"){
+    var parts = inchesToFtIn(value);
+    var wrap = el("div", "display:flex;align-items:center;gap:3px;");
+
+    var ftInp = el("input", "background:#2e2e2e;color:#e8e4de;border:1px solid #3a3a3a;border-radius:4px;padding:6px 4px;outline:none;text-align:center;font-size:12px;width:36px;font-family:inherit");
+    ftInp.type = "number";
+    ftInp.placeholder = "ft";
+    ftInp.value = parts.ft;
+    ftInp.inputMode = "numeric";
+
+    var ftLabel = span("'", "#8a8580", "font-size:12px;margin-right:1px;");
+
+    var inInp = el("input", "background:#2e2e2e;color:#e8e4de;border:1px solid #3a3a3a;border-radius:4px;padding:6px 4px;outline:none;text-align:center;font-size:12px;width:36px;font-family:inherit");
+    inInp.type = "number";
+    inInp.placeholder = "in";
+    inInp.value = parts.inch;
+    inInp.inputMode = "decimal";
+
+    var inLabel = span('"', "#8a8580", "font-size:12px;");
+
+    function update(){
+      onChange(ftInToInches(ftInp.value, inInp.value));
+      saveState();
+    }
+    ftInp.oninput = update;
+    inInp.oninput = update;
+    ftInp.onblur = function(){ render(); };
+    inInp.onblur = function(){ render(); };
+
+    wrap.appendChild(ftInp);
+    wrap.appendChild(ftLabel);
+    wrap.appendChild(inInp);
+    wrap.appendChild(inLabel);
+    return wrap;
+  } else {
+    return numInput(value, onChange, widthPx);
+  }
+}
+
+/* ── Data Constructors ── */
+function makeSurface(o){
+  var s = {
+    id:uid(), type:"wall", inputMode:"dims",
+    widthIn:"", heightIn:"", directSqft:"", linearFt:"",
+    subtractWindows:0, subtractDoors:0,
+    primerCoats:0, topCoats:2, label:"", qty:1, doorSides:"both",
+    color:"", product:"", priceOverride:"", windowSqft:""
+  };
+  if(o) for(var k in o) s[k] = o[k];
+  return s;
+}
+
+function makeRoom(o){
+  var r = {
+    id:uid(), name:"Room 1", mode:"quick",
+    roomLength:"", roomWidth:"", roomHeight:"",
+    quickPrimerCoats:0, quickTopCoats:2,
+    ceilingPrimerCoats:0, ceilingTopCoats:2,
+    includeCeiling:true, includeBaseboard:true,
+    baseboardPrimerCoats:0, baseboardTopCoats:2,
+    baseboardOverride:"",
+    surfaceCondition:"primed",
+    wallColor:"", wallProduct:"", wallPricePerGal:"", wallCoverage:"", wallPrimerProduct:"", wallPrimerPricePerGal:"", wallPrimerCoverage:"",
+    ceilingColor:"", ceilingProduct:"", ceilingPricePerGal:"", ceilingCoverage:"", ceilingPrimerProduct:"", ceilingPrimerPricePerGal:"", ceilingPrimerCoverage:"",
+    trimColor:"", trimProduct:"", trimPricePerGal:"", trimCoverage:"", trimPrimerProduct:"", trimPrimerPricePerGal:"", trimPrimerCoverage:"",
+    extras:[], surfaces:[makeSurface()]
+  };
+  if(o) for(var k in o) r[k] = o[k];
+  return r;
+}
+
+function makeJob(o){
+  var j = {
+    id:uid(), name:"New Job", rooms:[makeRoom()],
+    activeRoomId:null, pricePerSqftPerCoat:1, primerPricePerSqftPerCoat:1,
+    enamelRate:ENAMEL_RATE, priceOverride:"",
+    materialsDeduction:"", builderSuppliesPaint:false, builderSuppliesConsumables:false,
+    consumables:[],
+    hoursWorked:""
+  };
+  if(o) for(var k in o) j[k] = o[k];
+  return j;
+}
+
+function makeConsumable(o){
+  var c = { id:uid(), name:"", cost:"", qty:1 };
+  if(o) for(var k in o) c[k] = o[k];
+  return c;
+}
+
+function calcConsumablesTotal(job){
+  var total = 0;
+  var items = job.consumables || [];
+  for(var i = 0; i < items.length; i++) total += pf(items[i].cost) * (pi2(items[i].qty) || 1);
+  return total;
+}
+
+/* ── Calculations ── */
+function calcQuickRoom(rm){
+  var l = pf(rm.roomLength);
+  var w = pf(rm.roomWidth);
+  var ht = pf(rm.roomHeight);
+  var pc = pi2(rm.quickPrimerCoats);
+  var tc = pi2(rm.quickTopCoats);
+  var cpc = pi2(rm.ceilingPrimerCoats);
+  var ctc = pi2(rm.ceilingTopCoats);
+  var grossWall = (2*l*ht + 2*w*ht) / 144;
+  var ceil = rm.includeCeiling ? (l*w)/144 : 0;
+  var billable = grossWall + ceil;
+
+  var ex = rm.extras || [];
+  var winCount = 0, winSqft = 0, winCasingSqft = 0;
+  var doorFrameCount = 0;
+  var doorFaceCount = 0;
+  for(var i = 0; i < ex.length; i++){
+    var q = pi2(ex[i].qty) || 1;
+    if(ex[i].type === "window_frame"){
+      var wsf = pf(ex[i].windowSqft) || 15;
+      winSqft += wsf * q;
+      // Casing scales with window perimeter: default 15sf → 3.2 sf casing
+      winCasingSqft += 3.2 * Math.sqrt(wsf / 15) * q;
+      winCount += q;
+    }
+    if(ex[i].type === "door_frame") doorFrameCount += q;
+    if(ex[i].type === "door_face") doorFaceCount += q;
+  }
+  var totalDoors = Math.max(doorFrameCount, doorFaceCount);
+  var openingSqft = winSqft + totalDoors * 21;
+  // Deduct trim casing around openings (~2.75" wide casing covers wall surface)
+  var casingDeduct = doorFrameCount * 3.9 + winCasingSqft;
+  // Deduct baseboard strip from wall area (3.5" tall strip along perimeter minus door openings)
+  var bbStripSqft = (rm.includeBaseboard !== false) ? Math.max(0, (2*l + 2*w - totalDoors * 36) / 12) * 3.5 / 12 : 0;
+  var paintableWall = Math.max(0, grossWall - openingSqft - casingDeduct - bbStripSqft);
+  var paintable = paintableWall + ceil;
+
+  // Per-product coverage (fall back to global COV defaults), adjusted for surface condition
+  var sm = surfaceMultiplier(rm.surfaceCondition);
+  var wpc = (pf(rm.wallPrimerCoverage) || COV.primerSqft) * sm;
+  var wtc2 = (pf(rm.wallCoverage) || COV.sqft) * sm;
+  var cpCov = (pf(rm.ceilingPrimerCoverage) || COV.primerSqft) * sm;
+  var ctCov = (pf(rm.ceilingCoverage) || COV.sqft) * sm;
+
+  // Separate wall vs ceiling gallons
+  var wallPrimerGal = (pc > 0 && paintableWall > 0) ? (paintableWall * pc) / wpc : 0;
+  var wallTopGal = (tc > 0 && paintableWall > 0) ? (paintableWall * tc) / wtc2 : 0;
+  var ceilPrimerGal = (cpc > 0 && ceil > 0) ? (ceil * cpc) / cpCov : 0;
+  var ceilTopGal = (ctc > 0 && ceil > 0) ? (ceil * ctc) / ctCov : 0;
+
+  // Combined totals for backward compat with pricing
+  var primerGal = wallPrimerGal + ceilPrimerGal;
+  var topGal = wallTopGal + ceilTopGal;
+
+  var perim = 2*l + 2*w;
+  var autoBB = Math.max(0, (perim - totalDoors * 36) / 12);
+  var incBB = rm.includeBaseboard !== false;
+  var bbOvr = (rm.baseboardOverride != null && rm.baseboardOverride !== "") ? rm.baseboardOverride : "";
+  var bbFt = incBB ? (bbOvr !== "" ? pf(bbOvr) : autoBB) : 0;
+  var bbPC = pi2(rm.baseboardPrimerCoats);
+  var bbTC = pi2(rm.baseboardTopCoats) || (rm.baseboardTopCoats === undefined ? 2 : 0);
+  var tpCov = (pf(rm.trimPrimerCoverage) || COV.primerLinear) * sm;
+  var ttCov = (pf(rm.trimCoverage) || COV.linear) * sm;
+  var bbPG = (bbFt > 0 && bbPC > 0) ? (bbFt * bbPC) / tpCov : 0;
+  var bbTG = (bbFt > 0 && bbTC > 0) ? (bbFt * bbTC) / ttCov : 0;
+
+  return {
+    grossWall:grossWall, paintableWall:paintableWall, ceil:ceil,
+    billable:billable, paintable:paintable,
+    primerGal:primerGal, topGal:topGal,
+    wallPrimerGal:wallPrimerGal, wallTopGal:wallTopGal,
+    ceilPrimerGal:ceilPrimerGal, ceilTopGal:ceilTopGal,
+    pc:pc, tc:tc, cpc:cpc, ctc:ctc, openingSqft:openingSqft,
+    winCount:winCount, totalDoors:totalDoors,
+    bbFt:bbFt, autoBB:autoBB, perimFt:perim/12,
+    bbPG:bbPG, bbTG:bbTG,
+    wpc:wpc, wtc2:wtc2, cpCov:cpCov, ctCov:ctCov, tpCov:tpCov, ttCov:ttCov
+  };
+}
+
+function calcSurface(s, covOverrides){
+  var info = findType(s.type);
+  if(!info) return {sqft:0, lf:0, gal:0, pg:0, tg:0, price:0};
+  var cov = covOverrides || {};
+  var covSqft = cov.sqft || COV.sqft;
+  var covPrimerSqft = cov.primerSqft || COV.primerSqft;
+  var covLinear = cov.linear || COV.linear;
+  var covPrimerLinear = cov.primerLinear || COV.primerLinear;
+  var pc = pi2(s.primerCoats);
+  var tc = pi2(s.topCoats);
+
+  if(info.u === "fixed"){
+    var q = pi2(s.qty) || 1;
+    var price = 0;
+    var pg = 0, tg = 0;
+    var ovr = pf(s.priceOverride);
+    if(s.type === "door_face"){
+      var sides = s.doorSides === "both" ? 2 : 1;
+      price = ovr > 0 ? ovr * q : (s.doorSides === "both" ? 100 : 50) * q;
+      // 21 sf per side per door, divided by coverage rate, per coat
+      var dfSf = 21 * sides * q;
+      pg = (pc > 0) ? (dfSf * pc) / covPrimerSqft : 0;
+      tg = (tc > 0) ? (dfSf * tc) / covSqft : 0;
+    } else if(s.type === "door_frame"){
+      price = ovr > 0 ? ovr * q : 100 * q;
+      // ~15 lf equivalent per frame (single side)
+      var dfLf = 15 * q;
+      pg = (pc > 0) ? (dfLf * pc) / covPrimerLinear : 0;
+      tg = (tc > 0) ? (dfLf * tc) / covLinear : 0;
+    } else if(s.type === "window_frame"){
+      price = ovr > 0 ? ovr * q : 125 * q;
+      // ~20 lf equivalent per frame
+      var wfLf = 20 * q;
+      pg = (pc > 0) ? (wfLf * pc) / covPrimerLinear : 0;
+      tg = (tc > 0) ? (wfLf * tc) / covLinear : 0;
+    }
+    return {sqft:0, lf:0, gal:pg+tg, pg:pg, tg:tg, price:price};
+  }
+
+  if(info.u === "linear"){
+    var lf = pf(s.linearFt);
+    var pg = (lf > 0 && pc > 0) ? (lf * pc) / covPrimerLinear : 0;
+    var tg = (lf > 0 && tc > 0) ? (lf * tc) / covLinear : 0;
+    return {sqft:0, lf:lf, gal:pg+tg, pg:pg, tg:tg, price:0};
+  }
+
+  var sqft = (s.inputMode === "dims")
+    ? (pf(s.widthIn) * pf(s.heightIn)) / 144
+    : pf(s.directSqft);
+  sqft -= pi2(s.subtractWindows) * 15;
+  sqft -= pi2(s.subtractDoors) * 21;
+  sqft = Math.max(0, sqft);
+  var pg = (sqft > 0 && pc > 0) ? (sqft * pc) / covPrimerSqft : 0;
+  var tg = (sqft > 0 && tc > 0) ? (sqft * tc) / covSqft : 0;
+  return {sqft:sqft, lf:0, gal:pg+tg, pg:pg, tg:tg, price:0};
+}
+
+function roomCov(rm, surfType){
+  // Build coverage overrides for calcSurface, adjusted for surface condition
+  var sm = surfaceMultiplier(rm.surfaceCondition);
+  if(surfType === "wall") return {sqft:(pf(rm.wallCoverage)||COV.sqft)*sm, primerSqft:(pf(rm.wallPrimerCoverage)||COV.primerSqft)*sm};
+  if(surfType === "ceiling") return {sqft:(pf(rm.ceilingCoverage)||COV.sqft)*sm, primerSqft:(pf(rm.ceilingPrimerCoverage)||COV.primerSqft)*sm};
+  // trim, baseboard, door_frame, door_face, window_frame all use trim coverage
+  return {linear:(pf(rm.trimCoverage)||COV.linear)*sm, primerLinear:(pf(rm.trimPrimerCoverage)||COV.primerLinear)*sm,
+          sqft:(pf(rm.trimCoverage)||COV.linear)*sm, primerSqft:(pf(rm.trimPrimerCoverage)||COV.primerLinear)*sm};
+}
+
+function calcRoomTotal(rm){
+  var out = {sqft:0, billable:0, lf:0, gal:0, pg:0, tg:0, price:0,
+    wallPG:0, wallTG:0, ceilPG:0, ceilTG:0, trimPG:0, trimTG:0};
+  var i, r;
+
+  if(rm.mode === "quick"){
+    var q = calcQuickRoom(rm);
+    out.sqft += q.paintable;
+    out.billable += q.billable;
+    out.gal += q.primerGal + q.topGal;
+    out.pg += q.primerGal;
+    out.tg += q.topGal;
+    out.wallPG += q.wallPrimerGal;
+    out.wallTG += q.wallTopGal;
+    out.ceilPG += q.ceilPrimerGal;
+    out.ceilTG += q.ceilTopGal;
+    out.lf += q.bbFt;
+    out.gal += q.bbPG + q.bbTG;
+    out.pg += q.bbPG;
+    out.tg += q.bbTG;
+    out.trimPG += q.bbPG;
+    out.trimTG += q.bbTG;
+    var extras = rm.extras || [];
+    for(i = 0; i < extras.length; i++){
+      r = calcSurface(extras[i], roomCov(rm, extras[i].type));
+      out.sqft += r.sqft; out.billable += r.sqft; out.lf += r.lf;
+      out.gal += r.gal; out.pg += r.pg; out.tg += r.tg; out.price += r.price;
+      // Trim extras go into trim category
+      var et = extras[i].type;
+      if(et === "trim" || et === "baseboard" || et === "door_frame" || et === "door_face" || et === "window_frame"){
+        out.trimPG += r.pg; out.trimTG += r.tg;
+      }
+    }
+  } else {
+    for(i = 0; i < rm.surfaces.length; i++){
+      r = calcSurface(rm.surfaces[i], roomCov(rm, rm.surfaces[i].type));
+      out.sqft += r.sqft; out.billable += r.sqft; out.lf += r.lf;
+      out.gal += r.gal; out.pg += r.pg; out.tg += r.tg; out.price += r.price;
+      var st = rm.surfaces[i].type;
+      if(st === "wall"){ out.wallPG += r.pg; out.wallTG += r.tg; }
+      else if(st === "ceiling"){ out.ceilPG += r.pg; out.ceilTG += r.tg; }
+      else if(st === "trim" || st === "baseboard" || st === "door_frame" || st === "door_face" || st === "window_frame"){ out.trimPG += r.pg; out.trimTG += r.tg; }
+    }
+  }
+  return out;
+}
+
+function calcRoomPrice(rm, rate, primerRate, enamelRate){
+  var rt = calcRoomTotal(rm);
+  var primerCoats, topcoatCoats;
+  if(rm.mode === "quick"){
+    primerCoats = pi2(rm.quickPrimerCoats);
+    topcoatCoats = pi2(rm.quickTopCoats);
+  } else {
+    var sqftSurfs = [];
+    for(var i = 0; i < rm.surfaces.length; i++){
+      var inf = findType(rm.surfaces[i].type);
+      if(inf && inf.u === "sqft") sqftSurfs.push(rm.surfaces[i]);
+    }
+    if(sqftSurfs.length > 0){
+      var totalP = 0, totalT = 0;
+      for(var j = 0; j < sqftSurfs.length; j++){
+        totalP += pi2(sqftSurfs[j].primerCoats);
+        totalT += pi2(sqftSurfs[j].topCoats);
+      }
+      primerCoats = totalP / sqftSurfs.length;
+      topcoatCoats = totalT / sqftSurfs.length;
+    } else {
+      primerCoats = 0;
+      topcoatCoats = 0;
+    }
+  }
+  var primerLabor = rt.billable * primerCoats * (primerRate || rate);
+  var topcoatLabor = rt.billable * topcoatCoats * rate;
+  var sfLabor = primerLabor + topcoatLabor;
+  var enLabor = rt.lf * (enamelRate || ENAMEL_RATE);
+  var coats = primerCoats + topcoatCoats;
+  return {
+    sfLabor:sfLabor, primerLabor:primerLabor, topcoatLabor:topcoatLabor,
+    enLabor:enLabor, fixed:rt.price,
+    total: sfLabor + enLabor + rt.price,
+    sqft:rt.sqft, billable:rt.billable, lf:rt.lf,
+    gal:rt.gal, pg:rt.pg, tg:rt.tg,
+    coats:coats, primerCoats:primerCoats, topcoatCoats:topcoatCoats
+  };
+}
+
+function calcJobFixed(job){
+  var df = {q:0, p:0};
+  var dr = {q:0, p:0};
+  var wi = {q:0, p:0};
+  function proc(items){
+    for(var i = 0; i < items.length; i++){
+      var s = items[i];
+      var q = pi2(s.qty) || 1;
+      var ovr = pf(s.priceOverride);
+      if(s.type === "door_face"){ df.q += q; df.p += (ovr > 0 ? ovr * q : (s.doorSides === "both" ? 100 : 50) * q); }
+      else if(s.type === "door_frame"){ dr.q += q; dr.p += (ovr > 0 ? ovr * q : 100 * q); }
+      else if(s.type === "window_frame"){ wi.q += q; wi.p += (ovr > 0 ? ovr * q : 125 * q); }
+    }
+  }
+  for(var i = 0; i < job.rooms.length; i++){
+    var rm = job.rooms[i];
+    proc(rm.mode === "quick" ? (rm.extras || []) : rm.surfaces);
+  }
+  return {df:df, dr:dr, wi:wi};
+}
+
+function calcJobPaintOrder(job){
+  // Consolidate by color+product (regardless of surface category)
+  var defPrimer = getJobDefaultPrimer(job) || "Primer";
+  var map = {}; // key: "color|product" → {color, product, pg, tg, cats:{catName→[rooms]}}
+  function addEntry(cat, color, product, pg, tg, roomName){
+    if(pg <= 0 && tg <= 0) return;
+    var key = (color || "").toLowerCase().trim() + "|" + (product || "").toLowerCase().trim();
+    if(!map[key]) map[key] = {color:color||"", product:product||"", pg:0, tg:0, cats:{}};
+    map[key].pg += pg;
+    map[key].tg += tg;
+    if(!map[key].cats[cat]) map[key].cats[cat] = [];
+    if(map[key].cats[cat].indexOf(roomName) < 0) map[key].cats[cat].push(roomName);
+  }
+  for(var i = 0; i < job.rooms.length; i++){
+    var rm = job.rooms[i];
+    var rn = titleCase(rm.name || ("Room " + (i+1)));
+    if(rm.mode === "quick"){
+      var q = calcQuickRoom(rm);
+      // Walls: separate primer and topcoat
+      if(q.wallPrimerGal > 0) addEntry("Walls", "", rm.wallPrimerProduct || defPrimer, q.wallPrimerGal, 0, rn);
+      if(q.wallTopGal > 0) addEntry("Walls", rm.wallColor, rm.wallProduct || "Topcoat", 0, q.wallTopGal, rn);
+      // Ceiling: separate primer and topcoat
+      if(rm.includeCeiling){
+        if(q.ceilPrimerGal > 0) addEntry("Ceiling", "", rm.ceilingPrimerProduct || defPrimer, q.ceilPrimerGal, 0, rn);
+        if(q.ceilTopGal > 0) addEntry("Ceiling", rm.ceilingColor, rm.ceilingProduct || "Topcoat", 0, q.ceilTopGal, rn);
+      }
+      // Trim: separate primer and topcoat
+      var trimPG = q.bbPG, trimTG = q.bbTG;
+      var extras = rm.extras || [];
+      for(var j = 0; j < extras.length; j++){
+        var sr = calcSurface(extras[j], roomCov(rm, extras[j].type));
+        var et = extras[j].type;
+        if(et === "trim" || et === "baseboard" || et === "door_frame" || et === "door_face" || et === "window_frame"){
+          trimPG += sr.pg; trimTG += sr.tg;
+        }
+      }
+      if(trimPG > 0) addEntry("Trim/Frames", "", rm.trimPrimerProduct || defPrimer, trimPG, 0, rn);
+      if(trimTG > 0) addEntry("Trim/Frames", rm.trimColor, rm.trimProduct || "Topcoat", 0, trimTG, rn);
+    } else {
+      for(var k = 0; k < rm.surfaces.length; k++){
+        var s = rm.surfaces[k];
+        var sr2 = calcSurface(s, roomCov(rm, s.type));
+        var st = s.type;
+        // Custom mode: primer product comes from room-level fields based on surface type
+        var pp = st === "wall" ? rm.wallPrimerProduct : st === "ceiling" ? rm.ceilingPrimerProduct : rm.trimPrimerProduct;
+        var tp = s.product || (st === "wall" ? rm.wallProduct : st === "ceiling" ? rm.ceilingProduct : rm.trimProduct);
+        if(st === "wall"){
+          if(sr2.pg > 0) addEntry("Walls", "", pp || defPrimer, sr2.pg, 0, rn);
+          if(sr2.tg > 0) addEntry("Walls", s.color, tp || "Topcoat", 0, sr2.tg, rn);
+        } else if(st === "ceiling"){
+          if(sr2.pg > 0) addEntry("Ceiling", "", pp || defPrimer, sr2.pg, 0, rn);
+          if(sr2.tg > 0) addEntry("Ceiling", s.color, tp || "Topcoat", 0, sr2.tg, rn);
+        } else if(st === "trim" || st === "baseboard" || st === "door_frame" || st === "door_face" || st === "window_frame"){
+          if(sr2.pg > 0) addEntry("Trim/Frames", "", pp || defPrimer, sr2.pg, 0, rn);
+          if(sr2.tg > 0) addEntry("Trim/Frames", s.color, tp || "Topcoat", 0, sr2.tg, rn);
+        }
+      }
+    }
+  }
+  var result = [];
+  for(var key in map) result.push(map[key]);
+  // Sort by total gallons descending (biggest needs first)
+  result.sort(function(a,b){ return (b.pg + b.tg) - (a.pg + a.tg); });
+  return result;
+}
+
+function calcRoomMaterialsCost(rm){
+  var rt = calcRoomTotal(rm);
+  var cg = Math.ceil; // round up to whole gallons purchased
+  var wallCost = cg(rt.wallPG) * pf(rm.wallPrimerPricePerGal) + cg(rt.wallTG) * pf(rm.wallPricePerGal);
+  var ceilCost = cg(rt.ceilPG) * pf(rm.ceilingPrimerPricePerGal) + cg(rt.ceilTG) * pf(rm.ceilingPricePerGal);
+  var trimCost = cg(rt.trimPG) * pf(rm.trimPrimerPricePerGal) + cg(rt.trimTG) * pf(rm.trimPricePerGal);
+  return {wall:wallCost, ceil:ceilCost, trim:trimCost, total:wallCost + ceilCost + trimCost};
+}
+
+function calcJobMaterialsCost(job){
+  var total = 0;
+  for(var i = 0; i < job.rooms.length; i++){
+    total += calcRoomMaterialsCost(job.rooms[i]).total;
+  }
+  return total;
+}
+
+function calcJobMaterialsDetail(job){
+  var defPrimer = getJobDefaultPrimer(job) || "Primer";
+  var map = {};
+  function addEntry(cat, color, product, pg, tg, roomName, ppg){
+    if(pg <= 0 && tg <= 0) return;
+    var key = (color || "").toLowerCase().trim() + "|" + (product || "").toLowerCase().trim();
+    if(!map[key]) map[key] = {color:color||"", product:product||"", pg:0, tg:0, costAccum:0, galWithPrice:0, cats:{}};
+    map[key].pg += pg;
+    map[key].tg += tg;
+    var gal = pg + tg;
+    if(ppg > 0){ map[key].costAccum += gal * ppg; map[key].galWithPrice += gal; }
+    if(!map[key].cats[cat]) map[key].cats[cat] = [];
+    if(map[key].cats[cat].indexOf(roomName) < 0) map[key].cats[cat].push(roomName);
+  }
+  for(var i = 0; i < job.rooms.length; i++){
+    var rm = job.rooms[i];
+    var rn = titleCase(rm.name || ("Room " + (i+1)));
+    var wpp = pf(rm.wallPrimerPricePerGal), wp = pf(rm.wallPricePerGal);
+    var cpp = pf(rm.ceilingPrimerPricePerGal), cp = pf(rm.ceilingPricePerGal);
+    var tpp = pf(rm.trimPrimerPricePerGal), tp = pf(rm.trimPricePerGal);
+    if(rm.mode === "quick"){
+      var q = calcQuickRoom(rm);
+      // Walls: separate primer and topcoat
+      if(q.wallPrimerGal > 0) addEntry("Walls", "", rm.wallPrimerProduct || defPrimer, q.wallPrimerGal, 0, rn, wpp);
+      if(q.wallTopGal > 0) addEntry("Walls", rm.wallColor, rm.wallProduct || "Topcoat", 0, q.wallTopGal, rn, wp);
+      // Ceiling
+      if(rm.includeCeiling){
+        if(q.ceilPrimerGal > 0) addEntry("Ceiling", "", rm.ceilingPrimerProduct || defPrimer, q.ceilPrimerGal, 0, rn, cpp);
+        if(q.ceilTopGal > 0) addEntry("Ceiling", rm.ceilingColor, rm.ceilingProduct || "Topcoat", 0, q.ceilTopGal, rn, cp);
+      }
+      // Trim
+      var trimPG = q.bbPG, trimTG = q.bbTG;
+      var extras = rm.extras || [];
+      for(var j = 0; j < extras.length; j++){
+        var sr = calcSurface(extras[j], roomCov(rm, extras[j].type));
+        var et = extras[j].type;
+        if(et === "trim" || et === "baseboard" || et === "door_frame" || et === "door_face" || et === "window_frame"){ trimPG += sr.pg; trimTG += sr.tg; }
+      }
+      if(trimPG > 0) addEntry("Trim/Frames", "", rm.trimPrimerProduct || defPrimer, trimPG, 0, rn, tpp);
+      if(trimTG > 0) addEntry("Trim/Frames", rm.trimColor, rm.trimProduct || "Topcoat", 0, trimTG, rn, tp);
+    } else {
+      for(var k = 0; k < rm.surfaces.length; k++){
+        var s = rm.surfaces[k], sr2 = calcSurface(s, roomCov(rm, s.type)), st = s.type;
+        var sPP = st === "wall" ? wpp : st === "ceiling" ? cpp : tpp;
+        var sTP = st === "wall" ? wp : st === "ceiling" ? cp : tp;
+        var sPrimerProd = st === "wall" ? rm.wallPrimerProduct : st === "ceiling" ? rm.ceilingPrimerProduct : rm.trimPrimerProduct;
+        var sTopProd = s.product || (st === "wall" ? rm.wallProduct : st === "ceiling" ? rm.ceilingProduct : rm.trimProduct);
+        if(st === "wall"){
+          if(sr2.pg > 0) addEntry("Walls", "", sPrimerProd || defPrimer, sr2.pg, 0, rn, sPP);
+          if(sr2.tg > 0) addEntry("Walls", s.color, sTopProd || "Topcoat", 0, sr2.tg, rn, sTP);
+        } else if(st === "ceiling"){
+          if(sr2.pg > 0) addEntry("Ceiling", "", sPrimerProd || defPrimer, sr2.pg, 0, rn, sPP);
+          if(sr2.tg > 0) addEntry("Ceiling", s.color, sTopProd || "Topcoat", 0, sr2.tg, rn, sTP);
+        } else if(st === "trim" || st === "baseboard" || st === "door_frame" || st === "door_face" || st === "window_frame"){
+          if(sr2.pg > 0) addEntry("Trim/Frames", "", sPrimerProd || defPrimer, sr2.pg, 0, rn, sPP);
+          if(sr2.tg > 0) addEntry("Trim/Frames", s.color, sTopProd || "Topcoat", 0, sr2.tg, rn, sTP);
+        }
+      }
+    }
+  }
+  // Cross-entry price sharing: if an entry has no price but another entry
+  // with the same product does, use that product's average price-per-gallon
+  var productPrices = {};
+  for(var key in map){
+    var m = map[key];
+    if(m.galWithPrice > 0){
+      var pKey = (m.product || "").toLowerCase().trim();
+      if(pKey && !productPrices[pKey]) productPrices[pKey] = m.costAccum / m.galWithPrice;
+    }
+  }
+  for(var key in map){
+    var m = map[key];
+    if(m.galWithPrice === 0){
+      var pKey = (m.product || "").toLowerCase().trim();
+      if(pKey && productPrices[pKey]){
+        var gal = m.pg + m.tg;
+        m.costAccum = gal * productPrices[pKey];
+        m.galWithPrice = gal;
+      }
+    }
+  }
+  var result = [];
+  for(var key in map){
+    var m = map[key];
+    m.totalGal = m.pg + m.tg;
+    m.purchaseGal = Math.ceil(m.totalGal); // round up to whole gallons purchased
+    m.ppg = m.galWithPrice > 0 ? (m.costAccum / m.galWithPrice) : 0;
+    m.lineCost = (m.ppg > 0 && m.totalGal > 0) ? m.purchaseGal * m.ppg : 0;
+    result.push(m);
+  }
+  result.sort(function(a,b){ return b.lineCost - a.lineCost || (b.totalGal - a.totalGal); });
+  return result;
+}
+
+/* ── State ── */
+var STATE = { jobs: [makeJob()], activeJob: 0, view: "rooms", importMode: false, exportMode: false, exportData: "", showPaintOrder: false, syncPanelOpen: false };
+var saveTimer = null;
+
+/* ── Wizard State (ephemeral — never persisted) ── */
+var _wizard = null;
+
+/* ── Cloud Sync State ── */
+var SYNC_PASSPHRASE_KEY = "paint-calc-sync-passphrase";
+var _firebaseReady = false;
+var _syncActive = false;
+var _syncRef = null;
+var _remoteUpdateInProgress = false;
+var _lastPushedJson = "";
+var _syncStatus = "off";
+var _scanRef = null;
+var _pendingScan = null;
+
+function migrateRoom(rm){
+  if(rm.ceilingPrimerCoats === undefined) rm.ceilingPrimerCoats = pi2(rm.quickPrimerCoats) || 1;
+  if(rm.ceilingTopCoats === undefined) rm.ceilingTopCoats = pi2(rm.quickTopCoats) || 2;
+  if(rm.wallColor === undefined) rm.wallColor = "";
+  if(rm.wallProduct === undefined) rm.wallProduct = "";
+  if(rm.ceilingColor === undefined) rm.ceilingColor = "";
+  if(rm.ceilingProduct === undefined) rm.ceilingProduct = "";
+  if(rm.trimColor === undefined) rm.trimColor = "";
+  if(rm.trimProduct === undefined) rm.trimProduct = "";
+  if(rm.wallPricePerGal === undefined) rm.wallPricePerGal = "";
+  if(rm.ceilingPricePerGal === undefined) rm.ceilingPricePerGal = "";
+  if(rm.trimPricePerGal === undefined) rm.trimPricePerGal = "";
+  if(rm.wallPrimerProduct === undefined) rm.wallPrimerProduct = "";
+  if(rm.wallPrimerPricePerGal === undefined) rm.wallPrimerPricePerGal = "";
+  if(rm.ceilingPrimerProduct === undefined) rm.ceilingPrimerProduct = "";
+  if(rm.ceilingPrimerPricePerGal === undefined) rm.ceilingPrimerPricePerGal = "";
+  if(rm.trimPrimerProduct === undefined) rm.trimPrimerProduct = "";
+  if(rm.trimPrimerPricePerGal === undefined) rm.trimPrimerPricePerGal = "";
+  if(rm.surfaceCondition === undefined) rm.surfaceCondition = "primed";
+  // Zero out primer coats when no primer product is specified
+  if(!rm.wallPrimerProduct && pi2(rm.quickPrimerCoats) > 0) rm.quickPrimerCoats = 0;
+  if(!rm.ceilingPrimerProduct && pi2(rm.ceilingPrimerCoats) > 0) rm.ceilingPrimerCoats = 0;
+  if(!rm.trimPrimerProduct && pi2(rm.baseboardPrimerCoats) > 0) rm.baseboardPrimerCoats = 0;
+  var surfs = (rm.surfaces || []).concat(rm.extras || []);
+  for(var i = 0; i < surfs.length; i++){
+    if(surfs[i].color === undefined) surfs[i].color = "";
+    if(surfs[i].product === undefined) surfs[i].product = "";
+    if(surfs[i].priceOverride === undefined) surfs[i].priceOverride = "";
+    if(surfs[i].windowSqft === undefined) surfs[i].windowSqft = "";
+  }
+}
+
+function migrateJobs(jobs){
+  for(var j = 0; j < jobs.length; j++){
+    if(jobs[j].materialsDeduction === undefined) jobs[j].materialsDeduction = "";
+    if(jobs[j].builderSuppliesPaint === undefined){
+      // Migrate: if they had a materials deduction, they were using builder-supplied paint
+      jobs[j].builderSuppliesPaint = pf(jobs[j].materialsDeduction) > 0;
+    }
+    if(jobs[j].builderSuppliesConsumables === undefined) jobs[j].builderSuppliesConsumables = false;
+    if(jobs[j].primerPricePerSqftPerCoat === undefined) jobs[j].primerPricePerSqftPerCoat = pf(jobs[j].pricePerSqftPerCoat) || 1;
+    if(jobs[j].consumables === undefined) jobs[j].consumables = [];
+    var mCons = jobs[j].consumables;
+    for(var mc = 0; mc < mCons.length; mc++){ if(mCons[mc].qty === undefined) mCons[mc].qty = 1; }
+    if(jobs[j].hoursWorked === undefined) jobs[j].hoursWorked = "";
+    var rooms = jobs[j].rooms || [];
+    for(var r = 0; r < rooms.length; r++) migrateRoom(rooms[r]);
+  }
+}
+
+function loadState(){
+  try {
+    var raw = localStorage.getItem(SKEY);
+    if(!raw){
+      // Try loading from old v3 key
+      raw = localStorage.getItem(SKEY_OLD);
+    }
+    if(raw){
+      var parsed = JSON.parse(raw);
+      if(Array.isArray(parsed) && parsed.length > 0){
+        migrateJobs(parsed);
+        STATE.jobs = parsed;
+        // Re-save under new key
+        try { localStorage.setItem(SKEY, JSON.stringify(STATE.jobs)); } catch(e2){}
+      }
+    }
+  } catch(e){}
+}
+
+function saveState(){
+  if(saveTimer) clearTimeout(saveTimer);
+  saveTimer = setTimeout(function(){
+    try { localStorage.setItem(SKEY, JSON.stringify(STATE.jobs)); } catch(e){}
+    pushToCloud();
+  }, 500);
+}
+
+/* ── Cloud Sync Functions ── */
+function deriveSyncId(passphrase){
+  var encoder = new TextEncoder();
+  var data = encoder.encode(passphrase.trim().toLowerCase());
+  return crypto.subtle.digest("SHA-256", data).then(function(buf){
+    var arr = new Uint8Array(buf);
+    var hex = "";
+    for(var i = 0; i < arr.length; i++) hex += ("0" + arr[i].toString(16)).slice(-2);
+    return hex;
+  });
+}
+
+function pushToCloud(){
+  if(!_syncActive || !_syncRef || _remoteUpdateInProgress) return;
+  var json = JSON.stringify(STATE.jobs);
+  _lastPushedJson = json;
+  _syncRef.set(json).catch(function(err){
+    console.warn("Sync push failed:", err);
+    _syncStatus = "error";
+  });
+}
+
+function teardownSync(){
+  if(_syncRef){ _syncRef.off(); _syncRef = null; }
+  if(_scanRef){ _scanRef.off(); _scanRef = null; }
+  _syncActive = false;
+  _lastPushedJson = "";
+  _syncStatus = "off";
+  _pendingScan = null;
+}
+
+function disconnectSync(){
+  teardownSync();
+  localStorage.removeItem(SYNC_PASSPHRASE_KEY);
+  render();
+}
+
+/* ── LiDAR Scan Handler ── */
+function consumeScan(){
+  // Mark scan as consumed on Firebase so it doesn't re-trigger
+  if(_scanRef) _scanRef.update({consumed: true});
+  _pendingScan = null;
+}
+
+function acceptScan(scanData){
+  var job = getJob();
+  if(!job) return;
+
+  // Generate room name
+  var scanNum = 1;
+  for(var ri = 0; ri < job.rooms.length; ri++){
+    if(job.rooms[ri].name && job.rooms[ri].name.indexOf("Scanned") >= 0) scanNum++;
+  }
+  var roomName = scanNum === 1 ? "Scanned Room" : "Scanned Room " + scanNum;
+
+  if(scanData.isRectangular){
+    // Quick mode — simple rectangle
+    var rm = makeRoom({
+      name: roomName,
+      mode: "quick",
+      roomLength: String(Math.round(pf(scanData.roomLength))),
+      roomWidth: String(Math.round(pf(scanData.roomWidth))),
+      roomHeight: String(Math.round(pf(scanData.roomHeight))),
+      openingDoors: pi2(scanData.doorCount) || 0,
+      openingWindows: pi2(scanData.windowCount) || 0,
+      includeCeiling: true,
+      includeBaseboard: true,
+      quickPrimerCoats: 0,
+      quickTopCoats: 2,
+      ceilingPrimerCoats: 0,
+      ceilingTopCoats: 2,
+      baseboardPrimerCoats: 0,
+      baseboardTopCoats: 2,
+      surfaceCondition: "primed"
+    });
+    job.rooms.push(rm);
+    job.activeRoomId = rm.id;
+  } else {
+    // Custom mode — individual wall surfaces
+    var surfaces = [];
+    var segs = scanData.wallSegments || [];
+    for(var si = 0; si < segs.length; si++){
+      surfaces.push(makeSurface({
+        type: "wall",
+        inputMode: "dims",
+        widthIn: String(Math.round(pf(segs[si].length))),
+        heightIn: String(Math.round(pf(segs[si].height))),
+        primerCoats: 0,
+        topCoats: 2,
+        label: "Wall " + (si + 1)
+      }));
+    }
+    // Add ceiling surface
+    if(scanData.ceilingArea){
+      surfaces.push(makeSurface({
+        type: "ceiling",
+        inputMode: "direct",
+        directSqft: String(Math.round(pf(scanData.ceilingArea) / 144)),
+        primerCoats: 0,
+        topCoats: 2,
+        label: "Ceiling"
+      }));
+    }
+    // Add baseboard (total perimeter from wall segments)
+    var totalPerim = 0;
+    for(var pi3 = 0; pi3 < segs.length; pi3++) totalPerim += pf(segs[pi3].length);
+    var doorWidths = 0;
+    var dDims = scanData.doorDimensions || [];
+    for(var di = 0; di < dDims.length; di++) doorWidths += pf(dDims[di].width);
+    var bbFt = Math.max(0, (totalPerim - doorWidths) / 12);
+    if(bbFt > 0){
+      surfaces.push(makeSurface({
+        type: "baseboard",
+        linearFt: String(Math.round(bbFt)),
+        primerCoats: 0,
+        topCoats: 2,
+        label: "Baseboard"
+      }));
+    }
+    var rm = makeRoom({
+      name: roomName,
+      mode: "custom",
+      surfaces: surfaces,
+      extras: []
+    });
+    job.rooms.push(rm);
+    job.activeRoomId = rm.id;
+  }
+
+  consumeScan();
+  saveState();
+  render();
+}
+
+function dismissScan(){
+  consumeScan();
+  render();
+}
+
+function formatScanDims(scanData){
+  var l = Math.round(pf(scanData.roomLength));
+  var w = Math.round(pf(scanData.roomWidth));
+  var h = Math.round(pf(scanData.roomHeight));
+  function fmtIn(v){ var ft = Math.floor(v/12); var rem = v%12; return rem ? ft+"'"+rem+'"' : ft+"'"; }
+  var s = fmtIn(l) + " \u00D7 " + fmtIn(w) + " \u00D7 " + fmtIn(h) + " ceiling";
+  var parts = [];
+  if(scanData.doorCount) parts.push(scanData.doorCount + " door" + (scanData.doorCount > 1 ? "s" : ""));
+  if(scanData.windowCount) parts.push(scanData.windowCount + " window" + (scanData.windowCount > 1 ? "s" : ""));
+  if(parts.length) s += " \u2014 " + parts.join(", ");
+  return s;
+}
+
+// Native JS bridge: called by the native app after a LiDAR scan completes
+window.onLidarScan = function(scanData){
+  if(!scanData || !scanData.source) return;
+
+  // If wizard is active and waiting for scan, populate the wizard's room
+  if(_wizard && _wizard.scanPending){
+    var rm = _wizard.roomRef;
+    if(scanData.isRectangular){
+      rm.roomLength = String(Math.round(pf(scanData.roomLength)));
+      rm.roomWidth = String(Math.round(pf(scanData.roomWidth)));
+      rm.roomHeight = String(Math.round(pf(scanData.roomHeight)));
+    } else {
+      // Non-rectangular: populate as custom surfaces
+      rm.mode = "custom";
+      var segs = scanData.wallSegments || [];
+      rm.surfaces = [];
+      for(var si = 0; si < segs.length; si++){
+        rm.surfaces.push(makeSurface({
+          type:"wall", inputMode:"dims",
+          widthIn: String(Math.round(pf(segs[si].length))),
+          heightIn: String(Math.round(pf(segs[si].height)))
+        }));
+      }
+      if(rm.surfaces.length === 0) rm.surfaces.push(makeSurface());
+    }
+    // Add door/window extras
+    var dCount = parseInt(scanData.doorCount) || 0;
+    var wCount = parseInt(scanData.windowCount) || 0;
+    if(!rm.extras) rm.extras = [];
+    for(var di2 = 0; di2 < dCount; di2++){
+      rm.extras.push(makeSurface({type:"door_frame", qty:1, topCoats:2, primerCoats:0}));
+      rm.extras.push(makeSurface({type:"door_face", qty:1, topCoats:2, primerCoats:0, doorSides:"both"}));
+    }
+    for(var wi2 = 0; wi2 < wCount; wi2++){
+      rm.extras.push(makeSurface({type:"window_frame", qty:1, topCoats:2, primerCoats:0}));
+    }
+    _wizard.scanPending = false;
+    _wizard.didScan = true;
+    // Jump to ceiling step
+    var steps = getWizardSteps(_wizard.mode);
+    for(var si2 = 0; si2 < steps.length; si2++){
+      if(steps[si2].id === "ceiling"){ _wizard.step = si2; break; }
+    }
+    saveState(); render();
+    return;
+  }
+
+  acceptScan(scanData);
+};
+
+// Expose render for native bridge to trigger re-render after flag injection
+window._nativeRender = function(){ render(); };
+
+/* ── Setup Wizard ── */
+
+function getWizardSteps(mode){
+  var steps = [];
+  if(mode === "newJob"){
+    steps.push({id:"jobName", q:"What should we call this job?"});
+  }
+  steps.push({id:"roomName", q:"Name this room"});
+  steps.push({id:"measureMethod", q:"How should we measure this room?"});
+  steps.push({id:"dimensions", q:"Enter room dimensions", skipIfScan:true});
+  steps.push({id:"ceiling", q:"Include the ceiling?"});
+  steps.push({id:"baseboard", q:"Include baseboard?"});
+  steps.push({id:"condition", q:"What\u2019s the surface condition?"});
+  steps.push({id:"primer", q:"Will this room need primer?"});
+  steps.push({id:"topcoats", q:"How many topcoats?"});
+  steps.push({id:"summary", q:"Here\u2019s your room"});
+  return steps;
+}
+
+function wizardNext(steps){
+  var next = _wizard.step + 1;
+  while(next < steps.length){
+    var s = steps[next];
+    if(s.skipIfScan && _wizard.didScan){ next++; continue; }
+    break;
+  }
+  if(next >= steps.length){ closeWizard(); return; }
+  _wizard.step = next;
+  render();
+}
+
+function wizardBack(steps){
+  var prev = _wizard.step - 1;
+  while(prev >= 0){
+    var s = steps[prev];
+    if(s.skipIfScan && _wizard.didScan){ prev--; continue; }
+    break;
+  }
+  if(prev < 0) prev = 0;
+  _wizard.step = prev;
+  render();
+}
+
+function closeWizard(){
+  if(!_wizard) return;
+  var job = _wizard.jobRef;
+  var rm = _wizard.roomRef;
+  rm.mode = "quick";
+  job.activeRoomId = rm.id;
+  STATE.view = "edit";
+  _wizard = null;
+  saveState();
+  render();
+}
+
+function startWizard(mode, job, room){
+  _wizard = {
+    mode: mode,
+    step: 0,
+    jobRef: job,
+    roomRef: room,
+    scanPending: false,
+    didScan: false
+  };
+}
+
+function renderWizardProgress(steps, current){
+  var wrap = el("div", "display:flex;gap:6px;margin-bottom:20px;align-items:center;justify-content:center;");
+  for(var i = 0; i < steps.length; i++){
+    var ds = "width:8px;height:8px;border-radius:50%;transition:all 0.2s;";
+    if(i === current) ds += "background:#d4a843;box-shadow:0 0 6px rgba(212,168,67,0.5);";
+    else if(i < current) ds += "background:#5a9e6f;";
+    else ds += "background:#3a3a3a;";
+    wrap.appendChild(el("div", ds));
+  }
+  return wrap;
+}
+
+function renderWizardStep(container, stepDef){
+  var rm = _wizard.roomRef;
+  var job = _wizard.jobRef;
+
+  switch(stepDef.id){
+
+  case "jobName":
+    var jInp = el("input", "background:#2e2e2e;color:#e8e4de;border:1px solid #3a3a3a;border-radius:8px;padding:14px 16px;outline:none;font-size:18px;width:100%;font-family:inherit;text-align:center;");
+    jInp.type = "text";
+    jInp.value = job.name;
+    jInp.placeholder = "e.g. Smith Residence";
+    jInp.oninput = function(e){ job.name = e.target.value; saveState(); };
+    container.appendChild(jInp);
+    setTimeout(function(){ jInp.focus(); jInp.select(); }, 80);
+    break;
+
+  case "roomName":
+    var rInp = el("input", "background:#2e2e2e;color:#e8e4de;border:1px solid #3a3a3a;border-radius:8px;padding:14px 16px;outline:none;font-size:18px;width:100%;font-family:inherit;text-align:center;");
+    rInp.type = "text";
+    rInp.value = rm.name;
+    rInp.placeholder = "e.g. Master Bedroom";
+    rInp.oninput = function(e){ rm.name = e.target.value; saveState(); };
+    container.appendChild(rInp);
+    setTimeout(function(){ rInp.focus(); rInp.select(); }, 80);
+    break;
+
+  case "measureMethod":
+    if(_wizard.scanPending){
+      var scanning = el("div", "text-align:center;padding:20px 0;");
+      scanning.appendChild(el("div", "font-size:14px;color:#d4a843;animation:wizPulse 1.5s ease-in-out infinite;", "Scanning\u2026"));
+      scanning.appendChild(el("div", "font-size:11px;color:#8a8580;margin-top:8px;", "Waiting for LiDAR scan to complete"));
+      container.appendChild(scanning);
+      container.appendChild(btn("Cancel", function(){
+        _wizard.scanPending = false; render();
+      }, "background:#2e2e2e;border:1px solid #3a3a3a;border-radius:6px;color:#8a8580;font-size:12px;padding:8px 20px;cursor:pointer;display:block;margin:12px auto 0;"));
+      return; // hide Next button while scanning
+    }
+    var methodWrap = el("div", "display:flex;flex-direction:column;gap:10px;");
+    if(window.PAINTCALC_NATIVE && window.PAINTCALC_HAS_LIDAR){
+      methodWrap.appendChild(btn("\ud83d\udce1  Scan Room", function(){
+        if(window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.paintCalcNative){
+          window.webkit.messageHandlers.paintCalcNative.postMessage({action: "scanRoom"});
+        }
+        _wizard.scanPending = true;
+        render();
+      }, "background:#d4a843;color:#1a1a1a;border:none;border-radius:8px;padding:16px;cursor:pointer;font-size:14px;font-weight:700;letter-spacing:.5px;width:100%;"));
+    }
+    methodWrap.appendChild(btn("\ud83d\udccf  Manual Input", function(){
+      _wizard.didScan = false;
+      var steps = getWizardSteps(_wizard.mode);
+      wizardNext(steps);
+    }, "background:#2e2e2e;border:1px solid #3a3a3a;border-radius:8px;padding:16px;cursor:pointer;font-size:14px;font-weight:600;color:#e8e4de;width:100%;"));
+    container.appendChild(methodWrap);
+    container.appendChild(el("div", "display:none;", "")); // flag: hide default Next
+    container._hideNext = true;
+    break;
+
+  case "dimensions":
+    var dimWrap = el("div", "display:flex;flex-direction:column;gap:14px;align-items:center;");
+    var labels = ["Length", "Width", "Height"];
+    var keys = ["roomLength", "roomWidth", "roomHeight"];
+    for(var di = 0; di < 3; di++){
+      (function(idx){
+        var row = el("div", "display:flex;align-items:center;gap:10px;width:100%;justify-content:center;");
+        row.appendChild(el("div", "font-size:12px;color:#8a8580;width:50px;text-align:right;", labels[idx]));
+        row.appendChild(dimInput(rm[keys[idx]], function(v){ rm[keys[idx]] = v; saveState(); }, 90));
+        dimWrap.appendChild(row);
+      })(di);
+    }
+    var unitLabel = unitMode === "ftin" ? "feet & inches" : "inches";
+    dimWrap.appendChild(el("div", "font-size:10px;color:#8a8580;margin-top:4px;", "Measuring in " + unitLabel));
+    container.appendChild(dimWrap);
+    break;
+
+  case "ceiling":
+    var ceilWrap = el("div", "display:flex;gap:12px;justify-content:center;");
+    ceilWrap.appendChild(toggleBtn("Yes", rm.includeCeiling, function(){
+      rm.includeCeiling = true; saveState(); render();
+    }, "padding:14px 32px;font-size:14px;border-radius:8px;"));
+    ceilWrap.appendChild(toggleBtn("No", !rm.includeCeiling, function(){
+      rm.includeCeiling = false; saveState(); render();
+    }, "padding:14px 32px;font-size:14px;border-radius:8px;"));
+    container.appendChild(ceilWrap);
+    if(rm.includeCeiling && pf(rm.roomLength) > 0 && pf(rm.roomWidth) > 0){
+      var ceilSf = (pf(rm.roomLength) * pf(rm.roomWidth)) / 144;
+      container.appendChild(el("div", "text-align:center;font-size:11px;color:#8a8580;margin-top:10px;", Math.round(ceilSf) + " sq ft"));
+    }
+    break;
+
+  case "baseboard":
+    var bbWrap = el("div", "display:flex;gap:12px;justify-content:center;");
+    bbWrap.appendChild(toggleBtn("Yes", rm.includeBaseboard, function(){
+      rm.includeBaseboard = true; saveState(); render();
+    }, "padding:14px 32px;font-size:14px;border-radius:8px;"));
+    bbWrap.appendChild(toggleBtn("No", !rm.includeBaseboard, function(){
+      rm.includeBaseboard = false; saveState(); render();
+    }, "padding:14px 32px;font-size:14px;border-radius:8px;"));
+    container.appendChild(bbWrap);
+    if(rm.includeBaseboard && pf(rm.roomLength) > 0 && pf(rm.roomWidth) > 0){
+      var perim = 2 * (pf(rm.roomLength) + pf(rm.roomWidth)) / 12;
+      container.appendChild(el("div", "text-align:center;font-size:11px;color:#8a8580;margin-top:10px;", "~" + Math.round(perim) + " linear ft"));
+    }
+    break;
+
+  case "condition":
+    var condWrap = el("div", "display:flex;flex-direction:column;gap:8px;");
+    for(var ci = 0; ci < SURFACE_CONDITIONS.length; ci++){
+      (function(cond){
+        var isActive = rm.surfaceCondition === cond.v;
+        condWrap.appendChild(btn(cond.l, function(){
+          rm.surfaceCondition = cond.v; saveState(); render();
+        }, (isActive
+          ? "background:#d4a843;color:#1a1a1a;border:1px solid #d4a843;font-weight:600;"
+          : "background:#2e2e2e;color:#e8e4de;border:1px solid #3a3a3a;")
+          + "border-radius:8px;padding:14px 16px;cursor:pointer;font-size:13px;width:100;text-align:left;"));
+      })(SURFACE_CONDITIONS[ci]);
+    }
+    container.appendChild(condWrap);
+    break;
+
+  case "primer":
+    var hasPrimer = rm.quickPrimerCoats > 0;
+    var pWrap = el("div", "display:flex;gap:12px;justify-content:center;");
+    pWrap.appendChild(toggleBtn("Yes", hasPrimer, function(){
+      if(rm.quickPrimerCoats < 1) rm.quickPrimerCoats = 1;
+      saveState(); render();
+    }, "padding:14px 32px;font-size:14px;border-radius:8px;"));
+    pWrap.appendChild(toggleBtn("No", !hasPrimer, function(){
+      rm.quickPrimerCoats = 0; saveState(); render();
+    }, "padding:14px 32px;font-size:14px;border-radius:8px;"));
+    container.appendChild(pWrap);
+    if(hasPrimer){
+      var pCoatRow = el("div", "display:flex;align-items:center;gap:8px;justify-content:center;margin-top:14px;");
+      pCoatRow.appendChild(el("div", "font-size:12px;color:#8a8580;", "Coats:"));
+      pCoatRow.appendChild(pmBtn("\u2212", function(){ if(rm.quickPrimerCoats > 1){ rm.quickPrimerCoats--; saveState(); render(); } }));
+      pCoatRow.appendChild(el("div", "font-size:20px;font-weight:700;color:#b07acc;min-width:30px;text-align:center;", String(rm.quickPrimerCoats)));
+      pCoatRow.appendChild(pmBtn("+", function(){ rm.quickPrimerCoats++; saveState(); render(); }));
+      container.appendChild(pCoatRow);
+    }
+    break;
+
+  case "topcoats":
+    var tcRow = el("div", "display:flex;align-items:center;gap:12px;justify-content:center;");
+    tcRow.appendChild(pmBtn("\u2212", function(){ if(rm.quickTopCoats > 0){ rm.quickTopCoats--; saveState(); render(); } }));
+    tcRow.appendChild(el("div", "font-size:36px;font-weight:700;color:#5a9e6f;min-width:50px;text-align:center;", String(rm.quickTopCoats)));
+    tcRow.appendChild(pmBtn("+", function(){ rm.quickTopCoats++; saveState(); render(); }));
+    container.appendChild(tcRow);
+    container.appendChild(el("div", "text-align:center;font-size:11px;color:#8a8580;margin-top:8px;", "Most jobs need 2 coats"));
+    break;
+
+  case "summary":
+    var sumWrap = el("div", "display:flex;flex-direction:column;gap:6px;");
+    function sumRow(label, val, color){
+      var r = el("div", "display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #3a3a3a;");
+      r.appendChild(el("div", "font-size:12px;color:#8a8580;", label));
+      r.appendChild(el("div", "font-size:12px;font-weight:600;color:" + (color || "#e8e4de") + ";", val));
+      return r;
+    }
+    var fmtDim = function(v){ var n = pf(v); if(n >= 12){ var ft = Math.floor(n/12); var rem = Math.round(n%12); return rem ? ft+"' "+rem+'"' : ft+"'"; } return Math.round(n)+'"'; };
+    sumWrap.appendChild(sumRow("Room", rm.name, "#d4a843"));
+    if(pf(rm.roomLength) > 0){
+      sumWrap.appendChild(sumRow("Dimensions", fmtDim(rm.roomLength) + " \u00d7 " + fmtDim(rm.roomWidth) + " \u00d7 " + fmtDim(rm.roomHeight)));
+    }
+    sumWrap.appendChild(sumRow("Ceiling", rm.includeCeiling ? "Yes" : "No", rm.includeCeiling ? "#5a9e6f" : "#8a8580"));
+    sumWrap.appendChild(sumRow("Baseboard", rm.includeBaseboard ? "Yes" : "No", rm.includeBaseboard ? "#5a9e6f" : "#8a8580"));
+    var condLabel = "Primed";
+    for(var si = 0; si < SURFACE_CONDITIONS.length; si++){
+      if(SURFACE_CONDITIONS[si].v === rm.surfaceCondition) condLabel = SURFACE_CONDITIONS[si].l;
+    }
+    sumWrap.appendChild(sumRow("Surface", condLabel));
+    sumWrap.appendChild(sumRow("Primer", rm.quickPrimerCoats > 0 ? rm.quickPrimerCoats + " coat" + (rm.quickPrimerCoats > 1 ? "s" : "") : "None", "#b07acc"));
+    sumWrap.appendChild(sumRow("Topcoats", String(rm.quickTopCoats), "#5a9e6f"));
+    container.appendChild(sumWrap);
+    break;
+  }
+}
+
+function renderWizard(app){
+  if(!_wizard) return;
+  // Safety: if the job was deleted while wizard was open, close it
+  var found = false;
+  for(var wi = 0; wi < STATE.jobs.length; wi++){
+    if(STATE.jobs[wi] === _wizard.jobRef){ found = true; break; }
+  }
+  if(!found){ _wizard = null; return; }
+
+  var steps = getWizardSteps(_wizard.mode);
+  var stepDef = steps[_wizard.step];
+  if(!stepDef){ closeWizard(); return; }
+
+  // Overlay
+  var overlay = el("div",
+    "position:fixed;top:0;left:0;right:0;bottom:0;z-index:10000;" +
+    "background:rgba(0,0,0,0.85);display:flex;flex-direction:column;" +
+    "align-items:center;justify-content:center;padding:20px;" +
+    "animation:wizFadeIn 0.15s ease-out;"
+  );
+
+  // Progress dots
+  overlay.appendChild(renderWizardProgress(steps, _wizard.step));
+
+  // Card
+  var wizCard = el("div",
+    "background:#242424;border:1px solid #d4a843;border-radius:12px;" +
+    "padding:28px 24px;width:100%;max-width:360px;" +
+    "box-shadow:0 0 30px rgba(212,168,67,0.12);" +
+    "animation:wizSlideUp 0.2s ease-out;"
+  );
+
+  // Question
+  wizCard.appendChild(el("div",
+    "font-size:16px;font-weight:600;color:#e8e4de;margin-bottom:20px;text-align:center;letter-spacing:.3px;",
+    stepDef.q
+  ));
+
+  // Step content
+  renderWizardStep(wizCard, stepDef);
+
+  // Navigation (unless the step hides it)
+  if(!wizCard._hideNext){
+    var nav = el("div", "display:flex;justify-content:space-between;align-items:center;margin-top:24px;");
+    if(_wizard.step > 0){
+      nav.appendChild(btn("\u2190 Back", function(){
+        wizardBack(steps);
+      }, "background:none;border:none;color:#8a8580;font-size:13px;padding:10px 16px;cursor:pointer;"));
+    } else {
+      nav.appendChild(el("div", ""));
+    }
+    var isLast = _wizard.step === steps.length - 1;
+    nav.appendChild(btn(isLast ? "Done \u2713" : "Next \u2192", function(){
+      if(isLast) closeWizard();
+      else wizardNext(steps);
+    }, "background:#d4a843;border:none;border-radius:8px;color:#1a1a1a;font-size:13px;font-weight:700;padding:10px 24px;cursor:pointer;"));
+    wizCard.appendChild(nav);
+  }
+
+  overlay.appendChild(wizCard);
+
+  // Skip link
+  overlay.appendChild(btn("Skip wizard", function(){
+    closeWizard();
+  }, "background:none;border:none;color:#8a8580;font-size:11px;cursor:pointer;margin-top:16px;text-decoration:underline;padding:4px;"));
+
+  // Enter key to advance
+  overlay.addEventListener("keydown", function(e){
+    if(e.key === "Enter" && !wizCard._hideNext){
+      e.preventDefault();
+      var isLast2 = _wizard.step === steps.length - 1;
+      if(isLast2) closeWizard();
+      else wizardNext(steps);
+    }
+  });
+
+  app.appendChild(overlay);
+}
+
+function setupSync(passphrase){
+  if(!_firebaseReady) return;
+  teardownSync();
+  _syncStatus = "connecting";
+  render();
+  deriveSyncId(passphrase).then(function(syncId){
+    _syncRef = firebase.database().ref("sync/" + syncId + "/jobs");
+    _syncActive = true;
+    localStorage.setItem(SYNC_PASSPHRASE_KEY, passphrase);
+    _syncRef.on("value", function(snapshot){
+      var remoteData = snapshot.val();
+      // First connection — remote is empty, push our data up
+      if(remoteData === null){
+        pushToCloud();
+        _syncStatus = "synced";
+        render();
+        return;
+      }
+      var remoteJson = typeof remoteData === "string" ? remoteData : JSON.stringify(remoteData);
+      // Skip our own echo — don't render (would steal input focus)
+      if(remoteJson === _lastPushedJson){
+        _syncStatus = "synced";
+        return;
+      }
+      // First connect with different data — ask user
+      if(_lastPushedJson === ""){
+        var localJson = JSON.stringify(STATE.jobs);
+        if(localJson !== remoteJson){
+          if(!confirm("Cloud has different data.\n\nOK = Load cloud data\nCancel = Overwrite cloud with this device")){
+            pushToCloud();
+            _syncStatus = "synced";
+            render();
+            return;
+          }
+        }
+      }
+      // Apply remote data
+      try {
+        var parsed = typeof remoteData === "string" ? JSON.parse(remoteData) : remoteData;
+        if(Array.isArray(parsed) && parsed.length > 0){
+          _remoteUpdateInProgress = true;
+          migrateJobs(parsed);
+          STATE.jobs = parsed;
+          if(STATE.activeJob >= STATE.jobs.length) STATE.activeJob = 0;
+          try { localStorage.setItem(SKEY, JSON.stringify(STATE.jobs)); } catch(e){}
+          _lastPushedJson = JSON.stringify(STATE.jobs);
+          _syncStatus = "synced";
+          render();
+          _remoteUpdateInProgress = false;
+        }
+      } catch(e){
+        console.warn("Sync parse error:", e);
+        _syncStatus = "error";
+        render();
+      }
+    }, function(err){
+      console.warn("Sync listener error:", err);
+      _syncStatus = "error";
+      _syncActive = false;
+      render();
+    });
+
+    // Listen for LiDAR room scans from companion app
+    _scanRef = firebase.database().ref("sync/" + syncId + "/paintScan");
+    _scanRef.on("value", function(snapshot){
+      var scanData = snapshot.val();
+      if(!scanData || scanData.consumed || !scanData.source) return;
+      _pendingScan = scanData;
+      render();
+    });
+  });
+}
+
+function initFirebase(){
+  if(typeof firebase === "undefined" || !firebase.initializeApp){
+    _syncStatus = "error";
+    return;
+  }
+  var config = {
+    apiKey: "AIzaSyD9zQQgRApSqfeBougnIUVEAYupp8i-bgY",
+    authDomain: "paint-calc-sync.firebaseapp.com",
+    databaseURL: "https://paint-calc-sync-default-rtdb.firebaseio.com",
+    projectId: "paint-calc-sync"
+  };
+  try {
+    firebase.initializeApp(config);
+  } catch(e){
+    if(e.code !== "app/duplicate-app"){ _syncStatus = "error"; return; }
+  }
+  firebase.auth().signInAnonymously().then(function(){
+    _firebaseReady = true;
+    var saved = localStorage.getItem(SYNC_PASSPHRASE_KEY);
+    if(saved) setupSync(saved);
+  }).catch(function(err){
+    _syncStatus = "error";
+    console.warn("Firebase auth failed:", err.message);
+  });
+  firebase.database().ref(".info/connected").on("value", function(snap){
+    if(_syncActive){
+      _syncStatus = snap.val() ? "synced" : "offline";
+      render();
+    }
+  });
+}
+
+function exportData(){
+  STATE.exportMode = true;
+  STATE.exportData = JSON.stringify(STATE.jobs, null, 2);
+  render();
+}
+
+function shareExport(){
+  var json = JSON.stringify(STATE.jobs);
+  // Try Web Share API first (native iOS share sheet — no truncation)
+  if(navigator.share){
+    navigator.share({
+      title: "Paint Calc Data",
+      text: json
+    }).catch(function(){});
+    return;
+  }
+  // Fallback: copy to clipboard
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(json).then(function(){
+      alert("Copied to clipboard!");
+    }, function(){
+      alert("Share not available. Use the Export panel and copy manually.");
+    });
+  } else {
+    alert("Share not available on this browser. Use the Export panel instead.");
+  }
+}
+
+function importData(){
+  STATE.importMode = true;
+  render();
+}
+
+function doImport(jsonStr){
+  try {
+    var parsed = JSON.parse(jsonStr);
+    if(!Array.isArray(parsed) || parsed.length === 0){
+      alert("Invalid data — expected a list of jobs.");
+      return;
+    }
+    migrateJobs(parsed);
+    var mergeChoice = STATE.jobs.length > 0 && STATE.jobs[0].rooms && STATE.jobs[0].rooms.length > 0
+      ? confirm("Merge with existing data?\n\nOK = Merge (add imported jobs)\nCancel = Replace (overwrite everything)")
+      : false;
+    if(mergeChoice){
+      for(var i = 0; i < parsed.length; i++) STATE.jobs.push(parsed[i]);
+    } else {
+      STATE.jobs = parsed;
+      STATE.activeJob = 0;
+    }
+    STATE.importMode = false;
+    saveState();
+    try { localStorage.setItem(SKEY, JSON.stringify(STATE.jobs)); } catch(e){}
+    pushToCloud();
+    render();
+    alert("Import successful! " + parsed.length + " job(s) loaded.");
+  } catch(e){
+    alert("Import failed — invalid JSON.\n\n" + e.message);
+  }
+}
+
+function getJob(){ return STATE.jobs[STATE.activeJob] || STATE.jobs[0]; }
+function getActiveRoom(){
+  var job = getJob();
+  if(!job) return null;
+  for(var i = 0; i < job.rooms.length; i++){
+    if(job.rooms[i].id === job.activeRoomId) return job.rooms[i];
+  }
+  return null;
+}
+
+/* ── DOM Helpers ── */
+function el(tag, style, children){
+  var e = document.createElement(tag);
+  if(style) e.style.cssText = style;
+  if(children !== undefined){
+    if(typeof children === "string" || typeof children === "number"){
+      e.textContent = String(children);
+    } else if(Array.isArray(children)){
+      for(var i = 0; i < children.length; i++){
+        if(children[i]) e.appendChild(children[i]);
+      }
+    } else if(children && children.nodeType){
+      e.appendChild(children);
+    }
+  }
+  return e;
+}
+
+function txt(str){ return document.createTextNode(str); }
+
+function span(text, color, extra){
+  var s = el("span", "color:" + (color || "#8a8580") + ";" + (extra || ""), text);
+  return s;
+}
+
+function numInput(value, onChange, width){
+  var inp = el("input", "background:#2e2e2e;color:#e8e4de;border:1px solid #3a3a3a;border-radius:4px;padding:6px 8px;outline:none;text-align:center;font-size:12px;width:" + (width || 60) + "px;font-family:inherit");
+  inp.type = "number";
+  inp.inputMode = "decimal";
+  inp.value = (value === undefined || value === null) ? "" : value;
+  inp.oninput = function(e){ onChange(e.target.value); saveState(); };
+  inp.onblur = function(){ render(); };
+  return inp;
+}
+
+function getJobSuggestions(job, field){
+  // Collect unique non-empty values for color or product fields from all rooms in this job
+  var seen = {};
+  var list = [];
+  function add(v){
+    if(!v || !v.trim()) return;
+    var lc = v.trim().toLowerCase();
+    if(!seen[lc]){ seen[lc] = true; list.push(v.trim()); }
+  }
+  for(var i = 0; i < job.rooms.length; i++){
+    var rm = job.rooms[i];
+    if(field === "color"){
+      add(rm.wallColor); add(rm.ceilingColor); add(rm.trimColor);
+    } else {
+      add(rm.wallProduct); add(rm.ceilingProduct); add(rm.trimProduct);
+      add(rm.wallPrimerProduct); add(rm.ceilingPrimerProduct); add(rm.trimPrimerProduct);
+    }
+    // Custom mode surfaces
+    var surfs = (rm.surfaces || []).concat(rm.extras || []);
+    for(var j = 0; j < surfs.length; j++){
+      if(field === "color") add(surfs[j].color);
+      else add(surfs[j].product);
+    }
+  }
+  // For product fields, also include PRODUCTS database entries
+  if(field === "product"){
+    for(var pi = 0; pi < PRODUCTS.length; pi++){
+      add(PRODUCTS[pi].name);
+    }
+  }
+  list.sort();
+  return list;
+}
+
+function removeJobSuggestion(job, field, value){
+  // Remove a product or color from all rooms in this job
+  var lc = (value || "").trim().toLowerCase();
+  if(!lc) return;
+  function clr(rm, key){ if(rm[key] && rm[key].trim().toLowerCase() === lc) rm[key] = ""; }
+  for(var i = 0; i < job.rooms.length; i++){
+    var rm = job.rooms[i];
+    if(field === "color"){
+      clr(rm, "wallColor"); clr(rm, "ceilingColor"); clr(rm, "trimColor");
+    } else {
+      clr(rm, "wallProduct"); clr(rm, "ceilingProduct"); clr(rm, "trimProduct");
+      clr(rm, "wallPrimerProduct"); clr(rm, "ceilingPrimerProduct"); clr(rm, "trimPrimerProduct");
+    }
+    var surfs = (rm.surfaces || []).concat(rm.extras || []);
+    for(var j = 0; j < surfs.length; j++){
+      if(field === "color") clr(surfs[j], "color");
+      else clr(surfs[j], "product");
+    }
+  }
+  saveState();
+}
+
+function getJobProductPrice(job, productName){
+  // Look up the most recent $/gal for a product name across all rooms in the job
+  if(!productName || !productName.trim()) return "";
+  var pLc = productName.trim().toLowerCase();
+  // Check rooms in reverse order (most recent first)
+  for(var i = job.rooms.length - 1; i >= 0; i--){
+    var rm = job.rooms[i];
+    if((rm.wallPrimerProduct||"").trim().toLowerCase() === pLc && rm.wallPrimerPricePerGal) return rm.wallPrimerPricePerGal;
+    if((rm.wallProduct||"").trim().toLowerCase() === pLc && rm.wallPricePerGal) return rm.wallPricePerGal;
+    if((rm.ceilingPrimerProduct||"").trim().toLowerCase() === pLc && rm.ceilingPrimerPricePerGal) return rm.ceilingPrimerPricePerGal;
+    if((rm.ceilingProduct||"").trim().toLowerCase() === pLc && rm.ceilingPricePerGal) return rm.ceilingPricePerGal;
+    if((rm.trimPrimerProduct||"").trim().toLowerCase() === pLc && rm.trimPrimerPricePerGal) return rm.trimPrimerPricePerGal;
+    if((rm.trimProduct||"").trim().toLowerCase() === pLc && rm.trimPricePerGal) return rm.trimPricePerGal;
+  }
+  return "";
+}
+
+function getJobProductCoverage(job, productName){
+  // Look up coverage (sf/gal) for a product name across all rooms
+  if(!productName || !productName.trim()) return "";
+  var pLc = productName.trim().toLowerCase();
+  for(var i = job.rooms.length - 1; i >= 0; i--){
+    var rm = job.rooms[i];
+    if((rm.wallPrimerProduct||"").trim().toLowerCase() === pLc && rm.wallPrimerCoverage) return rm.wallPrimerCoverage;
+    if((rm.wallProduct||"").trim().toLowerCase() === pLc && rm.wallCoverage) return rm.wallCoverage;
+    if((rm.ceilingPrimerProduct||"").trim().toLowerCase() === pLc && rm.ceilingPrimerCoverage) return rm.ceilingPrimerCoverage;
+    if((rm.ceilingProduct||"").trim().toLowerCase() === pLc && rm.ceilingCoverage) return rm.ceilingCoverage;
+    if((rm.trimPrimerProduct||"").trim().toLowerCase() === pLc && rm.trimPrimerCoverage) return rm.trimPrimerCoverage;
+    if((rm.trimProduct||"").trim().toLowerCase() === pLc && rm.trimCoverage) return rm.trimCoverage;
+  }
+  return "";
+}
+
+function getJobDefaultPrimer(job){
+  // Find the most-used primer product name across all rooms
+  var counts = {};
+  for(var i = 0; i < job.rooms.length; i++){
+    var rm = job.rooms[i];
+    var ps = [rm.wallPrimerProduct, rm.ceilingPrimerProduct, rm.trimPrimerProduct];
+    for(var j = 0; j < ps.length; j++){
+      var p = (ps[j]||"").trim();
+      if(p){ counts[p] = (counts[p]||0) + 1; }
+    }
+  }
+  var best = "", bestN = 0;
+  for(var k in counts){ if(counts[k] > bestN){ best = k; bestN = counts[k]; } }
+  return best;
+}
+
+/* Global dropdown overlay — lives outside #app so it survives render() */
+var _autoDropdown = null;
+function getAutoDropdown(){
+  if(!_autoDropdown){
+    _autoDropdown = el("div", "display:none;position:fixed;background:#2e2e2e;border:1px solid #555;border-radius:0 0 4px 4px;max-height:150px;overflow-y:auto;z-index:9999;");
+    /* preventDefault on mousedown/touchstart prevents the input from losing
+       focus when the user clicks/taps the dropdown — so blur never fires */
+    _autoDropdown.addEventListener("mousedown", function(e){ e.preventDefault(); });
+    _autoDropdown.addEventListener("touchstart", function(e){ e.preventDefault(); });
+    document.body.appendChild(_autoDropdown);
+  }
+  return _autoDropdown;
+}
+function hideAutoDropdown(){ var d = getAutoDropdown(); d.style.display = "none"; d.innerHTML = ""; d._pickCb = null; }
+
+function autoTextInput(value, onChange, placeholder, width, suggestFn, onSelectCb, deleteFn){
+  var wrap = el("div", "position:relative;" + (width ? "width:" + width + "px;" : "flex:1;min-width:80px;"));
+  var inp = el("input", "background:#2e2e2e;color:#e8e4de;border:1px solid #3a3a3a;border-radius:4px;padding:6px 8px;outline:none;font-size:11px;width:100%;font-family:inherit;box-sizing:border-box;text-overflow:ellipsis;");
+  inp.type = "text";
+  inp.value = (value === undefined || value === null) ? "" : value;
+  inp.placeholder = placeholder || "";
+  inp.autocomplete = "off";
+  inp.autocorrect = "off";
+  inp.spellcheck = false;
+
+  var _picked = false;
+
+  function showDropdown(filter){
+    var dd = getAutoDropdown();
+    dd.innerHTML = "";
+    var suggestions = suggestFn();
+    var count = 0;
+    var fLc = (filter || "").toLowerCase();
+    for(var i = 0; i < suggestions.length; i++){
+      var s = suggestions[i];
+      if(s.toLowerCase() === fLc) continue;
+      if(fLc && s.toLowerCase().indexOf(fLc) < 0) continue;
+      (function(val){
+        var opt = el("div", "display:flex;align-items:center;justify-content:space-between;padding:8px 10px;font-size:13px;color:#e8e4de;cursor:pointer;border-bottom:1px solid #3a3a3a;-webkit-tap-highlight-color:rgba(212,168,67,0.3);user-select:none;-webkit-user-select:none;");
+        var label = el("span", "flex:1;padding:4px;", val);
+        label.setAttribute("data-val", val);
+        opt.appendChild(label);
+        if(deleteFn){
+          var delBtn = el("span", "color:#8a8580;font-size:16px;padding:4px 8px;cursor:pointer;flex-shrink:0;", "×");
+          delBtn.setAttribute("data-del", val);
+          opt.appendChild(delBtn);
+        }
+        dd.appendChild(opt);
+      })(s);
+      count++;
+      if(count >= 8) break;
+    }
+    if(count > 0){
+      var rect = inp.getBoundingClientRect();
+      dd.style.left = rect.left + "px";
+      dd.style.top = rect.bottom + "px";
+      dd.style.width = rect.width + "px";
+      dd.style.display = "block";
+      dd._pickCb = function(val){
+        _picked = true;
+        onChange(val);
+        if(onSelectCb) onSelectCb(val);
+        saveState();
+        hideAutoDropdown();
+        render();
+      };
+      dd._deleteCb = deleteFn ? function(val){
+        deleteFn(val);
+        showDropdown(inp.value);
+      } : null;
+    } else {
+      dd.style.display = "none";
+    }
+  }
+
+  inp.onfocus = function(){ _picked = false; showDropdown(inp.value); };
+  inp.oninput = function(e){
+    _picked = false;
+    onChange(e.target.value);
+    saveState();
+    showDropdown(e.target.value);
+  };
+  inp.onblur = function(){
+    /* mousedown/touchstart preventDefault on the dropdown prevents blur
+       when clicking options, so if blur fires the user clicked elsewhere */
+    if(_picked) return;
+    hideAutoDropdown();
+    if(onSelectCb) onSelectCb(inp.value);
+    render();
+  };
+
+  wrap.appendChild(inp);
+  return wrap;
+}
+
+function textInput(value, onChange, placeholder, width){
+  var inp = el("input", "background:#2e2e2e;color:#e8e4de;border:1px solid #3a3a3a;border-radius:4px;padding:6px 8px;outline:none;font-size:11px;width:" + (width || 90) + "px;font-family:inherit");
+  inp.type = "text";
+  inp.value = (value === undefined || value === null) ? "" : value;
+  inp.placeholder = placeholder || "";
+  inp.oninput = function(e){ onChange(e.target.value); };
+  inp.onblur = function(){ render(); };
+  return inp;
+}
+
+function btn(text, onClick, style){
+  var b = el("button", "cursor:pointer;font-family:inherit;" + (style || ""), text);
+  b.onclick = onClick;
+  return b;
+}
+
+function toggleBtn(text, active, onClick, extraStyle){
+  var style = active
+    ? "background:#d4a843;color:#1a1a1a;border:1px solid #d4a843;font-weight:600;"
+    : "background:#2e2e2e;color:#8a8580;border:1px solid #3a3a3a;";
+  style += "border-radius:4px;padding:5px 8px;cursor:pointer;font-size:10px;font-family:inherit;" + (extraStyle || "");
+  return btn(text, onClick, style);
+}
+
+function pmBtn(text, onClick){
+  return btn(text, onClick, "background:#2e2e2e;border:1px solid #3a3a3a;border-radius:3px;color:#e8e4de;width:24px;height:24px;font-size:14px;display:inline-flex;align-items:center;justify-content:center;padding:0;");
+}
+
+function row(left, right){
+  var r = el("div", "display:flex;justify-content:space-between;margin-bottom:2px;font-size:10px;color:#8a8580;");
+  r.appendChild(span(left, "#8a8580"));
+  r.appendChild(span(right, "#e8e4de"));
+  return r;
+}
+
+function flexRow(children, gap, extra){
+  var f = el("div", "display:flex;align-items:center;gap:" + (gap || 8) + "px;flex-wrap:wrap;" + (extra || ""), children);
+  return f;
+}
+
+function card(children, extra){
+  return el("div", "background:#242424;border:1px solid #3a3a3a;border-radius:6px;padding:12px 16px;margin-bottom:16px;" + (extra || ""), children);
+}
+
+function statBlock(label, value, color, small){
+  var d = el("div", "text-align:center;");
+  d.appendChild(el("div", "font-size:" + (small ? 15 : 20) + "px;font-weight:700;color:" + color + ";", value));
+  d.appendChild(el("div", "font-size:9px;color:#8a8580;letter-spacing:1px;margin-top:2px;", label));
+  return d;
+}
+
+function galSpan(pg, tg){
+  var s = el("span", "");
+  s.innerHTML = '<span style="color:#b07acc">' + c1(pg) + 'P</span> + <span style="color:#5a9e6f">' + c1(tg) + 'T</span>';
+  return s;
+}
+
+/* ── Surface Card Renderer ── */
+function renderSurfCard(surf, types, isExtra, rm){
+  var info = findType(surf.type);
+  var sr = calcSurface(surf, rm ? roomCov(rm, surf.type) : undefined);
+  var isFixed = info && info.u === "fixed";
+  var isLinear = info && info.u === "linear";
+
+  var wrapper = el("div", "background:#242424;border-radius:6px;padding:12px 14px;margin-bottom:8px;border:1px solid #3a3a3a;");
+
+  // Header
+  var hdr = flexRow([], 8);
+  var sel = el("select", "flex:1;background:#2e2e2e;color:#e8e4de;border:1px solid #3a3a3a;border-radius:4px;padding:7px 8px;font-size:12px;font-family:inherit;");
+  for(var i = 0; i < types.length; i++){
+    var opt = el("option", "", types[i].l);
+    opt.value = types[i].v;
+    if(types[i].v === surf.type) opt.selected = true;
+    sel.appendChild(opt);
+  }
+  sel.onchange = function(e){
+    surf.type = e.target.value;
+    var inf2 = findType(surf.type);
+    surf.inputMode = inf2 ? (inf2.u === "linear" ? "linear" : inf2.u === "fixed" ? "fixed" : "dims") : "dims";
+    saveState(); render();
+  };
+  hdr.appendChild(sel);
+
+  var labInp = el("input", "flex:1;background:#2e2e2e;color:#e8e4de;border:1px solid #3a3a3a;border-radius:4px;padding:7px 8px;font-size:12px;outline:none;font-family:inherit;");
+  labInp.placeholder = "Label";
+  labInp.value = surf.label || "";
+  labInp.oninput = function(e){ surf.label = e.target.value; saveState(); };
+  hdr.appendChild(labInp);
+
+  var delBtn = btn("✕", function(){
+    var rm = getActiveRoom();
+    if(!rm) return;
+    if(isExtra){
+      rm.extras = rm.extras.filter(function(s){ return s.id !== surf.id; });
+    } else {
+      rm.surfaces = rm.surfaces.filter(function(s){ return s.id !== surf.id; });
+    }
+    saveState(); render();
+  }, "background:none;border:none;color:#c75050;font-size:14px;padding:2px 6px;");
+  hdr.appendChild(delBtn);
+  wrapper.appendChild(hdr);
+
+  // Color & Product row (for paintable surface types, not fixed items)
+  if(!isFixed){
+    var cpRow = flexRow([], 6, "margin-bottom:6px;margin-top:6px;");
+    cpRow.appendChild(span("Color", "#8a8580", "font-size:9px;"));
+    cpRow.appendChild(autoTextInput(surf.color, function(v){ surf.color = v; }, "Color", null, function(){ return getJobSuggestions(getJob(), "color"); }));
+    cpRow.appendChild(span("Product", "#8a8580", "font-size:9px;"));
+    cpRow.appendChild(autoTextInput(surf.product, function(v){ surf.product = v; }, "Product", null, function(){ return getJobSuggestions(getJob(), "product"); }));
+    wrapper.appendChild(cpRow);
+  }
+
+  // Body
+  if(isFixed){
+    var fr = flexRow([], 8);
+    fr.appendChild(span("Qty", "#8a8580", "font-size:10px;"));
+    fr.appendChild(pmBtn("−", function(){ surf.qty = Math.max(1, (pi2(surf.qty) || 1) - 1); saveState(); render(); }));
+    fr.appendChild(span(String(surf.qty || 1), "#e8e4de", "font-weight:600;width:24px;text-align:center;font-size:13px;display:inline-block;"));
+    fr.appendChild(pmBtn("+", function(){ surf.qty = (pi2(surf.qty) || 1) + 1; saveState(); render(); }));
+
+    if(surf.type === "door_face"){
+      fr.appendChild(el("div", "width:1px;height:20px;background:#3a3a3a;margin:0 4px;"));
+      fr.appendChild(toggleBtn("Both $100", surf.doorSides === "both", function(){ surf.doorSides = "both"; saveState(); render(); }));
+      fr.appendChild(toggleBtn("One $50", surf.doorSides === "one", function(){ surf.doorSides = "one"; saveState(); render(); }));
+    }
+    wrapper.appendChild(fr);
+
+    if(surf.type === "window_frame"){
+      var hasWinSz = pf(surf.windowSqft) > 0;
+      var szRow = flexRow([], 6, "margin-top:6px;");
+      szRow.appendChild(span("Size sf", "#5588bb", "font-size:9px;width:42px;"));
+      var szInp = el("input", "background:#2e2e2e;color:#e8e4de;border:1px solid " + (hasWinSz ? "#5588bb" : "#3a3a3a") + ";border-radius:4px;padding:5px 8px;font-size:12px;width:60px;font-family:inherit;outline:none;text-align:center;");
+      szInp.type = "number"; szInp.inputMode = "decimal";
+      szInp.placeholder = "15";
+      szInp.value = surf.windowSqft;
+      szInp.oninput = function(e){ surf.windowSqft = e.target.value; saveState(); };
+      szInp.onblur = function(){ render(); };
+      szRow.appendChild(szInp);
+      if(hasWinSz) szRow.appendChild(span("(default 15)", "#8a8580", "font-size:9px;"));
+      wrapper.appendChild(szRow);
+    }
+
+    // Coat counts for paint consumption
+    var fCoatRow = flexRow([], 8, "margin-top:6px;");
+    fCoatRow.appendChild(span("Primer", "#b07acc", "font-size:10px;"));
+    fCoatRow.appendChild(numInput(surf.primerCoats, function(v){ surf.primerCoats = v; }, 38));
+    fCoatRow.appendChild(span("Topcoat", "#5a9e6f", "font-size:10px;"));
+    fCoatRow.appendChild(numInput(surf.topCoats, function(v){ surf.topCoats = v; }, 38));
+    wrapper.appendChild(fCoatRow);
+
+    var bott = el("div", "margin-top:10px;padding-top:8px;border-top:1px solid #3a3a3a;font-size:11px;");
+    // Price override input
+    var defaultPrice = surf.type === "door_face" ? (surf.doorSides === "both" ? 100 : 50) : surf.type === "door_frame" ? 100 : 125;
+    var hasOverride = pf(surf.priceOverride) > 0;
+    var priceRow = el("div", "display:flex;align-items:center;gap:6px;margin-bottom:6px;");
+    priceRow.appendChild(span("$/each", "#8a8580", "font-size:9px;width:38px;"));
+    var prOvrInp = el("input", "background:#2e2e2e;color:#e8e4de;border:1px solid " + (hasOverride ? "#d4a843" : "#3a3a3a") + ";border-radius:4px;padding:5px 8px;font-size:12px;width:70px;font-family:inherit;outline:none;text-align:center;");
+    prOvrInp.type = "number"; prOvrInp.inputMode = "decimal";
+    prOvrInp.placeholder = "$" + defaultPrice;
+    prOvrInp.value = surf.priceOverride;
+    prOvrInp.oninput = function(e){ surf.priceOverride = e.target.value; saveState(); };
+    prOvrInp.onblur = function(){ render(); };
+    priceRow.appendChild(prOvrInp);
+    if(hasOverride){
+      priceRow.appendChild(span("(default $" + defaultPrice + ")", "#8a8580", "font-size:9px;"));
+      var clrBtn = btn("×", function(){ surf.priceOverride = ""; saveState(); render(); },
+        "background:none;border:none;color:#cc5555;font-size:14px;cursor:pointer;padding:0 4px;");
+      priceRow.appendChild(clrBtn);
+    }
+    bott.appendChild(priceRow);
+    var descRow = el("div", "display:flex;justify-content:space-between;margin-bottom:4px;");
+    var unitPrice = hasOverride ? pf(surf.priceOverride) : defaultPrice;
+    var desc = (surf.qty || 1) + "× $" + unitPrice;
+    descRow.appendChild(span(desc, "#8a8580"));
+    descRow.appendChild(span("$" + sr.price, "#d4a843", "font-weight:600;"));
+    bott.appendChild(descRow);
+    if(sr.pg > 0 || sr.tg > 0){
+      var galRow2 = el("div", "display:flex;justify-content:flex-end;");
+      galRow2.appendChild(galSpan(sr.pg, sr.tg));
+      bott.appendChild(galRow2);
+    }
+    wrapper.appendChild(bott);
+
+  } else if(isLinear){
+    var lr = flexRow([], 8);
+    lr.appendChild(span("Linear Ft", "#8a8580", "font-size:10px;"));
+    lr.appendChild(numInput(surf.linearFt, function(v){ surf.linearFt = v; }, 60));
+    lr.appendChild(span("Primer", "#b07acc", "font-size:10px;"));
+    lr.appendChild(numInput(surf.primerCoats, function(v){ surf.primerCoats = v; }, 38));
+    lr.appendChild(span("Top", "#5a9e6f", "font-size:10px;"));
+    lr.appendChild(numInput(surf.topCoats, function(v){ surf.topCoats = v; }, 38));
+    wrapper.appendChild(lr);
+
+    var bott = el("div", "margin-top:10px;padding-top:8px;border-top:1px solid #3a3a3a;display:flex;justify-content:space-between;font-size:11px;");
+    bott.appendChild(span(sr.lf.toFixed(0) + " lf", "#8a8580"));
+    bott.appendChild(galSpan(sr.pg, sr.tg));
+    wrapper.appendChild(bott);
+
+  } else {
+    // sqft
+    var modeRow = flexRow([], 4, "margin-bottom:8px;");
+    modeRow.appendChild(toggleBtn("W×H (in)", surf.inputMode === "dims", function(){ surf.inputMode = "dims"; saveState(); render(); }, "flex:1;"));
+    modeRow.appendChild(toggleBtn("Direct SF", surf.inputMode === "direct", function(){ surf.inputMode = "direct"; saveState(); render(); }, "flex:1;"));
+    wrapper.appendChild(modeRow);
+
+    if(surf.inputMode === "dims"){
+      var dr = flexRow([], 8, "flex-wrap:wrap;");
+      dr.appendChild(span('W', "#8a8580", "font-size:10px;"));
+      dr.appendChild(dimInput(surf.widthIn, function(v){ surf.widthIn = v; }));
+      dr.appendChild(span("×", "#8a8580"));
+      dr.appendChild(span('H', "#8a8580", "font-size:10px;"));
+      dr.appendChild(dimInput(surf.heightIn, function(v){ surf.heightIn = v; }));
+      wrapper.appendChild(dr);
+    } else {
+      var dr = flexRow([], 8);
+      dr.appendChild(span("SF", "#8a8580", "font-size:10px;"));
+      dr.appendChild(numInput(surf.directSqft, function(v){ surf.directSqft = v; }));
+      wrapper.appendChild(dr);
+    }
+
+    var coatRow = flexRow([], 8, "margin-top:8px;");
+    coatRow.appendChild(span("Primer", "#b07acc", "font-size:10px;"));
+    coatRow.appendChild(numInput(surf.primerCoats, function(v){ surf.primerCoats = v; }, 38));
+    coatRow.appendChild(span("Top", "#5a9e6f", "font-size:10px;"));
+    coatRow.appendChild(numInput(surf.topCoats, function(v){ surf.topCoats = v; }, 38));
+    wrapper.appendChild(coatRow);
+
+    var bott = el("div", "margin-top:10px;padding-top:8px;border-top:1px solid #3a3a3a;display:flex;justify-content:space-between;font-size:11px;");
+    bott.appendChild(span(sr.sqft.toFixed(1) + " sf", "#8a8580"));
+    bott.appendChild(galSpan(sr.pg, sr.tg));
+    wrapper.appendChild(bott);
+  }
+
+  return wrapper;
+}
+
+/* ── Invoice Renderer ── */
+function renderInvoice(job, body, rate, primerRate, er){
+  // Back button
+  var backBtn = btn("← Back", function(){ STATE.view = "rooms"; render(); },
+    "background:#2e2e2e;border:1px solid #3a3a3a;border-radius:4px;color:#d4a843;font-size:12px;padding:8px 16px;cursor:pointer;margin-bottom:12px;");
+  backBtn.className = "no-print";
+  body.appendChild(backBtn);
+
+  // White invoice container
+  var inv = el("div", "background:#fff;color:#222;border-radius:8px;padding:24px 20px;font-family:-apple-system,'Helvetica Neue',sans-serif;line-height:1.4;");
+  inv.className = "invoice-view";
+
+  // Helper: invoice row
+  function invRow(label, amount, bold, indent){
+    var r = el("div", "display:flex;justify-content:space-between;padding:3px 0;font-size:12px;" + (bold ? "font-weight:700;border-top:1px solid #ddd;padding-top:8px;margin-top:4px;" : "") + (indent ? "padding-left:12px;" : ""));
+    r.appendChild(el("div", "color:" + (bold ? "#1a1a1a" : "#555") + ";", label));
+    r.appendChild(el("div", "color:#1a1a1a;" + (bold ? "font-size:14px;" : ""), amount));
+    return r;
+  }
+
+  // Helper: section heading
+  function secHead(text, mt){
+    return el("div", "font-size:14px;font-weight:700;color:#1a1a1a;border-bottom:2px solid #1a1a1a;padding-bottom:4px;" + (mt ? "margin-top:" + mt + "px;" : "") + "margin-bottom:12px;letter-spacing:.5px;", text);
+  }
+
+  // Helper: sub heading
+  function subHead(text){
+    return el("div", "font-size:12px;font-weight:700;color:#1a1a1a;margin-top:10px;margin-bottom:6px;padding-bottom:3px;border-bottom:1px solid #ddd;", text);
+  }
+
+  // Header
+  inv.appendChild(el("div", "font-size:22px;font-weight:700;color:#1a1a1a;margin-bottom:2px;", job.name));
+  inv.appendChild(el("div", "font-size:12px;color:#888;margin-bottom:4px;", "Date: " + new Date().toLocaleDateString()));
+  inv.appendChild(el("div", "font-size:12px;color:#888;margin-bottom:20px;", job.rooms.length + " room" + (job.rooms.length !== 1 ? "s" : "")));
+
+  // ── RATES SUMMARY ──
+  var jobHasPrimer = false;
+  for(var pri = 0; pri < job.rooms.length; pri++){
+    var prm = job.rooms[pri];
+    if(prm.mode === "quick"){ if(pi2(prm.quickPrimerCoats) > 0) jobHasPrimer = true; }
+    else { for(var psi = 0; psi < (prm.surfaces||[]).length; psi++){ if(pi2(prm.surfaces[psi].primerCoats) > 0) jobHasPrimer = true; } }
+  }
+  inv.appendChild(secHead("RATES"));
+  inv.appendChild(invRow("Topcoat labor", "$" + rate + " / sf / coat"));
+  if(jobHasPrimer) inv.appendChild(invRow("Primer labor", "$" + primerRate + " / sf / coat"));
+  inv.appendChild(invRow("Enamel labor", "$" + er + " / lf"));
+
+  // ── ROOM-BY-ROOM DETAIL ──
+  inv.appendChild(secHead("ROOM DETAIL"));
+
+  for(var ri = 0; ri < job.rooms.length; ri++){
+    var rm = job.rooms[ri];
+    var rn = titleCase(rm.name || ("Room " + (ri + 1)));
+    var rp = calcRoomPrice(rm, rate, primerRate, er);
+    var rrt = calcRoomTotal(rm);
+    var rmMat = calcRoomMaterialsCost(rm);
+
+    var roomBox = el("div", "padding:10px 0;" + (ri > 0 ? "margin-top:14px;" : ""));
+
+    // Room name header — banner style
+    var rmHdr = el("div", "display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;padding:8px 12px;background:#c75050;border-radius:6px;");
+    rmHdr.appendChild(el("div", "font-size:18px;font-weight:800;color:#fff;letter-spacing:.5px;font-family:Georgia,'Times New Roman',serif;", rn));
+    rmHdr.appendChild(el("div", "font-size:18px;font-weight:800;color:#fff;", "$" + rp.total.toFixed(2)));
+    roomBox.appendChild(rmHdr);
+
+    if(rm.mode === "quick"){
+      var q = calcQuickRoom(rm);
+      var l = pf(rm.roomLength), w = pf(rm.roomWidth), ht = pf(rm.roomHeight);
+
+      // Dimensions
+      if(l > 0 || w > 0 || ht > 0){
+        var dimFt = function(v){ return (v/12).toFixed(1) + "'"; };
+        roomBox.appendChild(invRow("Dimensions (L × W × H)", dimFt(l) + " × " + dimFt(w) + " × " + dimFt(ht)));
+      }
+
+      // Areas
+      if(q.grossWall > 0){
+        roomBox.appendChild(invRow("Gross wall area", q.grossWall.toFixed(1) + " sf"));
+        if(q.openingSqft > 0){
+          roomBox.appendChild(invRow("Openings (" + q.winCount + " win + " + q.totalDoors + " door)", "−" + q.openingSqft.toFixed(0) + " sf", false, true));
+          roomBox.appendChild(invRow("Paintable wall area", q.paintableWall.toFixed(0) + " sf"));
+        }
+        if(rm.includeCeiling && q.ceil > 0) roomBox.appendChild(invRow("Ceiling area", q.ceil.toFixed(1) + " sf"));
+        roomBox.appendChild(invRow("Billable area", q.billable.toFixed(0) + " sf", true));
+      }
+
+      // Walls paint detail
+      if(q.paintableWall > 0){
+        roomBox.appendChild(subHead("Walls"));
+        if(rm.wallColor) roomBox.appendChild(invRow("Color", rm.wallColor, false, true));
+        if(rm.wallPrimerProduct) roomBox.appendChild(invRow("Primer", rm.wallPrimerProduct + (pf(rm.wallPrimerPricePerGal) > 0 ? " @ $" + pf(rm.wallPrimerPricePerGal).toFixed(2) + "/gal" : ""), false, true));
+        if(rm.wallProduct) roomBox.appendChild(invRow("Topcoat", rm.wallProduct + (pf(rm.wallPricePerGal) > 0 ? " @ $" + pf(rm.wallPricePerGal).toFixed(2) + "/gal" : ""), false, true));
+        roomBox.appendChild(invRow("Coats (primer + topcoat)", q.pc + " + " + q.tc, false, true));
+        if(q.wallPrimerGal > 0) roomBox.appendChild(invRow("Primer quantity", c1(q.wallPrimerGal) + " gal", false, true));
+        if(q.wallTopGal > 0) roomBox.appendChild(invRow("Topcoat quantity", c1(q.wallTopGal) + " gal", false, true));
+      }
+
+      // Ceiling paint detail
+      if(rm.includeCeiling && q.ceil > 0){
+        roomBox.appendChild(subHead("Ceiling"));
+        if(rm.ceilingColor) roomBox.appendChild(invRow("Color", rm.ceilingColor, false, true));
+        if(rm.ceilingPrimerProduct) roomBox.appendChild(invRow("Primer", rm.ceilingPrimerProduct + (pf(rm.ceilingPrimerPricePerGal) > 0 ? " @ $" + pf(rm.ceilingPrimerPricePerGal).toFixed(2) + "/gal" : ""), false, true));
+        if(rm.ceilingProduct) roomBox.appendChild(invRow("Topcoat", rm.ceilingProduct + (pf(rm.ceilingPricePerGal) > 0 ? " @ $" + pf(rm.ceilingPricePerGal).toFixed(2) + "/gal" : ""), false, true));
+        roomBox.appendChild(invRow("Coats (primer + topcoat)", q.cpc + " + " + q.ctc, false, true));
+        if(q.ceilPrimerGal > 0) roomBox.appendChild(invRow("Primer quantity", c1(q.ceilPrimerGal) + " gal", false, true));
+        if(q.ceilTopGal > 0) roomBox.appendChild(invRow("Topcoat quantity", c1(q.ceilTopGal) + " gal", false, true));
+      }
+
+      // Trim detail
+      if(q.bbFt > 0 || (rm.extras && rm.extras.length > 0)){
+        roomBox.appendChild(subHead("Trim & Frames"));
+        if(rm.trimColor) roomBox.appendChild(invRow("Color", rm.trimColor, false, true));
+        if(rm.trimPrimerProduct) roomBox.appendChild(invRow("Primer", rm.trimPrimerProduct + (pf(rm.trimPrimerPricePerGal) > 0 ? " @ $" + pf(rm.trimPrimerPricePerGal).toFixed(2) + "/gal" : ""), false, true));
+        if(rm.trimProduct) roomBox.appendChild(invRow("Topcoat", rm.trimProduct + (pf(rm.trimPricePerGal) > 0 ? " @ $" + pf(rm.trimPricePerGal).toFixed(2) + "/gal" : ""), false, true));
+        if(q.bbFt > 0){
+          roomBox.appendChild(invRow("Baseboard", q.bbFt.toFixed(1) + " lf", false, true));
+          var bbPC = pi2(rm.baseboardPrimerCoats);
+          var bbTC = pi2(rm.baseboardTopCoats) || 2;
+          roomBox.appendChild(invRow("BB coats (primer + topcoat)", bbPC + " + " + bbTC, false, true));
+          if(q.bbPG > 0) roomBox.appendChild(invRow("BB primer", c1(q.bbPG) + " gal", false, true));
+          if(q.bbTG > 0) roomBox.appendChild(invRow("BB topcoat", c1(q.bbTG) + " gal", false, true));
+        }
+        // Extra items
+        var extras = rm.extras || [];
+        for(var ei = 0; ei < extras.length; ei++){
+          var ex = extras[ei];
+          var exInfo = findType(ex.type);
+          var exr = calcSurface(ex, roomCov(rm, ex.type));
+          var exLabel = (exInfo ? exInfo.l : ex.type);
+          if(ex.label) exLabel += " (" + ex.label + ")";
+          var exQty = pi2(ex.qty) || 1;
+          if(exInfo && exInfo.u === "fixed"){
+            var exPrice = exr.price;
+            roomBox.appendChild(invRow(exLabel + " × " + exQty, "$" + exPrice.toFixed(2), false, true));
+          } else if(exInfo && exInfo.u === "linear"){
+            roomBox.appendChild(invRow(exLabel, pf(ex.linearFt).toFixed(1) + " lf · " + c1(exr.pg) + "P + " + c1(exr.tg) + "T gal", false, true));
+          } else {
+            roomBox.appendChild(invRow(exLabel, exr.sqft.toFixed(1) + " sf · " + c1(exr.pg) + "P + " + c1(exr.tg) + "T gal", false, true));
+          }
+        }
+      }
+
+      // Room labor breakdown
+      roomBox.appendChild(subHead("Room Labor"));
+      if(rp.primerLabor > 0) roomBox.appendChild(invRow("Primer labor (" + rp.billable.toFixed(0) + " sf × " + rp.primerCoats + " coat" + (rp.primerCoats !== 1 ? "s" : "") + " × $" + primerRate + "/sf)", "$" + rp.primerLabor.toFixed(2), false, true));
+      if(rp.topcoatLabor > 0) roomBox.appendChild(invRow("Topcoat labor (" + rp.billable.toFixed(0) + " sf × " + rp.topcoatCoats + " coat" + (rp.topcoatCoats !== 1 ? "s" : "") + " × $" + rate + "/sf)", "$" + rp.topcoatLabor.toFixed(2), false, true));
+      if(rp.enLabor > 0) roomBox.appendChild(invRow("Enamel labor (" + rp.lf.toFixed(0) + " lf × $" + er + ")", "$" + rp.enLabor.toFixed(2), false, true));
+      if(rp.fixed > 0) roomBox.appendChild(invRow("Fixed items", "$" + rp.fixed.toFixed(2), false, true));
+      if(rmMat.total > 0) roomBox.appendChild(invRow("Materials cost", "$" + rmMat.total.toFixed(2), false, true));
+
+      // Room summary line
+      var rmSum = el("div", "display:flex;justify-content:space-between;padding:6px 0;border-top:1px solid #ddd;margin-top:6px;font-size:12px;font-weight:600;");
+      var rmSumLeft = el("div", "color:#555;");
+      rmSumLeft.textContent = rp.billable.toFixed(0) + " sf · " + rp.lf.toFixed(0) + " lf · " + c1(rp.pg) + " gal P · " + c1(rp.tg) + " gal T";
+      rmSum.appendChild(rmSumLeft);
+      rmSum.appendChild(el("div", "color:#1a1a1a;", "$" + rp.total.toFixed(2)));
+      roomBox.appendChild(rmSum);
+
+    } else {
+      /* Custom mode rooms */
+      for(var si = 0; si < rm.surfaces.length; si++){
+        var s = rm.surfaces[si];
+        var sInfo = findType(s.type);
+        var sr = calcSurface(s, roomCov(rm, s.type));
+        var sLabel = (sInfo ? sInfo.l : s.type) + (s.label ? " (" + s.label + ")" : "");
+        if(sInfo && sInfo.u === "fixed"){
+          roomBox.appendChild(invRow(sLabel + " × " + (pi2(s.qty) || 1), "$" + sr.price.toFixed(2)));
+        } else if(sInfo && sInfo.u === "linear"){
+          roomBox.appendChild(invRow(sLabel, pf(s.linearFt).toFixed(1) + " lf · " + c1(sr.pg) + "P + " + c1(sr.tg) + "T gal"));
+        } else {
+          roomBox.appendChild(invRow(sLabel, sr.sqft.toFixed(1) + " sf · " + c1(sr.pg) + "P + " + c1(sr.tg) + "T gal"));
+        }
+        if(s.color) roomBox.appendChild(invRow("Color", s.color, false, true));
+        if(s.product) roomBox.appendChild(invRow("Product", s.product, false, true));
+      }
+      // Room labor
+      roomBox.appendChild(subHead("Room Labor"));
+      if(rp.primerLabor > 0) roomBox.appendChild(invRow("Primer labor (" + rp.billable.toFixed(0) + " sf × " + rp.primerCoats + " coat" + (rp.primerCoats !== 1 ? "s" : "") + " × $" + primerRate + "/sf)", "$" + rp.primerLabor.toFixed(2), false, true));
+      if(rp.topcoatLabor > 0) roomBox.appendChild(invRow("Topcoat labor (" + rp.billable.toFixed(0) + " sf × " + rp.topcoatCoats + " coat" + (rp.topcoatCoats !== 1 ? "s" : "") + " × $" + rate + "/sf)", "$" + rp.topcoatLabor.toFixed(2), false, true));
+      if(rp.enLabor > 0) roomBox.appendChild(invRow("Enamel labor (" + rp.lf.toFixed(0) + " lf × $" + er + ")", "$" + rp.enLabor.toFixed(2), false, true));
+      if(rp.fixed > 0) roomBox.appendChild(invRow("Fixed items", "$" + rp.fixed.toFixed(2), false, true));
+      if(rmMat.total > 0) roomBox.appendChild(invRow("Materials cost", "$" + rmMat.total.toFixed(2), false, true));
+      var rmSum2 = el("div", "display:flex;justify-content:space-between;padding:6px 0;border-top:1px solid #ddd;margin-top:6px;font-size:12px;font-weight:600;");
+      rmSum2.appendChild(el("div", "color:#555;", rp.billable.toFixed(0) + " sf · " + rp.lf.toFixed(0) + " lf · " + c1(rp.pg) + " gal P · " + c1(rp.tg) + " gal T"));
+      rmSum2.appendChild(el("div", "color:#1a1a1a;", "$" + rp.total.toFixed(2)));
+      roomBox.appendChild(rmSum2);
+    }
+
+    inv.appendChild(roomBox);
+  }
+
+  // ── CONSOLIDATED PAINT ORDER ──
+  inv.appendChild(secHead("PAINT ORDER (CONSOLIDATED)", 20));
+
+  var matDetail = calcJobMaterialsDetail(job);
+  var matGrandTotal = 0;
+  var hasAnyPrice = false;
+
+  if(matDetail.length === 0){
+    inv.appendChild(el("div", "font-size:12px;color:#999;font-style:italic;margin-bottom:16px;", "No paint products entered yet."));
+  } else {
+    for(var mi = 0; mi < matDetail.length; mi++){
+      var md = matDetail[mi];
+      var itemDiv = el("div", "padding:8px 0;" + (mi > 0 ? "border-top:1px solid #eee;" : ""));
+
+      var prodName = (md.color || "") + (md.color && md.product ? " — " : "") + (md.product || "");
+      if(!prodName) prodName = "(unspecified)";
+      itemDiv.appendChild(el("div", "font-size:13px;font-weight:600;color:#1a1a1a;", prodName));
+
+      // Where used
+      var catKeys = ["Walls", "Ceiling", "Trim/Frames"];
+      var whereStr = "";
+      for(var ci = 0; ci < catKeys.length; ci++){
+        var ck = catKeys[ci];
+        if(md.cats[ck] && md.cats[ck].length > 0){
+          if(whereStr) whereStr += " · ";
+          whereStr += ck + ": " + md.cats[ck].join(", ");
+        }
+      }
+      if(whereStr) itemDiv.appendChild(el("div", "font-size:10px;color:#888;margin-top:2px;", whereStr));
+
+      var costRow = el("div", "display:flex;justify-content:space-between;align-items:center;margin-top:4px;");
+      var galStr = md.purchaseGal + " gal";
+      if(md.pg > 0 && md.tg > 0) galStr += " (" + c1(md.pg) + " primer + " + c1(md.tg) + " topcoat)";
+      else if(md.pg > 0) galStr += " (primer)";
+      else if(md.tg > 0) galStr += " (topcoat)";
+      costRow.appendChild(el("div", "font-size:11px;color:#555;", galStr));
+
+      if(md.ppg > 0){
+        hasAnyPrice = true;
+        matGrandTotal += md.lineCost;
+        costRow.appendChild(el("div", "font-size:12px;font-weight:600;color:#1a1a1a;", "$" + md.lineCost.toFixed(2)));
+      } else {
+        costRow.appendChild(el("div", "font-size:11px;color:#aaa;", "—"));
+      }
+      itemDiv.appendChild(costRow);
+      if(md.ppg > 0){
+        itemDiv.appendChild(el("div", "font-size:10px;color:#888;text-align:right;", md.purchaseGal + " gal × $" + md.ppg.toFixed(2) + "/gal"));
+      }
+
+      inv.appendChild(itemDiv);
+    }
+
+    var matSubRow = el("div", "display:flex;justify-content:space-between;padding:10px 0;border-top:2px solid #ddd;margin-top:4px;font-weight:700;");
+    matSubRow.appendChild(el("div", "font-size:12px;color:#555;", "Paint Materials Subtotal"));
+    matSubRow.appendChild(el("div", "font-size:14px;color:#1a1a1a;", hasAnyPrice ? "$" + matGrandTotal.toFixed(2) : "—"));
+    inv.appendChild(matSubRow);
+  }
+
+  // ── CONSUMABLES ──
+  var conItems = job.consumables || [];
+  var conTotal = calcConsumablesTotal(job);
+  if(conItems.length > 0 && conTotal > 0){
+    inv.appendChild(secHead("CONSUMABLES & EXTRAS", 20));
+    for(var ci2 = 0; ci2 < conItems.length; ci2++){
+      var cItem = conItems[ci2];
+      var cQty = pi2(cItem.qty) || 1;
+      var cLineCost = pf(cItem.cost) * cQty;
+      if(cLineCost > 0){
+        var cLabel = (cItem.name || "(unnamed)") + (cQty > 1 ? " × " + cQty : "");
+        inv.appendChild(invRow(cLabel, "$" + cLineCost.toFixed(2)));
+      }
+    }
+    var conSubRow = el("div", "display:flex;justify-content:space-between;padding:10px 0;border-top:2px solid #ddd;margin-top:4px;font-weight:700;");
+    conSubRow.appendChild(el("div", "font-size:12px;color:#555;", "Consumables Subtotal"));
+    conSubRow.appendChild(el("div", "font-size:14px;color:#1a1a1a;", "$" + conTotal.toFixed(2)));
+    inv.appendChild(conSubRow);
+  }
+
+  // ── COMBINED MATERIALS TOTAL ──
+  var invMatTotal = (hasAnyPrice ? matGrandTotal : 0) + conTotal;
+  if(hasAnyPrice && conTotal > 0 && invMatTotal > 0){
+    var cmtRow = el("div", "display:flex;justify-content:space-between;padding:10px 0;border-top:3px double #bbb;margin-top:2px;font-weight:700;");
+    cmtRow.appendChild(el("div", "font-size:13px;color:#1a1a1a;", "Total Materials"));
+    cmtRow.appendChild(el("div", "font-size:15px;color:#1a1a1a;", "$" + invMatTotal.toFixed(2)));
+    inv.appendChild(cmtRow);
+  }
+
+  // ── LABOR SECTION ──
+  inv.appendChild(secHead("LABOR", 20));
+
+  var rps = job.rooms.map(function(rm){ return calcRoomPrice(rm, rate, primerRate, er); });
+  var sfTotal = 0, enTotal = 0, fxTotal = 0, primerTotal = 0, topcoatTotal = 0;
+  for(var rli = 0; rli < rps.length; rli++){ sfTotal += rps[rli].sfLabor; primerTotal += rps[rli].primerLabor; topcoatTotal += rps[rli].topcoatLabor; enTotal += rps[rli].enLabor; fxTotal += rps[rli].fixed; }
+  var autoTotal = sfTotal + enTotal + fxTotal;
+  var hasOvr = job.priceOverride != null && job.priceOverride !== "";
+  var laborPrice = hasOvr ? pf(job.priceOverride) : autoTotal;
+
+  // Per-room labor breakdown
+  for(var rli2 = 0; rli2 < job.rooms.length; rli2++){
+    var lrm = job.rooms[rli2];
+    var lrp = rps[rli2];
+    inv.appendChild(invRow(titleCase(lrm.name || ("Room " + (rli2 + 1))), "$" + lrp.total.toFixed(2)));
+  }
+
+  if(hasOvr){
+    inv.appendChild(el("div", "font-size:10px;color:#888;margin-top:4px;", "Auto-calculated: $" + autoTotal.toFixed(2) + " → Override applied"));
+  } else {
+    // Category breakdown
+    if(primerTotal > 0) inv.appendChild(invRow("Primer ($" + primerRate + "/sf/coat)", "$" + primerTotal.toFixed(2), false, true));
+    if(topcoatTotal > 0) inv.appendChild(invRow("Topcoat ($" + rate + "/sf/coat)", "$" + topcoatTotal.toFixed(2), false, true));
+    if(enTotal > 0) inv.appendChild(invRow("Enamel / trim ($" + er + "/lf)", "$" + enTotal.toFixed(2), false, true));
+    if(fxTotal > 0){
+      var fb = calcJobFixed(job);
+      if(fb.df.q > 0) inv.appendChild(invRow("Door faces (" + fb.df.q + ")", "$" + fb.df.p, false, true));
+      if(fb.dr.q > 0) inv.appendChild(invRow("Door frames (" + fb.dr.q + ")", "$" + fb.dr.p, false, true));
+      if(fb.wi.q > 0) inv.appendChild(invRow("Windows (" + fb.wi.q + ")", "$" + fb.wi.p, false, true));
+    }
+  }
+  inv.appendChild(invRow("Labor Subtotal", "$" + laborPrice.toFixed(2), true));
+
+  // ── SUMMARY SECTION ──
+  inv.appendChild(secHead("SUMMARY", 20));
+
+  inv.appendChild(invRow("Labor", "$" + laborPrice.toFixed(2)));
+  if(conTotal > 0) inv.appendChild(invRow("Consumables & Extras", "$" + conTotal.toFixed(2)));
+  if(job.builderSuppliesPaint && hasAnyPrice && matGrandTotal > 0){
+    inv.appendChild(invRow("Paint Materials Deduction (builder supplied)", "−$" + matGrandTotal.toFixed(2)));
+  }
+  if(job.builderSuppliesConsumables && conTotal > 0){
+    inv.appendChild(invRow("Consumables Deduction (builder supplied)", "−$" + conTotal.toFixed(2)));
+  }
+
+  var paintDeductInv = (job.builderSuppliesPaint && hasAnyPrice) ? matGrandTotal : 0;
+  var consDeductInv = job.builderSuppliesConsumables ? conTotal : 0;
+  var grandTotal = laborPrice + conTotal - paintDeductInv - consDeductInv;
+  var gtRow = el("div", "display:flex;justify-content:space-between;padding:12px 0;border-top:3px double #1a1a1a;margin-top:8px;");
+  gtRow.appendChild(el("div", "font-size:14px;font-weight:700;color:#1a1a1a;letter-spacing:.5px;", "TOTAL"));
+  gtRow.appendChild(el("div", "font-size:20px;font-weight:700;color:#1a1a1a;", "$" + grandTotal.toFixed(2)));
+  inv.appendChild(gtRow);
+
+  body.appendChild(inv);
+
+  // Action buttons
+  var actions = el("div", "display:flex;gap:8px;margin-top:12px;justify-content:center;flex-wrap:wrap;");
+  actions.className = "no-print";
+  actions.appendChild(btn("Download PDF", function(){
+    var dlBtn = this;
+    var orig = dlBtn.textContent;
+    dlBtn.textContent = "Generating…";
+    dlBtn.disabled = true;
+    actions.style.display = "none";
+    setTimeout(function(){
+      // Measure break points from children AND grandchildren of inv
+      // This handles tall room boxes that span more than one page
+      var breakSet = {};
+      var kids = inv.children;
+      for(var ci = 0; ci < kids.length; ci++){
+        var kid = kids[ci];
+        var kb = kid.offsetTop + kid.offsetHeight;
+        breakSet[kb] = 1;
+        // Also measure grandchildren (rows inside room boxes, paint order items, etc.)
+        var gkids = kid.children;
+        for(var gi = 0; gi < gkids.length; gi++){
+          // grandchild offsets are relative to their parent, need to add parent's offsetTop
+          var gb = kid.offsetTop + gkids[gi].offsetTop + gkids[gi].offsetHeight;
+          breakSet[gb] = 1;
+        }
+      }
+      // Sort break points numerically
+      var childBottoms = [];
+      for(var bp in breakSet) childBottoms.push(Number(bp));
+      childBottoms.sort(function(a,b){ return a - b; });
+      html2canvas(inv, { scale: 2, useCORS: true, backgroundColor: "#ffffff" }).then(function(canvas){
+        var pdf = new jspdf.jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+        var pageW = pdf.internal.pageSize.getWidth();
+        var pageH = pdf.internal.pageSize.getHeight();
+        var margin = 8;
+        var usableW = pageW - margin * 2;
+        var usableH = pageH - margin * 2;
+        var imgW = canvas.width;
+        var imgH = canvas.height;
+        var ratio = usableW / imgW;
+        var scaledH = imgH * ratio;
+        var cssToPx = imgW / inv.offsetWidth;
+
+        if(scaledH <= usableH){
+          pdf.addImage(canvas.toDataURL("image/png"), "PNG", margin, margin, usableW, scaledH);
+        } else {
+          // Find smart slice points using child element boundaries
+          var maxSliceH = usableH / ratio;
+          var slicePoints = [0];
+          var y = 0;
+          while(y < imgH){
+            var target = y + maxSliceH;
+            if(target >= imgH){ slicePoints.push(imgH); break; }
+            // Find last child whose bottom fits within this page
+            var bestSlice = -1;
+            for(var ci2 = 0; ci2 < childBottoms.length; ci2++){
+              var cbPx = childBottoms[ci2] * cssToPx;
+              if(cbPx <= y + 1) continue;
+              if(cbPx <= target){ bestSlice = cbPx; } else { break; }
+            }
+            if(bestSlice > y){
+              slicePoints.push(Math.round(bestSlice));
+            } else {
+              slicePoints.push(Math.round(target));
+            }
+            y = slicePoints[slicePoints.length - 1];
+          }
+          // Render each slice to a PDF page
+          var pageCanvas = document.createElement("canvas");
+          pageCanvas.width = imgW;
+          for(var pg = 0; pg < slicePoints.length - 1; pg++){
+            var sliceTop = slicePoints[pg];
+            var sliceBot = slicePoints[pg + 1];
+            var h = sliceBot - sliceTop;
+            pageCanvas.height = h;
+            var ctx = pageCanvas.getContext("2d");
+            ctx.clearRect(0, 0, imgW, h);
+            ctx.drawImage(canvas, 0, sliceTop, imgW, h, 0, 0, imgW, h);
+            if(pg > 0) pdf.addPage();
+            pdf.addImage(pageCanvas.toDataURL("image/png"), "PNG", margin, margin, usableW, h * ratio);
+          }
+        }
+        var fname = (job.name || "Invoice").replace(/[^a-zA-Z0-9 ]/g, "").replace(/\s+/g, "_") + ".pdf";
+        if(/iPad|iPhone|iPod/.test(navigator.userAgent)){
+          var blob = pdf.output("blob");
+          var url = URL.createObjectURL(blob);
+          window.open(url, "_blank");
+        } else {
+          pdf.save(fname);
+        }
+        actions.style.display = "flex";
+        dlBtn.textContent = orig;
+        dlBtn.disabled = false;
+      }).catch(function(err){
+        actions.style.display = "flex";
+        dlBtn.textContent = orig;
+        dlBtn.disabled = false;
+        alert("PDF error: " + err.message);
+      });
+    }, 100);
+  }, "background:#c75050;border:none;border-radius:4px;color:#fff;font-size:12px;padding:10px 20px;cursor:pointer;font-weight:600;"));
+  if(navigator.share){
+    actions.appendChild(btn("Share", function(){
+      var text = job.name + "\nDate: " + new Date().toLocaleDateString() + "\n" + job.rooms.length + " room(s)\n";
+      // Rates
+      text += "\n═══ RATES ═══\n";
+      text += "Topcoat: $" + rate + "/sf/coat\n";
+      if(jobHasPrimer) text += "Primer: $" + primerRate + "/sf/coat\n";
+      text += "Enamel: $" + er + "/lf\n";
+      // Room detail
+      text += "\n═══ ROOM DETAIL ═══\n";
+      for(var si = 0; si < job.rooms.length; si++){
+        var srm = job.rooms[si];
+        var srp = calcRoomPrice(srm, rate, primerRate, er);
+        var srrt = calcRoomTotal(srm);
+        text += "\n── " + titleCase(srm.name || "Room " + (si+1)) + " ── $" + srp.total.toFixed(2) + "\n";
+        if(srm.mode === "quick"){
+          var sq = calcQuickRoom(srm);
+          if(pf(srm.roomLength) > 0) text += "Dims: " + (pf(srm.roomLength)/12).toFixed(1) + "' × " + (pf(srm.roomWidth)/12).toFixed(1) + "' × " + (pf(srm.roomHeight)/12).toFixed(1) + "'\n";
+          if(sq.paintableWall > 0) text += "Walls: " + sq.paintableWall.toFixed(0) + " sf";
+          if(srm.wallColor) text += " · " + srm.wallColor;
+          if(srm.wallProduct) text += " · " + srm.wallProduct;
+          text += "\n";
+          if(srm.includeCeiling && sq.ceil > 0) text += "Ceiling: " + sq.ceil.toFixed(1) + " sf" + (srm.ceilingColor ? " · " + srm.ceilingColor : "") + "\n";
+          if(sq.bbFt > 0) text += "Baseboard: " + sq.bbFt.toFixed(1) + " lf\n";
+        }
+        text += "Totals: " + srp.billable.toFixed(0) + " sf · " + srp.lf.toFixed(0) + " lf · " + c1(srp.pg) + " gal P · " + c1(srp.tg) + " gal T\n";
+        if(srp.primerLabor > 0) text += "Primer labor: $" + srp.primerLabor.toFixed(2) + " ($" + primerRate + "/sf)\n";
+        if(srp.topcoatLabor > 0) text += "Topcoat labor: $" + srp.topcoatLabor.toFixed(2) + " ($" + rate + "/sf)\n";
+        if(srp.enLabor > 0) text += "Enamel labor: $" + srp.enLabor.toFixed(2) + " ($" + er + "/lf)\n";
+      }
+      // Paint order
+      text += "\n═══ PAINT ORDER ═══\n";
+      for(var spi = 0; spi < matDetail.length; spi++){
+        var smd = matDetail[spi];
+        var sname = (smd.color || "") + (smd.color && smd.product ? " — " : "") + (smd.product || "") || "(unspecified)";
+        text += sname + ": " + smd.purchaseGal + " gal";
+        if(smd.ppg > 0) text += " · $" + smd.lineCost.toFixed(2);
+        text += "\n";
+      }
+      if(hasAnyPrice) text += "Paint Materials: $" + matGrandTotal.toFixed(2) + "\n";
+      // Consumables
+      if(conTotal > 0){
+        text += "\n═══ CONSUMABLES ═══\n";
+        for(var sci = 0; sci < conItems.length; sci++){
+          var scQty = pi2(conItems[sci].qty) || 1;
+          var scLine = pf(conItems[sci].cost) * scQty;
+          if(scLine > 0) text += (conItems[sci].name || "(unnamed)") + (scQty > 1 ? " × " + scQty : "") + ": $" + scLine.toFixed(2) + "\n";
+        }
+        text += "Consumables Subtotal: $" + conTotal.toFixed(2) + "\n";
+      }
+      text += "\n═══ SUMMARY ═══\n";
+      text += "Labor: $" + laborPrice.toFixed(2);
+      if(primerTotal > 0 && topcoatTotal > 0) text += " (Primer $" + primerTotal.toFixed(2) + " + Topcoat $" + topcoatTotal.toFixed(2) + ")";
+      text += "\n";
+      if(conTotal > 0) text += "Consumables: $" + conTotal.toFixed(2) + "\n";
+      if(job.builderSuppliesPaint && hasAnyPrice && matGrandTotal > 0) text += "Paint Materials Deduction (builder supplied): −$" + matGrandTotal.toFixed(2) + "\n";
+      if(job.builderSuppliesConsumables && conTotal > 0) text += "Consumables Deduction (builder supplied): −$" + conTotal.toFixed(2) + "\n";
+      text += "\nTOTAL: $" + grandTotal.toFixed(2);
+      navigator.share({ title: job.name + " — Invoice", text: text }).catch(function(){});
+    }, "background:#2e2e2e;border:1px solid #3a3a3a;border-radius:4px;color:#e8e4de;font-size:12px;padding:10px 20px;cursor:pointer;font-weight:600;"));
+  }
+  body.appendChild(actions);
+}
+
+/* ── Main Render ── */
+function render(){
+  var app = document.getElementById("app");
+  app.innerHTML = "";
+  var job = getJob();
+  if(!job) return;
+  var ar = getActiveRoom();
+  var rate = pf(job.pricePerSqftPerCoat) || 1;
+  var primerRate = pf(job.primerPricePerSqftPerCoat) || rate;
+  var er = pf(job.enamelRate) || ENAMEL_RATE;
+
+  /* Header */
+  var hdr = flexRow([], 8, "padding:14px 16px 0;justify-content:space-between;");
+  var hdrL = el("div", "");
+  hdrL.appendChild(el("div", "font-size:18px;font-weight:700;color:#d4a843;letter-spacing:1px;", "PAINT CALC"));
+  hdrL.appendChild(el("div", "font-size:10px;color:#8a8580;letter-spacing:2px;margin-top:1px;", "ESTIMATOR"));
+  hdr.appendChild(hdrL);
+  var hdrBtns = el("div", "display:flex;gap:6px;align-items:center;");
+  hdrBtns.appendChild(btn("Export", exportData, "background:#2e2e2e;border:1px solid #3a3a3a;border-radius:4px;color:#5a9e6f;font-size:10px;padding:4px 8px;cursor:pointer;"));
+  hdrBtns.appendChild(btn("Import", importData, "background:#2e2e2e;border:1px solid #3a3a3a;border-radius:4px;color:#5588bb;font-size:10px;padding:4px 8px;cursor:pointer;"));
+  hdrBtns.appendChild(btn("Reset", function(){
+    if(!confirm("Clear all?")) return;
+    try { localStorage.removeItem(SKEY); } catch(e){}
+    STATE.jobs = [makeJob()]; STATE.activeJob = 0; STATE.view = "rooms";
+    pushToCloud();
+    render();
+  }, "background:none;border:none;color:#8a8580;font-size:10px;"));
+  var syncColor = _syncStatus === "synced" ? "#5a9e6f" : _syncStatus === "connecting" ? "#d4a843" : _syncStatus === "error" || _syncStatus === "offline" ? "#cc5555" : "#8a8580";
+  hdrBtns.appendChild(btn(_syncActive ? "● Sync" : "Sync", function(){
+    STATE.syncPanelOpen = !STATE.syncPanelOpen; render();
+  }, "background:#2e2e2e;border:1px solid #3a3a3a;border-radius:4px;color:" + syncColor + ";font-size:10px;padding:4px 8px;cursor:pointer;"));
+  hdr.appendChild(hdrBtns);
+  app.appendChild(hdr);
+
+  /* Export Panel */
+  if(STATE.exportMode){
+    var expPanel = el("div", "margin:8px 16px;padding:12px;background:#242424;border:1px solid #5a9e6f;border-radius:8px;");
+    expPanel.appendChild(el("div", "font-size:11px;color:#5a9e6f;font-weight:600;margin-bottom:6px;", "EXPORT DATA"));
+    expPanel.appendChild(el("div", "font-size:10px;color:#8a8580;margin-bottom:8px;", "Use Share to send via Messages/Notes (most reliable), or copy the text below:"));
+    var expTa = el("textarea", "width:100%;height:120px;background:#1a1a1a;color:#e8e4de;border:1px solid #3a3a3a;border-radius:4px;padding:8px;font-size:11px;font-family:inherit;resize:vertical;outline:none;");
+    expTa.value = STATE.exportData;
+    expTa.readOnly = true;
+    expPanel.appendChild(expTa);
+    var expBtns = el("div", "display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;");
+    // "Send as Link" — most reliable method, encodes data in URL
+    expBtns.appendChild(btn("Send as Link", function(){
+      try {
+        var compact = JSON.stringify(STATE.jobs);
+        var b64 = btoa(encodeURIComponent(compact));
+        var base = window.location.origin + window.location.pathname;
+        var link = base + "#data=" + b64;
+        if(navigator.share){
+          navigator.share({ title: "Paint Calc Data", url: link }).catch(function(){});
+        } else if(navigator.clipboard && navigator.clipboard.writeText){
+          navigator.clipboard.writeText(link).then(function(){
+            alert("Link copied! Open this link to load your data.");
+          }, function(){
+            prompt("Copy this link:", link);
+          });
+        } else {
+          prompt("Copy this link:", link);
+        }
+      } catch(e){ alert("Error: " + e.message); }
+    }, "background:#d4a843;border:none;border-radius:4px;color:#1a1a1a;font-size:11px;padding:6px 16px;cursor:pointer;font-weight:600;"));
+    if(navigator.share){
+      expBtns.appendChild(btn("Share Text", function(){
+        navigator.share({ title: "Paint Calc Data", text: expTa.value }).catch(function(){});
+      }, "background:#b8922e;border:none;border-radius:4px;color:#1a1a1a;font-size:11px;padding:6px 16px;cursor:pointer;font-weight:600;"));
+    }
+    expBtns.appendChild(btn("Download File", function(){
+      try {
+        var compact = JSON.stringify(STATE.jobs, null, 2);
+        var blob = new Blob([compact], {type: "application/json"});
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement("a");
+        var d = new Date();
+        var ts = d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0");
+        a.href = url;
+        a.download = "paintcalc-jobs-" + ts + ".json";
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      } catch(e){ alert("Download error: " + e.message); }
+    }, "background:#5588bb;border:none;border-radius:4px;color:#fff;font-size:11px;padding:6px 16px;cursor:pointer;font-weight:600;"));
+    expBtns.appendChild(btn("Select All & Copy", function(){
+      expTa.select();
+      expTa.setSelectionRange(0, 99999);
+      if(navigator.clipboard && navigator.clipboard.writeText){
+        navigator.clipboard.writeText(expTa.value).then(function(){
+          alert("Copied to clipboard!");
+        }, function(){
+          document.execCommand("copy");
+          alert("Selected! If copy didn't work, manually copy the selected text.");
+        });
+      } else {
+        document.execCommand("copy");
+        alert("Selected! If copy didn't work, manually copy the selected text.");
+      }
+    }, "background:#5a9e6f;border:none;border-radius:4px;color:#fff;font-size:11px;padding:6px 16px;cursor:pointer;font-weight:600;"));
+    expBtns.appendChild(btn("Close", function(){
+      STATE.exportMode = false; STATE.exportData = ""; render();
+    }, "background:#2e2e2e;border:1px solid #3a3a3a;border-radius:4px;color:#8a8580;font-size:11px;padding:6px 16px;cursor:pointer;"));
+    expPanel.appendChild(expBtns);
+    app.appendChild(expPanel);
+  }
+
+  /* Import Panel */
+  if(STATE.importMode){
+    var impPanel = el("div", "margin:8px 16px;padding:12px;background:#242424;border:1px solid #5588bb;border-radius:8px;");
+    impPanel.appendChild(el("div", "font-size:11px;color:#5588bb;font-weight:600;margin-bottom:6px;", "IMPORT DATA"));
+    impPanel.appendChild(el("div", "font-size:10px;color:#8a8580;margin-bottom:8px;", "Paste your exported JSON below:"));
+    var impTa = el("textarea", "width:100%;height:120px;background:#1a1a1a;color:#e8e4de;border:1px solid #3a3a3a;border-radius:4px;padding:8px;font-size:11px;font-family:inherit;resize:vertical;outline:none;");
+    impTa.placeholder = "Paste exported data here...";
+    impPanel.appendChild(impTa);
+    var impBtns = el("div", "display:flex;gap:8px;margin-top:8px;");
+    impBtns.appendChild(btn("Load Data", function(){
+      doImport(impTa.value);
+    }, "background:#5588bb;border:none;border-radius:4px;color:#fff;font-size:11px;padding:6px 16px;cursor:pointer;font-weight:600;"));
+    impBtns.appendChild(btn("Open File", function(){
+      var fi = document.createElement("input");
+      fi.type = "file";
+      fi.accept = ".json,application/json";
+      fi.onchange = function(){
+        if(!fi.files || !fi.files[0]) return;
+        var reader = new FileReader();
+        reader.onload = function(){ doImport(reader.result); };
+        reader.readAsText(fi.files[0]);
+      };
+      fi.click();
+    }, "background:#5a9e6f;border:none;border-radius:4px;color:#fff;font-size:11px;padding:6px 16px;cursor:pointer;font-weight:600;"));
+    impBtns.appendChild(btn("Cancel", function(){
+      STATE.importMode = false; render();
+    }, "background:#2e2e2e;border:1px solid #3a3a3a;border-radius:4px;color:#8a8580;font-size:11px;padding:6px 16px;cursor:pointer;"));
+    impPanel.appendChild(impBtns);
+    app.appendChild(impPanel);
+  }
+
+  /* Sync Panel */
+  if(STATE.syncPanelOpen){
+    var syncPanel = el("div", "margin:8px 16px;padding:12px;background:#242424;border:1px solid " + (_syncActive ? "#5a9e6f" : "#3a3a3a") + ";border-radius:8px;");
+    syncPanel.appendChild(el("div", "font-size:11px;color:" + (_syncActive ? "#5a9e6f" : "#8a8580") + ";font-weight:600;margin-bottom:6px;",
+      "CLOUD SYNC" + (_syncActive ? " — " + _syncStatus.toUpperCase() : "")));
+    if(!_syncActive){
+      syncPanel.appendChild(el("div", "font-size:10px;color:#8a8580;margin-bottom:8px;", "Enter the same passphrase on all your devices to sync data automatically."));
+      var syncInp = el("input", "width:100%;background:#1a1a1a;color:#e8e4de;border:1px solid #3a3a3a;border-radius:4px;padding:8px;font-size:12px;font-family:inherit;outline:none;box-sizing:border-box;");
+      syncInp.type = "text"; syncInp.placeholder = "e.g. robbies-paint-app";
+      syncInp.autocomplete = "off"; syncInp.autocapitalize = "off"; syncInp.spellcheck = false;
+      syncPanel.appendChild(syncInp);
+      var syncBtns = el("div", "display:flex;gap:8px;margin-top:8px;");
+      syncBtns.appendChild(btn("Enable Sync", function(){
+        var phrase = syncInp.value.trim();
+        if(!phrase){ alert("Please enter a passphrase."); return; }
+        if(phrase.length < 4){ alert("Passphrase must be at least 4 characters."); return; }
+        if(_firebaseReady){ setupSync(phrase); }
+        else { alert("Cloud service not available. Check your connection and reload."); }
+      }, "background:#5a9e6f;border:none;border-radius:4px;color:#fff;font-size:11px;padding:6px 16px;cursor:pointer;font-weight:600;"));
+      syncBtns.appendChild(btn("Close", function(){ STATE.syncPanelOpen = false; render(); },
+        "background:#2e2e2e;border:1px solid #3a3a3a;border-radius:4px;color:#8a8580;font-size:11px;padding:6px 16px;cursor:pointer;"));
+      syncPanel.appendChild(syncBtns);
+      if(_syncStatus === "error"){
+        syncPanel.appendChild(el("div", "font-size:9px;color:#cc5555;margin-top:6px;", "Cloud service unavailable. App works offline — sync will activate when connection is restored."));
+      }
+    } else {
+      var statusColor = _syncStatus === "synced" ? "#5a9e6f" : _syncStatus === "offline" ? "#d4a843" : _syncStatus === "connecting" ? "#d4a843" : "#cc5555";
+      var statusText = _syncStatus === "synced" ? "Connected and syncing" : _syncStatus === "offline" ? "Offline — will sync when reconnected" : _syncStatus === "connecting" ? "Connecting..." : "Sync error";
+      syncPanel.appendChild(el("div", "font-size:10px;color:" + statusColor + ";margin-bottom:8px;", statusText));
+      var savedPhrase = localStorage.getItem(SYNC_PASSPHRASE_KEY) || "";
+      if(savedPhrase) syncPanel.appendChild(el("div", "font-size:9px;color:#8a8580;margin-bottom:8px;", "Passphrase: " + savedPhrase.charAt(0) + "***" + savedPhrase.charAt(savedPhrase.length - 1)));
+      var dBtns = el("div", "display:flex;gap:8px;");
+      dBtns.appendChild(btn("Force Push", function(){
+        if(confirm("Overwrite cloud data with this device's data?")) pushToCloud();
+      }, "background:#2e2e2e;border:1px solid #3a3a3a;border-radius:4px;color:#d4a843;font-size:10px;padding:5px 12px;cursor:pointer;"));
+      dBtns.appendChild(btn("Disconnect", disconnectSync,
+        "background:#2e2e2e;border:1px solid #3a3a3a;border-radius:4px;color:#cc5555;font-size:10px;padding:5px 12px;cursor:pointer;"));
+      dBtns.appendChild(btn("Close", function(){ STATE.syncPanelOpen = false; render(); },
+        "background:#2e2e2e;border:1px solid #3a3a3a;border-radius:4px;color:#8a8580;font-size:10px;padding:5px 12px;cursor:pointer;"));
+      syncPanel.appendChild(dBtns);
+    }
+    app.appendChild(syncPanel);
+  }
+
+  /* Unit Mode Toggle */
+  var unitBar = el("div", "display:flex;align-items:center;justify-content:center;gap:4px;padding:8px 16px 4px;");
+  unitBar.appendChild(span("Units:", "#8a8580", "font-size:10px;margin-right:4px;"));
+  unitBar.appendChild(toggleBtn('Inches "', unitMode === "in", function(){ setUnitMode("in"); }, "flex:0;padding:4px 10px;"));
+  unitBar.appendChild(toggleBtn("Feet & Inches", unitMode === "ftin", function(){ setUnitMode("ftin"); }, "flex:0;padding:4px 10px;"));
+  app.appendChild(unitBar);
+
+  /* Job Tabs */
+  var tabs = el("div", "display:flex;padding:12px 16px 0;border-bottom:1px solid #3a3a3a;overflow-x:auto;");
+  for(var ti = 0; ti < STATE.jobs.length; ti++){
+    (function(idx){
+      var isActive = idx === STATE.activeJob;
+      var tabStyle = "padding:8px 16px;cursor:pointer;font-size:11px;margin-bottom:-1px;white-space:nowrap;border-radius:6px 6px 0 0;font-family:inherit;";
+      tabStyle += isActive
+        ? "background:#242424;color:#d4a843;border:1px solid #3a3a3a;border-bottom-color:#242424;font-weight:600;"
+        : "background:transparent;color:#8a8580;border:1px solid transparent;";
+      tabs.appendChild(btn(STATE.jobs[idx].name, function(){
+        STATE.activeJob = idx; STATE.view = "rooms"; render();
+      }, tabStyle));
+    })(ti);
+  }
+  tabs.appendChild(btn("+", function(){
+    var j = makeJob({name: "Job " + (STATE.jobs.length + 1)});
+    STATE.jobs.push(j);
+    STATE.activeJob = STATE.jobs.length - 1;
+    STATE.view = "rooms";
+    var rm = j.rooms[0];
+    j.activeRoomId = rm.id;
+    startWizard("newJob", j, rm);
+    saveState(); render();
+  }, "background:transparent;border:none;color:#d4a843;font-size:14px;padding:8px 12px;margin-bottom:-1px;cursor:pointer;"));
+  app.appendChild(tabs);
+
+  /* Body */
+  var body = el("div", "padding:12px 16px 20px;");
+
+  /* Invoice View */
+  if(STATE.view === "invoice"){
+    body.className = "invoice-view";
+    renderInvoice(job, body, rate, primerRate, er);
+    app.appendChild(body);
+    return;
+  }
+
+  /* LiDAR Scan Banner */
+  if(_pendingScan){
+    var scanBanner = el("div", "margin-bottom:12px;padding:12px;background:#242424;border:1px solid #d4a843;border-radius:8px;");
+    var scanHdr = flexRow([], 8, "margin-bottom:8px;justify-content:space-between;align-items:center;");
+    scanHdr.appendChild(el("div", "font-size:11px;font-weight:600;color:#d4a843;", "LIDAR ROOM SCAN RECEIVED"));
+    scanHdr.appendChild(el("div", "font-size:9px;color:#8a8580;", _pendingScan.isRectangular ? "rectangular" : _pendingScan.wallCount + " walls"));
+    scanBanner.appendChild(scanHdr);
+    scanBanner.appendChild(el("div", "font-size:12px;color:#e8e4de;margin-bottom:10px;", formatScanDims(_pendingScan)));
+    var scanBtns = el("div", "display:flex;gap:8px;");
+    scanBtns.appendChild(btn("Add as Room", function(){ acceptScan(_pendingScan); },
+      "background:#d4a843;border:none;border-radius:4px;color:#1a1a1a;font-size:11px;padding:6px 16px;cursor:pointer;font-weight:600;"));
+    scanBtns.appendChild(btn("Dismiss", dismissScan,
+      "background:#2e2e2e;border:1px solid #3a3a3a;border-radius:4px;color:#8a8580;font-size:11px;padding:6px 16px;cursor:pointer;"));
+    scanBanner.appendChild(scanBtns);
+    body.appendChild(scanBanner);
+  }
+
+  /* Job Name */
+  var jnRow = flexRow([], 8, "margin-bottom:12px;");
+  var jnInp = el("input", "flex:1;font-size:15px;font-weight:600;background:transparent;border:none;border-bottom:1px solid #3a3a3a;padding:4px 0;color:#e8e4de;outline:none;font-family:inherit;");
+  jnInp.value = job.name;
+  jnInp.oninput = function(e){ job.name = e.target.value; saveState(); };
+  jnRow.appendChild(jnInp);
+  if(STATE.jobs.length > 1){
+    jnRow.appendChild(btn("Del", function(){
+      STATE.jobs = STATE.jobs.filter(function(j){ return j.id !== job.id; });
+      if(!STATE.jobs.length) STATE.jobs = [makeJob()];
+      STATE.activeJob = 0; STATE.view = "rooms"; saveState(); render();
+    }, "background:none;border:none;color:#c75050;font-size:11px;cursor:pointer;"));
+  }
+  body.appendChild(jnRow);
+
+  /* Job Totals */
+  var jt = {billable:0, lf:0, pg:0, tg:0};
+  for(var i = 0; i < job.rooms.length; i++){
+    var rt = calcRoomTotal(job.rooms[i]);
+    jt.billable += rt.billable; jt.lf += rt.lf; jt.pg += rt.pg; jt.tg += rt.tg;
+  }
+  var rps = job.rooms.map(function(rm){ return calcRoomPrice(rm, rate, primerRate, er); });
+  var sfTotal = 0, enTotal = 0, fxTotal = 0, primerTotal = 0, topcoatTotal = 0;
+  for(i = 0; i < rps.length; i++){ sfTotal += rps[i].sfLabor; primerTotal += rps[i].primerLabor; topcoatTotal += rps[i].topcoatLabor; enTotal += rps[i].enLabor; fxTotal += rps[i].fixed; }
+  var autoTotal = sfTotal + enTotal + fxTotal;
+  var hasOvr = job.priceOverride != null && job.priceOverride !== "";
+  var laborPrice = hasOvr ? pf(job.priceOverride) : autoTotal;
+  var matCost = calcJobMaterialsCost(job);
+  var consTot = calcConsumablesTotal(job);
+  var paintDeduct = job.builderSuppliesPaint ? matCost : 0;
+  var consDeduct = job.builderSuppliesConsumables ? consTot : 0;
+  var totalPrice = laborPrice + consTot - paintDeduct - consDeduct;
+  var fb = calcJobFixed(job);
+
+  var tc = card([]);
+  var statsRow = el("div", "display:flex;justify-content:space-around;text-align:center;flex-wrap:wrap;gap:4px;margin-bottom:12px;");
+  statsRow.appendChild(statBlock("BILLABLE SF", jt.billable.toFixed(0), "#5588bb"));
+  statsRow.appendChild(statBlock("LINEAR FT", jt.lf.toFixed(0), "#d4a843"));
+  statsRow.appendChild(statBlock("PRIMER", c1(jt.pg) + " gal", "#b07acc"));
+  statsRow.appendChild(statBlock("TOPCOAT", c1(jt.tg) + " gal", "#5a9e6f"));
+  var totalMatCost = matCost + consTot;
+  if(totalMatCost > 0) statsRow.appendChild(statBlock("MATERIALS", "$" + totalMatCost.toFixed(0), "#c75050"));
+  tc.appendChild(statsRow);
+
+  var priceSec = el("div", "border-top:1px solid #3a3a3a;padding-top:10px;");
+  var priceRow = el("div", "display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;");
+  priceRow.appendChild(el("div", "font-size:20px;font-weight:700;color:#d4a843;", "$" + totalPrice.toFixed(0)));
+  priceRow.appendChild(span("TOTAL PRICE", "#8a8580", "font-size:9px;letter-spacing:1px;"));
+  priceSec.appendChild(priceRow);
+
+  var breakdown = el("div", "font-size:10px;color:#8a8580;margin-bottom:8px;");
+  if(primerTotal > 0) breakdown.appendChild(row("Primer ($" + primerRate + "/sf)", "$" + primerTotal.toFixed(0)));
+  if(topcoatTotal > 0) breakdown.appendChild(row("Topcoat ($" + rate + "/sf)", "$" + topcoatTotal.toFixed(0)));
+  if(enTotal > 0) breakdown.appendChild(row("Enamel (" + jt.lf.toFixed(0) + "lf×$" + er + ")", "$" + enTotal.toFixed(0)));
+  if(fb.df.q > 0) breakdown.appendChild(row("Door faces (" + fb.df.q + ")", "$" + fb.df.p));
+  if(fb.dr.q > 0) breakdown.appendChild(row("Door frames (" + fb.dr.q + ")", "$" + fb.dr.p));
+  if(fb.wi.q > 0) breakdown.appendChild(row("Windows (" + fb.wi.q + ")", "$" + fb.wi.p));
+  if(!hasOvr) breakdown.appendChild(span("AUTO", "#5a9e6f"));
+  priceSec.appendChild(breakdown);
+
+  /* Builder Supplies Paint toggle */
+  var bspSec = el("div", "border-top:1px solid #3a3a3a;padding-top:8px;margin-bottom:8px;");
+  var bspRow = el("div", "display:flex;align-items:center;justify-content:space-between;");
+  bspRow.appendChild(span("Builder Supplies Paint", "#c75050", "font-size:10px;font-weight:600;"));
+  bspRow.appendChild(toggleBtn(job.builderSuppliesPaint ? "Yes" : "No", job.builderSuppliesPaint, function(){
+    job.builderSuppliesPaint = !job.builderSuppliesPaint; saveState(); render();
+  }, "flex:0;padding:4px 12px;"));
+  bspSec.appendChild(bspRow);
+  if(job.builderSuppliesPaint && matCost > 0){
+    bspSec.appendChild(el("div", "font-size:10px;color:#8a8580;margin-top:4px;",
+      "Paint deduction: −$" + matCost.toFixed(0)));
+  }
+  priceSec.appendChild(bspSec);
+
+  /* Builder Supplies Consumables toggle */
+  var bscSec = el("div", "margin-bottom:8px;");
+  var bscRow = el("div", "display:flex;align-items:center;justify-content:space-between;");
+  bscRow.appendChild(span("Builder Supplies Consumables", "#e8954a", "font-size:10px;font-weight:600;"));
+  bscRow.appendChild(toggleBtn(job.builderSuppliesConsumables ? "Yes" : "No", job.builderSuppliesConsumables, function(){
+    job.builderSuppliesConsumables = !job.builderSuppliesConsumables; saveState(); render();
+  }, "flex:0;padding:4px 12px;"));
+  bscSec.appendChild(bscRow);
+  if(job.builderSuppliesConsumables && consTot > 0){
+    bscSec.appendChild(el("div", "font-size:10px;color:#8a8580;margin-top:4px;",
+      "Consumables deduction: −$" + consTot.toFixed(0)));
+  }
+  priceSec.appendChild(bscSec);
+
+  /* Consumables / Extra Materials */
+  var conItems = job.consumables || [];
+  var conTotal = calcConsumablesTotal(job);
+  var conSec = el("div", "border-top:1px solid #3a3a3a;padding-top:8px;margin-bottom:8px;");
+  var conHdr = flexRow([], 8, "margin-bottom:6px;");
+  conHdr.appendChild(span("Consumables / Extras", "#e8954a", "font-size:10px;font-weight:600;"));
+  if(conTotal > 0) conHdr.appendChild(span("$" + conTotal.toFixed(2), "#e8954a", "font-size:11px;font-weight:600;"));
+  conSec.appendChild(conHdr);
+  for(var ci = 0; ci < conItems.length; ci++){
+    (function(item, idx){
+      var cRow = flexRow([], 4, "margin-bottom:4px;");
+      var nameInp = el("input", "flex:1;min-width:60px;background:#2e2e2e;color:#e8e4de;border:1px solid #3a3a3a;border-radius:4px;padding:6px 8px;outline:none;font-size:11px;font-family:inherit;box-sizing:border-box;");
+      nameInp.type = "text"; nameInp.placeholder = "e.g. Caulk, Tape";
+      nameInp.value = item.name || "";
+      nameInp.oninput = function(e){ item.name = e.target.value; saveState(); };
+      nameInp.onblur = function(){ render(); };
+      cRow.appendChild(nameInp);
+      cRow.appendChild(span("$", "#e8954a", "font-size:11px;"));
+      cRow.appendChild(numInput(item.cost, function(v){ item.cost = v; }, 55));
+      cRow.appendChild(pmBtn("−", function(){ item.qty = Math.max(1, (pi2(item.qty) || 1) - 1); saveState(); render(); }));
+      cRow.appendChild(span(String(pi2(item.qty) || 1), "#e8e4de", "font-weight:600;width:18px;text-align:center;font-size:11px;display:inline-block;"));
+      cRow.appendChild(pmBtn("+", function(){ item.qty = (pi2(item.qty) || 1) + 1; saveState(); render(); }));
+      cRow.appendChild(btn("✕", function(){
+        job.consumables.splice(idx, 1); saveState(); render();
+      }, "background:none;border:none;color:#c75050;font-size:12px;padding:2px 4px;cursor:pointer;"));
+      conSec.appendChild(cRow);
+    })(conItems[ci], ci);
+  }
+  conSec.appendChild(btn("+ Add Consumable", function(){
+    if(!job.consumables) job.consumables = [];
+    job.consumables.push(makeConsumable());
+    saveState(); render();
+  }, "background:#3a3a3a;color:#e8e4de;border:none;border-radius:4px;padding:6px 0;cursor:pointer;font-size:10px;font-weight:600;width:100%;margin-top:4px;"));
+  priceSec.appendChild(conSec);
+
+  /* Hours Worked / KPI Tracker */
+  var hrsSec = el("div", "border-top:1px solid #3a3a3a;padding-top:8px;margin-bottom:8px;");
+  var hrsRow = flexRow([], 8);
+  hrsRow.appendChild(span("Hours Worked", "#5588bb", "font-size:10px;font-weight:600;"));
+  hrsRow.appendChild(numInput(job.hoursWorked, function(v){ job.hoursWorked = v; }, 60));
+  var hrs = pf(job.hoursWorked);
+  if(hrs > 0){
+    var effRate = totalPrice / hrs;
+    hrsRow.appendChild(span("→ $" + effRate.toFixed(2) + "/hr", "#5588bb", "font-size:11px;font-weight:600;"));
+  }
+  hrsSec.appendChild(hrsRow);
+  if(hrs > 0){
+    var kpiRow = el("div", "font-size:10px;color:#8a8580;margin-top:4px;");
+    kpiRow.textContent = "Revenue $" + totalPrice.toFixed(0) + " ÷ " + hrs + " hrs = $" + (totalPrice / hrs).toFixed(2) + "/hr";
+    if(matCost + consTot > 0){
+      var profit = totalPrice - matCost - consTot;
+      kpiRow.textContent += " · Profit $" + profit.toFixed(0) + " ($" + (profit / hrs).toFixed(2) + "/hr)";
+    }
+    hrsSec.appendChild(kpiRow);
+  }
+  priceSec.appendChild(hrsSec);
+
+  var rateRow1 = flexRow([], 8, "font-size:10px;border-top:1px solid #3a3a3a;padding-top:8px;");
+  rateRow1.appendChild(span("Topcoat $/sf", "#8a8580", "font-size:10px;"));
+  rateRow1.appendChild(numInput(job.pricePerSqftPerCoat, function(v){ job.pricePerSqftPerCoat = v; }, 50));
+  rateRow1.appendChild(span("Primer $/sf", "#b07acc", "font-size:10px;"));
+  rateRow1.appendChild(numInput(job.primerPricePerSqftPerCoat, function(v){ job.primerPricePerSqftPerCoat = v; }, 50));
+  rateRow1.appendChild(span("$/lf", "#8a8580", "font-size:10px;"));
+  rateRow1.appendChild(numInput(job.enamelRate, function(v){ job.enamelRate = v; }, 50));
+  priceSec.appendChild(rateRow1);
+  var rateRow2 = flexRow([], 8, "font-size:10px;margin-top:4px;");
+  rateRow2.appendChild(span("Override", "#8a8580", "font-size:10px;"));
+  var ovrInp = numInput(job.priceOverride, function(v){ job.priceOverride = v; }, 70);
+  ovrInp.placeholder = "auto";
+  rateRow2.appendChild(ovrInp);
+  if(hasOvr){
+    rateRow2.appendChild(btn("Reset", function(){ job.priceOverride = ""; saveState(); render(); }, "background:none;border:none;color:#d4a843;font-size:9px;cursor:pointer;"));
+  }
+  priceSec.appendChild(rateRow2);
+  tc.appendChild(priceSec);
+  body.appendChild(tc);
+
+  /* Invoice Button */
+  body.appendChild(btn("View Invoice & Materials", function(){
+    STATE.view = "invoice"; render();
+  }, "background:#d4a843;color:#1a1a1a;border:none;border-radius:4px;padding:10px 0;cursor:pointer;font-size:12px;font-weight:600;letter-spacing:.5px;width:100%;margin-bottom:12px;"));
+
+  /* Paint Order (collapsible) */
+  var po = calcJobMaterialsDetail(job);
+  if(po.length > 0){
+    var poc = card([], "border-left:3px solid #b07acc;");
+    var poHdr = el("div", "display:flex;align-items:center;justify-content:space-between;cursor:pointer;");
+    poHdr.appendChild(el("div", "font-size:11px;color:#b07acc;font-weight:600;letter-spacing:1px;", "PAINT ORDER"));
+    var totalGal = 0, totalPurchaseGal = 0, grandTotal = 0, hasPrice = false;
+    for(var pk = 0; pk < po.length; pk++){ totalGal += po[pk].totalGal; totalPurchaseGal += po[pk].purchaseGal; if(po[pk].lineCost > 0){ grandTotal += po[pk].lineCost; hasPrice = true; } }
+    var poSummary = el("div", "display:flex;align-items:center;gap:8px;");
+    var sumText = po.length + " product" + (po.length !== 1 ? "s" : "") + " · " + totalPurchaseGal + " gal";
+    if(hasPrice) sumText += " · ~$" + grandTotal.toFixed(2);
+    poSummary.appendChild(span(sumText, "#8a8580", "font-size:10px;"));
+    poSummary.appendChild(span(STATE.showPaintOrder ? "▼" : "▶", "#b07acc", "font-size:10px;"));
+    poHdr.appendChild(poSummary);
+    poHdr.onclick = function(){ STATE.showPaintOrder = !STATE.showPaintOrder; render(); };
+    poc.appendChild(poHdr);
+    if(STATE.showPaintOrder){
+      var poBody = el("div", "margin-top:10px;");
+      for(var pi = 0; pi < po.length; pi++){
+        var item = po[pi];
+        var poRow = el("div", "padding:10px 0;" + (pi > 0 ? "border-top:1px solid #3a3a3a;" : ""));
+        // Line 1: Product name (left) — Gallons (right)
+        var line1 = el("div", "display:flex;justify-content:space-between;align-items:baseline;");
+        var prodName = item.product || "(no product)";
+        line1.appendChild(el("div", "font-size:13px;font-weight:600;color:#e8e4de;flex:1;margin-right:8px;", prodName));
+        line1.appendChild(el("div", "font-size:13px;color:#e8e4de;white-space:nowrap;font-weight:600;", item.purchaseGal + " gal"));
+        poRow.appendChild(line1);
+        // Line 2: Color (left) — $/gal · Est total (right)
+        var line2 = el("div", "display:flex;justify-content:space-between;align-items:baseline;margin-top:2px;");
+        var colorText = item.color || "";
+        line2.appendChild(el("div", "font-size:11px;color:#8a8580;flex:1;", colorText));
+        if(item.ppg > 0){
+          line2.appendChild(el("div", "font-size:11px;color:#8a8580;white-space:nowrap;", "$" + item.ppg.toFixed(2) + "/gal · ~$" + item.lineCost.toFixed(2)));
+        }
+        poRow.appendChild(line2);
+        // Line 3: Which rooms use this (small text)
+        var allRooms = [];
+        var catKeys3 = ["Walls", "Ceiling", "Trim/Frames"];
+        for(var ci3 = 0; ci3 < catKeys3.length; ci3++){
+          var ck3 = catKeys3[ci3];
+          if(item.cats[ck3]){
+            for(var ri3 = 0; ri3 < item.cats[ck3].length; ri3++){
+              var rName = item.cats[ck3][ri3];
+              if(allRooms.indexOf(rName) < 0) allRooms.push(rName);
+            }
+          }
+        }
+        if(allRooms.length > 0){
+          poRow.appendChild(el("div", "font-size:9px;color:#555;margin-top:2px;", allRooms.join(", ")));
+        }
+        poBody.appendChild(poRow);
+      }
+      // Grand total
+      if(hasPrice){
+        var gtRow = el("div", "display:flex;justify-content:flex-end;padding-top:10px;border-top:1px solid #555;margin-top:4px;");
+        gtRow.appendChild(el("div", "font-size:13px;font-weight:600;color:#d4a843;", "Est. Total ~$" + grandTotal.toFixed(2)));
+        poBody.appendChild(gtRow);
+      }
+      poc.appendChild(poBody);
+    }
+    body.appendChild(poc);
+  }
+
+  /* Room List vs Editor */
+  if(STATE.view === "rooms" || !ar){
+    body.appendChild(el("div", "font-size:20px;font-weight:700;color:#d4a843;letter-spacing:2px;margin-bottom:10px;", "ROOMS"));
+
+    for(i = 0; i < job.rooms.length; i++){
+      (function(rm, idx){
+        var rp = calcRoomPrice(rm, rate, primerRate, er);
+
+        // Swipe container
+        var swipeWrap = el("div", "position:relative;overflow:hidden;border-radius:5px;margin-bottom:4px;");
+
+        // Delete button (behind the row)
+        var delBtn = el("div", "position:absolute;right:0;top:0;bottom:0;width:80px;background:#c75050;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff;cursor:pointer;letter-spacing:.5px;user-select:none;-webkit-user-select:none;");
+        delBtn.textContent = "Delete";
+        delBtn.onclick = function(e){
+          e.stopPropagation();
+          job.rooms = job.rooms.filter(function(r){ return r.id !== rm.id; });
+          if(job.rooms.length === 0) job.rooms.push(makeRoom());
+          if(job.activeRoomId === rm.id) job.activeRoomId = null;
+          saveState(); render();
+        };
+        swipeWrap.appendChild(delBtn);
+
+        // Room row (slides over the delete button)
+        var roomRow = el("div", "position:relative;display:flex;align-items:center;justify-content:space-between;padding:10px 14px;cursor:pointer;background:#1a1a1a;transition:transform 0.2s ease;z-index:1;");
+        roomRow.onclick = function(){ job.activeRoomId = rm.id; STATE.view = "edit"; render(); };
+
+        // Swipe touch handling
+        var startX = 0, currentX = 0, swiping = false, isOpen = false;
+        roomRow.addEventListener("touchstart", function(e){
+          startX = e.touches[0].clientX;
+          currentX = 0;
+          swiping = true;
+          roomRow.style.transition = "none";
+        }, {passive: true});
+        roomRow.addEventListener("touchmove", function(e){
+          if(!swiping) return;
+          var dx = e.touches[0].clientX - startX;
+          if(isOpen) dx = dx - 80;
+          if(dx > 0) dx = 0;
+          if(dx < -100) dx = -100;
+          currentX = dx;
+          roomRow.style.transform = "translateX(" + dx + "px)";
+        }, {passive: true});
+        roomRow.addEventListener("touchend", function(){
+          swiping = false;
+          roomRow.style.transition = "transform 0.2s ease";
+          if(currentX < -40){
+            roomRow.style.transform = "translateX(-80px)";
+            isOpen = true;
+          } else {
+            roomRow.style.transform = "translateX(0)";
+            isOpen = false;
+          }
+        }, {passive: true});
+
+        var left = el("div", "");
+        left.appendChild(el("div", "font-size:13px;font-weight:600;", rm.name));
+        var exLen = (rm.extras || []).length;
+        var sc = rm.mode === "quick" ? ((pf(rm.roomLength) > 0 ? (rm.includeCeiling ? 5 : 4) : 0) + exLen) : rm.surfaces.length;
+        left.appendChild(el("div", "font-size:10px;color:#8a8580;margin-top:2px;", (rm.mode === "quick" ? "Quick" : "Custom") + " \u00b7 " + sc + " srf"));
+        roomRow.appendChild(left);
+
+        var right = el("div", "text-align:right;");
+        right.appendChild(el("div", "font-size:14px;color:#d4a843;font-weight:700;", "$" + rp.total.toFixed(0)));
+        var det = el("div", "display:flex;gap:8px;justify-content:flex-end;font-size:10px;color:#8a8580;");
+        det.appendChild(span(rp.billable.toFixed(0) + "sf", "#8a8580"));
+        if(rp.lf > 0) det.appendChild(span(rp.lf.toFixed(0) + "lf", "#8a8580"));
+        det.appendChild(span(c1(rp.pg) + "P", "#b07acc"));
+        det.appendChild(span(c1(rp.tg) + "T", "#5a9e6f"));
+        right.appendChild(det);
+        roomRow.appendChild(right);
+
+        swipeWrap.appendChild(roomRow);
+        body.appendChild(swipeWrap);
+      })(job.rooms[i], i);
+    }
+
+    // Scan Room button (visible only inside native app with LiDAR)
+    if(window.PAINTCALC_NATIVE && window.PAINTCALC_HAS_LIDAR){
+      body.appendChild(btn("Scan Room", function(){
+        if(window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.paintCalcNative){
+          window.webkit.messageHandlers.paintCalcNative.postMessage({action: "scanRoom"});
+        }
+      }, "background:#d4a843;color:#1a1a1a;border:none;border-radius:4px;padding:10px 0;cursor:pointer;font-size:12px;font-weight:700;letter-spacing:.5px;width:100%;margin-top:8px;"));
+
+      // View Last Scan button
+      body.appendChild(btn("View Last Scan", function(){
+        if(window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.paintCalcNative){
+          window.webkit.messageHandlers.paintCalcNative.postMessage({action: "viewLastScan"});
+        }
+      }, "background:transparent;color:#d4a843;border:1px solid #3a3a3a;border-radius:4px;padding:6px 0;cursor:pointer;font-size:10px;font-weight:600;letter-spacing:.5px;width:100%;margin-top:4px;"));
+    }
+
+    body.appendChild(btn("+ Add Room", function(){
+      var rm = makeRoom({name: "Room " + (job.rooms.length + 1)});
+      job.rooms.push(rm); job.activeRoomId = rm.id;
+      startWizard("newRoom", job, rm);
+      saveState(); render();
+    }, "background:#b8922e;color:#1a1a1a;border:none;border-radius:4px;padding:8px 0;cursor:pointer;font-size:11px;font-weight:600;letter-spacing:.5px;width:100%;margin-top:8px;"));
+
+  } else {
+    /* ── Room Editor ── */
+    var editHdr = flexRow([], 10, "margin-bottom:12px;");
+    editHdr.appendChild(btn("← Rooms", function(){ STATE.view = "rooms"; render(); }, "background:#2e2e2e;border:1px solid #3a3a3a;border-radius:6px;color:#d4a843;font-size:18px;font-weight:700;padding:8px 16px;cursor:pointer;letter-spacing:1px;"));
+    var rnInp = el("input", "flex:1;font-size:15px;font-weight:600;background:transparent;border:none;border-bottom:1px solid #3a3a3a;padding:4px 0;color:#e8e4de;outline:none;font-family:inherit;");
+    rnInp.value = ar.name;
+    rnInp.oninput = function(e){ ar.name = e.target.value; saveState(); };
+    editHdr.appendChild(rnInp);
+    editHdr.appendChild(btn("Del", function(){
+      job.rooms = job.rooms.filter(function(r){ return r.id !== ar.id; });
+      if(!job.rooms.length) job.rooms.push(makeRoom());
+      job.activeRoomId = null; STATE.view = "rooms"; saveState(); render();
+    }, "background:none;border:none;color:#c75050;font-size:11px;cursor:pointer;"));
+    body.appendChild(editHdr);
+
+    /* Mode toggle */
+    var modeRow = flexRow([], 4, "margin-bottom:14px;");
+    modeRow.appendChild(toggleBtn("Quick (L×W×H)", ar.mode === "quick", function(){ ar.mode = "quick"; saveState(); render(); }, "flex:1;"));
+    modeRow.appendChild(toggleBtn("Custom", ar.mode === "custom", function(){ ar.mode = "custom"; saveState(); render(); }, "flex:1;"));
+    body.appendChild(modeRow);
+
+    /* Surface condition selector */
+    var scRow = flexRow([], 6, "margin-bottom:14px;");
+    scRow.appendChild(span("Surface", "#8a8580", "font-size:10px;font-weight:600;min-width:50px;"));
+    var condSel = el("select", "flex:1;background:#2e2e2e;color:#e8e4de;border:1px solid #3a3a3a;border-radius:4px;padding:7px 8px;font-size:11px;font-family:inherit;");
+    for(var sci = 0; sci < SURFACE_CONDITIONS.length; sci++){
+      var scOpt = el("option", "", SURFACE_CONDITIONS[sci].l);
+      scOpt.value = SURFACE_CONDITIONS[sci].v;
+      if(SURFACE_CONDITIONS[sci].v === ar.surfaceCondition) scOpt.selected = true;
+      condSel.appendChild(scOpt);
+    }
+    condSel.onchange = function(e){ ar.surfaceCondition = e.target.value; saveState(); render(); };
+    scRow.appendChild(condSel);
+    body.appendChild(scRow);
+
+    /* Room stats */
+    var rp = calcRoomPrice(ar, rate, primerRate, er);
+    var rrt = calcRoomTotal(ar);
+    var rsc = el("div", "background:#2e2e2e;border:1px solid #3a3a3a;border-radius:6px;padding:10px 14px;margin-bottom:14px;");
+    var rss = el("div", "display:flex;justify-content:space-around;text-align:center;flex-wrap:wrap;gap:4px;margin-bottom:8px;");
+    rss.appendChild(statBlock("BILLABLE SF", rp.billable.toFixed(0), "#5588bb", true));
+    rss.appendChild(statBlock("LINEAR FT", rp.lf.toFixed(0), "#d4a843", true));
+    rss.appendChild(statBlock("PRIMER", c1(rp.pg) + "g", "#b07acc", true));
+    rss.appendChild(statBlock("TOPCOAT", c1(rp.tg) + "g", "#5a9e6f", true));
+    rsc.appendChild(rss);
+
+    /* Per-surface paint breakdown */
+    var paintBreak = el("div", "border-top:1px solid #3a3a3a;padding-top:8px;margin-bottom:8px;");
+    paintBreak.appendChild(el("div", "font-size:9px;color:#8a8580;letter-spacing:1px;margin-bottom:6px;", "PAINT BY SURFACE"));
+
+    function paintLine(label, color, pg2, tg2, colorName, productName, borderColor){
+      if(pg2 <= 0 && tg2 <= 0) return null;
+      var line = el("div", "display:flex;align-items:center;justify-content:space-between;padding:4px 0;font-size:11px;border-left:3px solid " + borderColor + ";padding-left:8px;margin-bottom:3px;");
+      var left2 = el("div", "");
+      left2.appendChild(span(label, color, "font-weight:600;font-size:11px;"));
+      if(colorName || productName){
+        var cpStr = (colorName || "") + (colorName && productName ? " · " : "") + (productName || "");
+        left2.appendChild(el("div", "font-size:9px;color:#8a8580;margin-top:1px;", cpStr));
+      }
+      line.appendChild(left2);
+      var right2 = el("div", "text-align:right;");
+      var galLine = el("div", "");
+      galLine.innerHTML = '<span style="color:#b07acc">' + c1(pg2) + 'P</span> + <span style="color:#5a9e6f">' + c1(tg2) + 'T</span> <span style="color:#8a8580;font-size:9px;">gal</span>';
+      right2.appendChild(galLine);
+      line.appendChild(right2);
+      return line;
+    }
+
+    var wLine, cLine, tLine;
+    if(ar.mode === "quick"){
+      wLine = paintLine("Walls", "#5a9e6f", rrt.wallPG, rrt.wallTG, ar.wallColor, ar.wallProduct, "#5a9e6f");
+      cLine = paintLine("Ceiling", "#5588bb", rrt.ceilPG, rrt.ceilTG, ar.ceilingColor, ar.ceilingProduct, "#5588bb");
+      tLine = paintLine("Trim/Frames", "#d4a843", rrt.trimPG, rrt.trimTG, ar.trimColor, ar.trimProduct, "#d4a843");
+    } else {
+      wLine = paintLine("Walls", "#5a9e6f", rrt.wallPG, rrt.wallTG, "", "", "#5a9e6f");
+      cLine = paintLine("Ceiling", "#5588bb", rrt.ceilPG, rrt.ceilTG, "", "", "#5588bb");
+      tLine = paintLine("Trim/Frames", "#d4a843", rrt.trimPG, rrt.trimTG, "", "", "#d4a843");
+    }
+    if(wLine) paintBreak.appendChild(wLine);
+    if(cLine) paintBreak.appendChild(cLine);
+    if(tLine) paintBreak.appendChild(tLine);
+    var rmMat = calcRoomMaterialsCost(ar);
+    if(rmMat.total > 0){
+      var matLine = el("div", "display:flex;justify-content:space-between;padding:4px 0;font-size:10px;margin-top:4px;border-top:1px dashed #3a3a3a;padding-top:6px;");
+      matLine.appendChild(span("Materials Cost", "#c75050", "font-weight:600;"));
+      matLine.appendChild(span("$" + rmMat.total.toFixed(0), "#c75050", "font-weight:600;"));
+      paintBreak.appendChild(matLine);
+    }
+    rsc.appendChild(paintBreak);
+
+    var rsBot = el("div", "border-top:1px solid #3a3a3a;padding-top:8px;display:flex;align-items:center;justify-content:space-between;");
+    var rsL = el("div", "");
+    rsL.appendChild(el("div", "font-size:16px;font-weight:700;color:#d4a843;", "$" + rp.total.toFixed(0)));
+    var detStr = "";
+    if(rp.primerLabor > 0) detStr += "Primer:$" + rp.primerLabor.toFixed(0);
+    if(rp.topcoatLabor > 0) detStr += (detStr ? " +" : "") + "Topcoat:$" + rp.topcoatLabor.toFixed(0);
+    if(rp.enLabor > 0) detStr += (detStr ? " +" : "") + "Enamel:$" + rp.enLabor.toFixed(0);
+    if(rp.fixed > 0) detStr += " +Fixed:$" + rp.fixed;
+    rsL.appendChild(el("div", "font-size:9px;color:#8a8580;", detStr));
+    rsBot.appendChild(rsL);
+    rsBot.appendChild(span("ROOM TOTAL", "#8a8580", "font-size:9px;letter-spacing:1px;"));
+    rsc.appendChild(rsBot);
+    body.appendChild(rsc);
+
+    if(ar.mode === "quick"){
+      var q = calcQuickRoom(ar);
+
+      /* Room Dimensions card */
+      var dc = card([]);
+      dc.appendChild(el("div", "font-size:11px;color:#d4a843;font-weight:600;letter-spacing:1px;margin-bottom:10px;", unitMode === "ftin" ? "ROOM DIMENSIONS (ft + in)" : "ROOM DIMENSIONS (inches)"));
+      var dimRow = flexRow([], 6, "margin-bottom:6px;flex-wrap:wrap;");
+      dimRow.appendChild(span("L", "#8a8580", "font-size:10px;"));
+      dimRow.appendChild(dimInput(ar.roomLength, function(v){ ar.roomLength = v; }));
+      dimRow.appendChild(span("×W", "#8a8580"));
+      dimRow.appendChild(dimInput(ar.roomWidth, function(v){ ar.roomWidth = v; }));
+      dimRow.appendChild(span("×H", "#8a8580"));
+      dimRow.appendChild(dimInput(ar.roomHeight, function(v){ ar.roomHeight = v; }));
+      dc.appendChild(dimRow);
+      if(q.grossWall > 0){
+        var dimDetail = el("div", "font-size:10px;color:#8a8580;border-top:1px solid #3a3a3a;padding-top:6px;margin-top:6px;");
+        dimDetail.appendChild(row("Gross wall area", q.grossWall.toFixed(1) + " sf"));
+        if(q.openingSqft > 0){
+          dimDetail.appendChild(row("Openings (" + q.winCount + "w+" + q.totalDoors + "d)", "−" + q.openingSqft.toFixed(0) + " sf"));
+          dimDetail.appendChild(row("Paintable walls", q.paintableWall.toFixed(0) + " sf"));
+        }
+        if(ar.includeCeiling) dimDetail.appendChild(row("Ceiling", q.ceil.toFixed(1) + " sf"));
+        var billRow2 = el("div", "display:flex;justify-content:space-between;margin-top:4px;font-weight:600;color:#5588bb;font-size:11px;");
+        billRow2.appendChild(txt("Billable: " + q.billable.toFixed(0) + " sf"));
+        dimDetail.appendChild(billRow2);
+        dc.appendChild(dimDetail);
+      }
+      body.appendChild(dc);
+
+      /* ── WALLS card ── */
+      var wc = card([], "border-left:3px solid #5a9e6f;");
+      wc.appendChild(el("div", "font-size:11px;color:#5a9e6f;font-weight:600;letter-spacing:1px;margin-bottom:8px;", "WALLS"));
+      var wColorRow = flexRow([], 6, "margin-bottom:6px;");
+      wColorRow.appendChild(span("Color", "#8a8580", "font-size:10px;min-width:48px;"));
+      wColorRow.appendChild(autoTextInput(ar.wallColor, function(v){ ar.wallColor = v; }, "e.g. Navy Blue", null, function(){ return getJobSuggestions(job, "color"); }, null, function(v){ removeJobSuggestion(job, "color", v); }));
+      wc.appendChild(wColorRow);
+      var wPrimRow = flexRow([], 6, "margin-bottom:6px;");
+      wPrimRow.appendChild(span("Primer", "#b07acc", "font-size:10px;min-width:48px;font-weight:600;"));
+      wPrimRow.appendChild(autoTextInput(ar.wallPrimerProduct, function(v){ ar.wallPrimerProduct = v; }, "e.g. Kilz Original", null, function(){ return getJobSuggestions(job, "product"); }, function(v){ if(!v || !v.trim()){ ar.wallPrimerPricePerGal = ""; ar.wallPrimerCoverage = ""; ar.quickPrimerCoats = 0; } else { if(!pi2(ar.quickPrimerCoats)) ar.quickPrimerCoats = 1; var p = getJobProductPrice(job, v); if(p) ar.wallPrimerPricePerGal = p; var cv = getJobProductCoverage(job, v) || findProductCoverage(v); if(cv) ar.wallPrimerCoverage = cv; } saveState(); }, function(v){ removeJobSuggestion(job, "product", v); }));
+      wPrimRow.appendChild(span("$/g", "#8a8580", "font-size:9px;"));
+      wPrimRow.appendChild(numInput(ar.wallPrimerPricePerGal, function(v){ ar.wallPrimerPricePerGal = v; }, 45));
+      wPrimRow.appendChild(span("sf/g", "#8a8580", "font-size:9px;"));
+      wPrimRow.appendChild(numInput(ar.wallPrimerCoverage, function(v){ ar.wallPrimerCoverage = v; }, 42));
+      wc.appendChild(wPrimRow);
+      var wProdRow = flexRow([], 6, "margin-bottom:6px;");
+      wProdRow.appendChild(span("Product", "#5a9e6f", "font-size:10px;min-width:48px;font-weight:600;"));
+      wProdRow.appendChild(autoTextInput(ar.wallProduct, function(v){ ar.wallProduct = v; }, "e.g. Duration Semi-Gloss", null, function(){ return getJobSuggestions(job, "product"); }, function(v){ if(!v || !v.trim()){ ar.wallPricePerGal = ""; ar.wallCoverage = ""; } else { var p = getJobProductPrice(job, v); if(p) ar.wallPricePerGal = p; var cv = getJobProductCoverage(job, v) || findProductCoverage(v); if(cv) ar.wallCoverage = cv; } saveState(); }, function(v){ removeJobSuggestion(job, "product", v); }));
+      wProdRow.appendChild(span("$/g", "#8a8580", "font-size:9px;"));
+      wProdRow.appendChild(numInput(ar.wallPricePerGal, function(v){ ar.wallPricePerGal = v; }, 45));
+      wProdRow.appendChild(span("sf/g", "#8a8580", "font-size:9px;"));
+      wProdRow.appendChild(numInput(ar.wallCoverage, function(v){ ar.wallCoverage = v; }, 42));
+      wc.appendChild(wProdRow);
+      var wCoatRow = flexRow([], 8, "margin-bottom:6px;");
+      wCoatRow.appendChild(span("Primer", "#b07acc", "font-size:10px;"));
+      wCoatRow.appendChild(numInput(ar.quickPrimerCoats, function(v){ ar.quickPrimerCoats = v; }, 38));
+      wCoatRow.appendChild(span("Topcoat", "#5a9e6f", "font-size:10px;"));
+      wCoatRow.appendChild(numInput(ar.quickTopCoats, function(v){ ar.quickTopCoats = v; }, 38));
+      wc.appendChild(wCoatRow);
+      if(q.paintableWall > 0){
+        var wBot = el("div", "margin-top:8px;padding-top:8px;border-top:1px solid #3a3a3a;font-size:11px;");
+        wBot.appendChild(row("Paintable", q.paintableWall.toFixed(0) + " sf"));
+        if(q.pc > 0) wBot.appendChild(row("Primer (" + q.pc + "×@" + q.wpc + "sf/g)", c1(q.wallPrimerGal) + " gal"));
+        if(q.tc > 0) wBot.appendChild(row("Topcoat (" + q.tc + "×@" + q.wtc2 + "sf/g)", c1(q.wallTopGal) + " gal"));
+        wc.appendChild(wBot);
+      }
+      body.appendChild(wc);
+
+      /* ── CEILING card ── */
+      var cc = card([], "border-left:3px solid #5588bb;");
+      var ccHdr = el("div", "display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;");
+      ccHdr.appendChild(el("div", "font-size:11px;color:#5588bb;font-weight:600;letter-spacing:1px;", "CEILING"));
+      ccHdr.appendChild(toggleBtn(ar.includeCeiling ? "On" : "Off", ar.includeCeiling, function(){ ar.includeCeiling = !ar.includeCeiling; saveState(); render(); }, "flex:0;padding:4px 12px;"));
+      cc.appendChild(ccHdr);
+      if(ar.includeCeiling){
+        var cColorRow = flexRow([], 6, "margin-bottom:6px;");
+        cColorRow.appendChild(span("Color", "#8a8580", "font-size:10px;min-width:48px;"));
+        cColorRow.appendChild(autoTextInput(ar.ceilingColor, function(v){ ar.ceilingColor = v; }, "e.g. Ceiling White", null, function(){ return getJobSuggestions(job, "color"); }, null, function(v){ removeJobSuggestion(job, "color", v); }));
+        cc.appendChild(cColorRow);
+        var cPrimRow = flexRow([], 6, "margin-bottom:6px;");
+        cPrimRow.appendChild(span("Primer", "#b07acc", "font-size:10px;min-width:48px;font-weight:600;"));
+        cPrimRow.appendChild(autoTextInput(ar.ceilingPrimerProduct, function(v){ ar.ceilingPrimerProduct = v; }, "e.g. Kilz Original", null, function(){ return getJobSuggestions(job, "product"); }, function(v){ if(!v || !v.trim()){ ar.ceilingPrimerPricePerGal = ""; ar.ceilingPrimerCoverage = ""; ar.ceilingPrimerCoats = 0; } else { if(!pi2(ar.ceilingPrimerCoats)) ar.ceilingPrimerCoats = 1; var p = getJobProductPrice(job, v); if(p) ar.ceilingPrimerPricePerGal = p; var cv = getJobProductCoverage(job, v) || findProductCoverage(v); if(cv) ar.ceilingPrimerCoverage = cv; } saveState(); }, function(v){ removeJobSuggestion(job, "product", v); }));
+        cPrimRow.appendChild(span("$/g", "#8a8580", "font-size:9px;"));
+        cPrimRow.appendChild(numInput(ar.ceilingPrimerPricePerGal, function(v){ ar.ceilingPrimerPricePerGal = v; }, 45));
+        cPrimRow.appendChild(span("sf/g", "#8a8580", "font-size:9px;"));
+        cPrimRow.appendChild(numInput(ar.ceilingPrimerCoverage, function(v){ ar.ceilingPrimerCoverage = v; }, 42));
+        cc.appendChild(cPrimRow);
+        var cProdRow = flexRow([], 6, "margin-bottom:6px;");
+        cProdRow.appendChild(span("Product", "#5a9e6f", "font-size:10px;min-width:48px;font-weight:600;"));
+        cProdRow.appendChild(autoTextInput(ar.ceilingProduct, function(v){ ar.ceilingProduct = v; }, "e.g. Flat Ceiling Paint", null, function(){ return getJobSuggestions(job, "product"); }, function(v){ if(!v || !v.trim()){ ar.ceilingPricePerGal = ""; ar.ceilingCoverage = ""; } else { var p = getJobProductPrice(job, v); if(p) ar.ceilingPricePerGal = p; var cv = getJobProductCoverage(job, v) || findProductCoverage(v); if(cv) ar.ceilingCoverage = cv; } saveState(); }, function(v){ removeJobSuggestion(job, "product", v); }));
+        cProdRow.appendChild(span("$/g", "#8a8580", "font-size:9px;"));
+        cProdRow.appendChild(numInput(ar.ceilingPricePerGal, function(v){ ar.ceilingPricePerGal = v; }, 45));
+        cProdRow.appendChild(span("sf/g", "#8a8580", "font-size:9px;"));
+        cProdRow.appendChild(numInput(ar.ceilingCoverage, function(v){ ar.ceilingCoverage = v; }, 42));
+        cc.appendChild(cProdRow);
+        var cCoatRow = flexRow([], 8, "margin-bottom:6px;");
+        cCoatRow.appendChild(span("Primer", "#b07acc", "font-size:10px;"));
+        cCoatRow.appendChild(numInput(ar.ceilingPrimerCoats, function(v){ ar.ceilingPrimerCoats = v; }, 38));
+        cCoatRow.appendChild(span("Topcoat", "#5a9e6f", "font-size:10px;"));
+        cCoatRow.appendChild(numInput(ar.ceilingTopCoats, function(v){ ar.ceilingTopCoats = v; }, 38));
+        cc.appendChild(cCoatRow);
+        if(q.ceil > 0){
+          var cBot = el("div", "margin-top:8px;padding-top:8px;border-top:1px solid #3a3a3a;font-size:11px;");
+          cBot.appendChild(row("Ceiling area", q.ceil.toFixed(1) + " sf"));
+          if(q.cpc > 0) cBot.appendChild(row("Primer (" + q.cpc + "×@" + q.cpCov + "sf/g)", c1(q.ceilPrimerGal) + " gal"));
+          if(q.ctc > 0) cBot.appendChild(row("Topcoat (" + q.ctc + "×@" + q.ctCov + "sf/g)", c1(q.ceilTopGal) + " gal"));
+          cc.appendChild(cBot);
+        }
+      }
+      body.appendChild(cc);
+
+      /* ── TRIM & FRAMES card ── */
+      var tc2 = card([], "border-left:3px solid #d4a843;");
+      tc2.appendChild(el("div", "font-size:11px;color:#d4a843;font-weight:600;letter-spacing:1px;margin-bottom:8px;", "TRIM & FRAMES"));
+      var tColorRow = flexRow([], 6, "margin-bottom:6px;");
+      tColorRow.appendChild(span("Color", "#8a8580", "font-size:10px;min-width:48px;"));
+      tColorRow.appendChild(autoTextInput(ar.trimColor, function(v){ ar.trimColor = v; }, "e.g. SW Extra White", null, function(){ return getJobSuggestions(job, "color"); }, null, function(v){ removeJobSuggestion(job, "color", v); }));
+      tc2.appendChild(tColorRow);
+      var tPrimRow = flexRow([], 6, "margin-bottom:6px;");
+      tPrimRow.appendChild(span("Primer", "#b07acc", "font-size:10px;min-width:48px;font-weight:600;"));
+      tPrimRow.appendChild(autoTextInput(ar.trimPrimerProduct, function(v){ ar.trimPrimerProduct = v; }, "e.g. BIN Shellac Primer", null, function(){ return getJobSuggestions(job, "product"); }, function(v){ if(!v || !v.trim()){ ar.trimPrimerPricePerGal = ""; ar.trimPrimerCoverage = ""; ar.baseboardPrimerCoats = 0; } else { if(!pi2(ar.baseboardPrimerCoats)) ar.baseboardPrimerCoats = 1; var p = getJobProductPrice(job, v); if(p) ar.trimPrimerPricePerGal = p; var cv = getJobProductCoverage(job, v) || findProductCoverage(v); if(cv) ar.trimPrimerCoverage = cv; } saveState(); }, function(v){ removeJobSuggestion(job, "product", v); }));
+      tPrimRow.appendChild(span("$/g", "#8a8580", "font-size:9px;"));
+      tPrimRow.appendChild(numInput(ar.trimPrimerPricePerGal, function(v){ ar.trimPrimerPricePerGal = v; }, 45));
+      tPrimRow.appendChild(span("sf/g", "#8a8580", "font-size:9px;"));
+      tPrimRow.appendChild(numInput(ar.trimPrimerCoverage, function(v){ ar.trimPrimerCoverage = v; }, 42));
+      tc2.appendChild(tPrimRow);
+      var tProdRow = flexRow([], 6, "margin-bottom:10px;");
+      tProdRow.appendChild(span("Product", "#5a9e6f", "font-size:10px;min-width:48px;font-weight:600;"));
+      tProdRow.appendChild(autoTextInput(ar.trimProduct, function(v){ ar.trimProduct = v; }, "e.g. ProClassic Semi-Gloss", null, function(){ return getJobSuggestions(job, "product"); }, function(v){ if(!v || !v.trim()){ ar.trimPricePerGal = ""; ar.trimCoverage = ""; } else { var p = getJobProductPrice(job, v); if(p) ar.trimPricePerGal = p; var cv = getJobProductCoverage(job, v) || findProductCoverage(v); if(cv) ar.trimCoverage = cv; } saveState(); }, function(v){ removeJobSuggestion(job, "product", v); }));
+      tProdRow.appendChild(span("$/g", "#8a8580", "font-size:9px;"));
+      tProdRow.appendChild(numInput(ar.trimPricePerGal, function(v){ ar.trimPricePerGal = v; }, 45));
+      tProdRow.appendChild(span("sf/g", "#8a8580", "font-size:9px;"));
+      tProdRow.appendChild(numInput(ar.trimCoverage, function(v){ ar.trimCoverage = v; }, 42));
+      tc2.appendChild(tProdRow);
+
+      /* Baseboard sub-section */
+      var bbSec = el("div", "margin-bottom:10px;");
+      var bbHdr = el("div", "display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;");
+      bbHdr.appendChild(span("BASEBOARD", "#8a8580", "font-size:10px;letter-spacing:1px;font-weight:600;"));
+      bbHdr.appendChild(toggleBtn(ar.includeBaseboard !== false ? "On" : "Off", ar.includeBaseboard !== false, function(){
+        ar.includeBaseboard = !(ar.includeBaseboard !== false); saveState(); render();
+      }, "flex:0;padding:4px 12px;"));
+      bbSec.appendChild(bbHdr);
+
+      if(ar.includeBaseboard !== false){
+        var isOvr = ar.baseboardOverride != null && ar.baseboardOverride !== "";
+        var bbRow = flexRow([], 8, "margin-bottom:6px;");
+        bbRow.appendChild(span("LF", "#8a8580", "font-size:10px;"));
+        bbRow.appendChild(span(q.bbFt.toFixed(1), "#e8e4de", "font-size:15px;font-weight:600;"));
+        if(!isOvr) bbRow.appendChild(el("span", "font-size:9px;color:#5a9e6f;background:#2e2e2e;padding:2px 6px;border-radius:3px;", "AUTO"));
+        bbRow.appendChild(el("div", "width:1px;height:20px;background:#3a3a3a;"));
+        bbRow.appendChild(span("P", "#b07acc", "font-size:10px;"));
+        bbRow.appendChild(numInput(ar.baseboardPrimerCoats, function(v){ ar.baseboardPrimerCoats = v; }, 38));
+        bbRow.appendChild(span("T", "#5a9e6f", "font-size:10px;"));
+        bbRow.appendChild(numInput(ar.baseboardTopCoats, function(v){ ar.baseboardTopCoats = v; }, 38));
+        bbSec.appendChild(bbRow);
+
+        if(!isOvr && q.perimFt > 0){
+          var perimStr = "Perim " + q.perimFt.toFixed(1) + "'";
+          if(q.totalDoors > 0) perimStr += " −" + q.totalDoors + "door (" + (q.totalDoors * 3) + "')";
+          perimStr += " = " + q.bbFt.toFixed(1) + "'";
+          bbSec.appendChild(el("div", "font-size:10px;color:#8a8580;margin-bottom:6px;", perimStr));
+        }
+
+        var ovrRow = flexRow([], 8);
+        ovrRow.appendChild(span("Override", "#8a8580", "font-size:10px;"));
+        var ovrInp2 = numInput(ar.baseboardOverride, function(v){ ar.baseboardOverride = v; }, 60);
+        ovrInp2.placeholder = "auto";
+        ovrInp2.style.fontSize = "10px";
+        ovrRow.appendChild(ovrInp2);
+        if(isOvr){
+          ovrRow.appendChild(btn("Reset", function(){ ar.baseboardOverride = ""; saveState(); render(); }, "background:none;border:none;color:#d4a843;font-size:10px;cursor:pointer;"));
+        }
+        bbSec.appendChild(ovrRow);
+
+        var bbBot = el("div", "margin-top:8px;padding-top:6px;border-top:1px solid #3a3a3a;display:flex;justify-content:space-between;font-size:11px;");
+        bbBot.appendChild(span(q.bbFt.toFixed(1) + " lf", "#8a8580"));
+        bbBot.appendChild(galSpan(q.bbPG, q.bbTG));
+        bbSec.appendChild(bbBot);
+      }
+      tc2.appendChild(bbSec);
+
+      /* Additional extras sub-section */
+      tc2.appendChild(el("div", "font-size:10px;color:#8a8580;letter-spacing:1px;font-weight:600;margin-bottom:6px;border-top:1px solid #3a3a3a;padding-top:10px;", "ADDITIONAL ITEMS"));
+      var extras = ar.extras || [];
+      for(i = 0; i < extras.length; i++){
+        tc2.appendChild(renderSurfCard(extras[i], EXTRA_TYPES, true, ar));
+      }
+      tc2.appendChild(btn("+ Add Trim / Doors / Windows", function(){
+        ar.extras = ar.extras || [];
+        ar.extras.push(makeSurface({type:"trim", inputMode:"linear"}));
+        saveState(); render();
+      }, "background:#3a3a3a;color:#e8e4de;border:none;border-radius:4px;padding:8px 0;cursor:pointer;font-size:11px;font-weight:600;width:100%;margin-top:4px;"));
+      body.appendChild(tc2);
+
+    } else {
+      /* Custom mode */
+      for(i = 0; i < ar.surfaces.length; i++){
+        body.appendChild(renderSurfCard(ar.surfaces[i], TYPES, false, ar));
+      }
+      body.appendChild(btn("+ Add Surface", function(){
+        ar.surfaces.push(makeSurface());
+        saveState(); render();
+      }, "background:#3a3a3a;color:#e8e4de;border:none;border-radius:4px;padding:8px 0;cursor:pointer;font-size:11px;font-weight:600;width:100%;margin-top:4px;"));
+    }
+
+    /* Quick Nav */
+    if(job.rooms.length > 1){
+      var qnav = el("div", "margin-top:16px;padding-top:12px;border-top:1px solid #3a3a3a;");
+      qnav.appendChild(el("div", "font-size:10px;color:#8a8580;letter-spacing:1px;margin-bottom:6px;", "QUICK NAV"));
+      var qnBtns = flexRow([], 6);
+      for(i = 0; i < job.rooms.length; i++){
+        (function(rm){
+          var isOn = rm.id === ar.id;
+          qnBtns.appendChild(btn(rm.name, function(){
+            job.activeRoomId = rm.id; STATE.view = "edit"; render();
+          }, "border-radius:4px;padding:5px 12px;cursor:pointer;font-size:10px;font-family:inherit;border:1px solid " + (isOn ? "#d4a843" : "#3a3a3a") + ";background:" + (isOn ? "#d4a843" : "#2e2e2e") + ";color:" + (isOn ? "#1a1a1a" : "#8a8580") + ";" + (isOn ? "font-weight:600;" : "")));
+        })(job.rooms[i]);
+      }
+      qnav.appendChild(qnBtns);
+      body.appendChild(qnav);
+    }
+  }
+
+  app.appendChild(body);
+  app.appendChild(el("div", "text-align:center;color:#8a8580;font-size:9px;padding:8px 16px 20px;",
+    "Default: " + COV.sqft + "sf/g top · " + COV.primerSqft + "sf/g primer · Per-product overrides · Auto-saves"));
+
+  // Wizard overlay (renders on top of everything)
+  if(_wizard) renderWizard(app);
+}
+
+/* ── Init ── */
+loadState();
+initFirebase();
+
+// Check for data in URL hash (e.g. #data=BASE64ENCODED)
+(function(){
+  var hash = window.location.hash || "";
+  if(hash.indexOf("#data=") === 0){
+    try {
+      var b64 = hash.substring(6);
+      var json = decodeURIComponent(atob(b64));
+      doImport(json);
+      // Clean up URL hash after import
+      if(window.history && window.history.replaceState){
+        window.history.replaceState(null, "", window.location.pathname + window.location.search);
+      }
+      return;
+    } catch(e){
+      alert("Could not load data from link: " + e.message);
+    }
+  }
+})();
+
+// Global handler: tapping a dropdown option picks it, × deletes it
+document.addEventListener("click", function(e){
+  var dd = _autoDropdown;
+  if(!dd || dd.style.display === "none") return;
+  if(dd.contains(e.target)){
+    var t = e.target;
+    // Check if × delete button was clicked
+    if(t.getAttribute("data-del")){
+      if(dd._deleteCb) dd._deleteCb(t.getAttribute("data-del"));
+      return;
+    }
+    // Otherwise pick the value — get it from data-val or parent's data-val
+    var val = t.getAttribute("data-val") || (t.parentElement && t.parentElement.getAttribute("data-val"));
+    if(val && dd._pickCb) dd._pickCb(val);
+  }
+  /* Don't hide/render on clicks elsewhere — the input's onblur handles that */
+}, true);
+
+// Auto-open import panel if ?importdata=1 in URL
+if(window.location.search.indexOf("importdata=1") !== -1){
+  STATE.importMode = true;
+}
+
+// First-launch wizard: if the default job has a single unconfigured room, start wizard
+(function(){
+  if(STATE.jobs.length === 1){
+    var j = STATE.jobs[0];
+    if(j.rooms && j.rooms.length === 1){
+      var rm = j.rooms[0];
+      if(!pf(rm.roomLength) && !pf(rm.roomWidth) && !pf(rm.roomHeight) && rm.name === "Room 1"){
+        j.activeRoomId = rm.id;
+        startWizard("newJob", j, rm);
+      }
+    }
+  }
+})();
+
+render();
+
+})();
+</script>
+</body>
+</html>

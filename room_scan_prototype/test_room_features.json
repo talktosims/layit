@@ -1,0 +1,74 @@
+{
+  "wall_depth_m": 5.315,
+  "features": {
+    "niche": [
+      {
+        "width_inches": 36.2,
+        "height_inches": 31.3,
+        "recess_depth_inches": 5.6,
+        "center_x_inches_from_center": -26.2,
+        "center_y_inches_from_center": 43.9,
+        "width_m": 0.919,
+        "height_m": 0.795,
+        "recess_depth_m": 0.143,
+        "fill_ratio": 0.9,
+        "pixel_bounds": {
+          "x_min": 1336,
+          "x_max": 1892,
+          "y_min": 1946,
+          "y_max": 2427
+        },
+        "classification": "alcove_or_recess",
+        "confidence": "medium"
+      }
+    ],
+    "protrusion": [
+      {
+        "width_inches": 105.4,
+        "height_inches": 92.3,
+        "recess_depth_inches": -1.0,
+        "center_x_inches_from_center": 4.3,
+        "center_y_inches_from_center": 13.4,
+        "width_m": 2.677,
+        "height_m": 2.345,
+        "recess_depth_m": -0.025,
+        "fill_ratio": 0.25,
+        "pixel_bounds": {
+          "x_min": 1272,
+          "x_max": 2892,
+          "y_min": 1008,
+          "y_max": 2427
+        },
+        "classification": "countertop_or_cabinet",
+        "confidence": "medium"
+      }
+    ]
+  },
+  "constraints": [
+    {
+      "type": "fixed",
+      "feature": "alcove_or_recess",
+      "width_inches": 36.2,
+      "height_inches": 31.3,
+      "recess_depth_inches": 5.6,
+      "position_x_from_center_inches": -26.2,
+      "position_y_from_center_inches": 43.9,
+      "confidence": "medium",
+      "requires_grout_alignment": true,
+      "auto_detected": true
+    },
+    {
+      "type": "fixed",
+      "feature": "countertop_or_cabinet",
+      "width_inches": 105.4,
+      "height_inches": 92.3,
+      "recess_depth_inches": -1.0,
+      "position_x_from_center_inches": 4.3,
+      "position_y_from_center_inches": 13.4,
+      "confidence": "medium",
+      "requires_grout_alignment": false,
+      "auto_detected": true
+    }
+  ],
+  "note": "Constraints with requires_grout_alignment=true are fixed constraints that the tile layout must align to. Auto-correction will check these before shifting the pattern."
+}

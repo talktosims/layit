@@ -1,0 +1,138 @@
+{
+  "wall_depth_m": 1.432,
+  "features": {
+    "niche": [
+      {
+        "width_inches": 67.4,
+        "height_inches": 86.2,
+        "recess_depth_inches": 9.7,
+        "center_x_inches_from_center": 2.4,
+        "center_y_inches_from_center": 10.6,
+        "width_m": 1.713,
+        "height_m": 2.19,
+        "recess_depth_m": 0.246,
+        "fill_ratio": 0.55,
+        "pixel_bounds": {
+          "x_min": 572,
+          "x_max": 2596,
+          "y_min": 1040,
+          "y_max": 3628
+        },
+        "classification": "alcove_or_recess",
+        "confidence": "medium"
+      }
+    ],
+    "protrusion": [
+      {
+        "width_inches": 84.8,
+        "height_inches": 107.4,
+        "recess_depth_inches": 3.0,
+        "center_x_inches_from_center": 0.0,
+        "center_y_inches_from_center": 0.0,
+        "width_m": 2.153,
+        "height_m": 2.728,
+        "recess_depth_m": 0.077,
+        "fill_ratio": 0.2,
+        "pixel_bounds": {
+          "x_min": 240,
+          "x_max": 2784,
+          "y_min": 404,
+          "y_max": 3628
+        },
+        "classification": "countertop_or_cabinet",
+        "confidence": "medium"
+      },
+      {
+        "width_inches": 20.3,
+        "height_inches": 10.1,
+        "recess_depth_inches": -4.0,
+        "center_x_inches_from_center": -7.1,
+        "center_y_inches_from_center": 48.6,
+        "width_m": 0.515,
+        "height_m": 0.257,
+        "recess_depth_m": -0.101,
+        "fill_ratio": 0.57,
+        "pixel_bounds": {
+          "x_min": 996,
+          "x_max": 1604,
+          "y_min": 3324,
+          "y_max": 3628
+        },
+        "classification": "protrusion",
+        "confidence": "low"
+      }
+    ],
+    "opening": [
+      {
+        "width_inches": 28.8,
+        "height_inches": 66.0,
+        "recess_depth_inches": 23.4,
+        "center_x_inches_from_center": 4.0,
+        "center_y_inches_from_center": 5.5,
+        "width_m": 0.731,
+        "height_m": 1.676,
+        "recess_depth_m": 0.595,
+        "fill_ratio": 0.71,
+        "pixel_bounds": {
+          "x_min": 1200,
+          "x_max": 2064,
+          "y_min": 1192,
+          "y_max": 3172
+        },
+        "classification": "door_or_window",
+        "confidence": "high"
+      }
+    ]
+  },
+  "constraints": [
+    {
+      "type": "fixed",
+      "feature": "alcove_or_recess",
+      "width_inches": 67.4,
+      "height_inches": 86.2,
+      "recess_depth_inches": 9.7,
+      "position_x_from_center_inches": 2.4,
+      "position_y_from_center_inches": 10.6,
+      "confidence": "medium",
+      "requires_grout_alignment": true,
+      "auto_detected": true
+    },
+    {
+      "type": "fixed",
+      "feature": "countertop_or_cabinet",
+      "width_inches": 84.8,
+      "height_inches": 107.4,
+      "recess_depth_inches": 3.0,
+      "position_x_from_center_inches": 0.0,
+      "position_y_from_center_inches": 0.0,
+      "confidence": "medium",
+      "requires_grout_alignment": false,
+      "auto_detected": true
+    },
+    {
+      "type": "fixed",
+      "feature": "protrusion",
+      "width_inches": 20.3,
+      "height_inches": 10.1,
+      "recess_depth_inches": -4.0,
+      "position_x_from_center_inches": -7.1,
+      "position_y_from_center_inches": 48.6,
+      "confidence": "low",
+      "requires_grout_alignment": false,
+      "auto_detected": true
+    },
+    {
+      "type": "fixed",
+      "feature": "door_or_window",
+      "width_inches": 28.8,
+      "height_inches": 66.0,
+      "recess_depth_inches": 23.4,
+      "position_x_from_center_inches": 4.0,
+      "position_y_from_center_inches": 5.5,
+      "confidence": "high",
+      "requires_grout_alignment": false,
+      "auto_detected": true
+    }
+  ],
+  "note": "Constraints with requires_grout_alignment=true are fixed constraints that the tile layout must align to. Auto-correction will check these before shifting the pattern."
+}

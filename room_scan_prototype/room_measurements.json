@@ -1,0 +1,80 @@
+{
+  "images": [
+    {
+      "detected_planes": [
+        {
+          "type": "near_wall",
+          "normal": [
+            -0.004,
+            0.268,
+            -0.963
+          ],
+          "inlier_count": 287085
+        },
+        {
+          "type": "left_wall",
+          "normal": [
+            -1.0,
+            0.01,
+            -0.024
+          ],
+          "inlier_count": 102518
+        },
+        {
+          "type": "near_wall",
+          "normal": [
+            -0.066,
+            0.279,
+            -0.958
+          ],
+          "inlier_count": 89410
+        },
+        {
+          "type": "far_wall",
+          "normal": [
+            0.085,
+            -0.166,
+            0.982
+          ],
+          "inlier_count": 64539
+        },
+        {
+          "type": "ceiling",
+          "normal": [
+            -0.02,
+            -0.959,
+            0.283
+          ],
+          "inlier_count": 47703
+        },
+        {
+          "type": "left_wall",
+          "normal": [
+            -0.85,
+            -0.039,
+            0.526
+          ],
+          "inlier_count": 27067
+        }
+      ],
+      "room_length_raw_m": 1.953,
+      "room_length_raw_ft": 6.41,
+      "room_length_corrected_m": 1.953,
+      "room_length_corrected_ft": 6.41,
+      "camera_offset_m": 0.0,
+      "room_width_m": 1.859,
+      "room_width_ft": 6.1,
+      "room_height_m": 1.565,
+      "room_height_ft": 5.14,
+      "height_method": "ceiling_plane_floor_edge",
+      "depth_range_m": "0.79 - 2.51",
+      "floor_area_sqft": 39.1,
+      "image": "test_room2.jpg",
+      "method": "ransac"
+    }
+  ],
+  "model": "Apple Depth Pro v1",
+  "method": "ransac",
+  "camera_offset_m": 0.0,
+  "note": "Measurements are estimates. 'raw' = direct depth measurement, 'corrected' = raw + camera offset."
+}

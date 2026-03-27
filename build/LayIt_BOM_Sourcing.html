@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LayIt Laser — Flagship BOM Sourcing Guide</title>
+<style>
+  :root {
+    --bg: #0d1117;
+    --card: #161b22;
+    --border: #30363d;
+    --text: #e6edf3;
+    --muted: #8b949e;
+    --accent: #58a6ff;
+    --green: #3fb950;
+    --yellow: #d29922;
+    --red: #f85149;
+    --orange: #db6d28;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; padding: 2rem; }
+  .container { max-width: 1100px; margin: 0 auto; }
+  h1 { font-size: 2rem; margin-bottom: 0.25rem; }
+  .subtitle { color: var(--muted); font-size: 1rem; margin-bottom: 2rem; }
+  .summary-bar { display: flex; gap: 1.5rem; flex-wrap: wrap; margin-bottom: 2rem; padding: 1rem 1.25rem; background: var(--card); border: 1px solid var(--border); border-radius: 10px; }
+  .summary-item { text-align: center; }
+  .summary-item .label { font-size: 0.75rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
+  .summary-item .value { font-size: 1.5rem; font-weight: 700; color: var(--green); }
+  .summary-item .value.yellow { color: var(--yellow); }
+
+  .component { background: var(--card); border: 1px solid var(--border); border-radius: 10px; margin-bottom: 1.25rem; overflow: hidden; }
+  .component-header { display: flex; justify-content: space-between; align-items: center; padding: 1rem 1.25rem; cursor: pointer; }
+  .component-header:hover { background: rgba(88,166,255,0.04); }
+  .comp-num { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 50%; background: var(--accent); color: var(--bg); font-weight: 700; font-size: 0.8rem; margin-right: 0.75rem; flex-shrink: 0; }
+  .comp-title { font-weight: 600; font-size: 1.05rem; }
+  .comp-price { font-weight: 700; color: var(--green); font-size: 1.05rem; white-space: nowrap; }
+  .comp-spec { color: var(--muted); font-size: 0.85rem; }
+  .badge { display: inline-block; padding: 0.15rem 0.5rem; border-radius: 20px; font-size: 0.7rem; font-weight: 600; margin-left: 0.5rem; }
+  .badge.pick { background: rgba(63,185,80,0.15); color: var(--green); }
+  .badge.alt { background: rgba(210,153,34,0.15); color: var(--yellow); }
+  .badge.warn { background: rgba(248,81,73,0.15); color: var(--red); }
+
+  .options { padding: 0 1.25rem 1.25rem; }
+  .option { display: flex; gap: 1rem; align-items: flex-start; padding: 0.85rem 1rem; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; margin-bottom: 0.5rem; }
+  .option.recommended { border-color: var(--green); }
+  .option-rank { font-weight: 700; color: var(--muted); font-size: 0.85rem; min-width: 20px; }
+  .option-details { flex: 1; }
+  .option-name { font-weight: 600; font-size: 0.95rem; }
+  .option-meta { color: var(--muted); font-size: 0.82rem; margin-top: 0.2rem; }
+  .option-price { font-weight: 700; color: var(--green); white-space: nowrap; font-size: 0.95rem; }
+  .option-note { font-size: 0.8rem; color: var(--yellow); margin-top: 0.3rem; }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  .links { margin-top: 0.3rem; }
+  .links a { font-size: 0.82rem; margin-right: 0.75rem; }
+
+  .totals { background: var(--card); border: 2px solid var(--green); border-radius: 10px; padding: 1.5rem; margin-top: 2rem; }
+  .totals h2 { margin-bottom: 1rem; }
+  .totals table { width: 100%; border-collapse: collapse; }
+  .totals td, .totals th { padding: 0.5rem 0.75rem; text-align: left; border-bottom: 1px solid var(--border); font-size: 0.9rem; }
+  .totals th { color: var(--muted); font-weight: 600; font-size: 0.75rem; text-transform: uppercase; }
+  .totals tr:last-child td { border-bottom: none; font-weight: 700; font-size: 1.1rem; color: var(--green); }
+  .notes { margin-top: 2rem; padding: 1rem 1.25rem; background: var(--card); border: 1px solid var(--border); border-radius: 10px; }
+  .notes h3 { margin-bottom: 0.5rem; }
+  .notes ul { padding-left: 1.25rem; }
+  .notes li { color: var(--muted); font-size: 0.88rem; margin-bottom: 0.3rem; }
+  .timestamp { text-align: center; color: var(--muted); font-size: 0.75rem; margin-top: 2rem; }
+</style>
+</head>
+<body>
+<div class="container">
+
+<h1>🔧 LayIt Laser — Flagship BOM Sourcing</h1>
+<p class="subtitle">Best quality-to-price components · Researched Feb 2025</p>
+
+<div class="summary-bar">
+  <div class="summary-item"><div class="label">Components</div><div class="value">13</div></div>
+  <div class="summary-item"><div class="label">Recommended Total</div><div class="value">~$218</div></div>
+  <div class="summary-item"><div class="label">BOM Budget</div><div class="value yellow">$235–305</div></div>
+  <div class="summary-item"><div class="label">Retail Price</div><div class="value yellow">$499</div></div>
+</div>
+
+<!-- COMPONENT 1: LASER MODULE -->
+<div class="component">
+  <div class="component-header">
+    <div><span class="comp-num">1</span><span class="comp-title">Laser Module — 520nm 200mW Direct Diode</span><span class="badge pick">★ PICK</span></div>
+    <span class="comp-price">$38.00</span>
+  </div>
+  <div class="options">
+    <div class="option recommended">
+      <span class="option-rank">1</span>
+      <div class="option-details">
+        <div class="option-name">Laserland 4060-530D-200 <span class="badge pick">Best Match</span></div>
+        <div class="option-meta">520nm, 200mW, 12V DC, TTL 15kHz, DOT output · Direct diode (not DPSS)</div>
+        <div class="option-note">⚠ Some forum reports of QC inconsistency — verify specs on arrival</div>
+        <div class="links">
+          <a href="https://www.laserlands.net/4060-530d-200-12v-ttl.html" target="_blank">Laserlands.net — $38</a>
+        </div>
+      </div>
+      <span class="option-price">$38.00</span>
+    </div>
+    <div class="option">
+      <span class="option-rank">2</span>
+      <div class="option-details">
+        <div class="option-name">Lights88 520nm 200mW Module <span class="badge alt">Alternative</span></div>
+        <div class="option-meta">520nm/515nm, 200mW, DOT · Check listing for TTL/voltage specs</div>
+        <div class="links">
+          <a href="https://www.amazon.com/Lights88-520nm-515nm-Module-Adapter/dp/B01N1NPRAB" target="_blank">Amazon</a>
+        </div>
+      </div>
+      <span class="option-price">~$40–50</span>
+    </div>
+  </div>
+</div>
+
+<!-- COMPONENT 2: GALVO SET -->
+<div class="component">
+  <div class="component-header">
+    <div><span class="comp-num">2</span><span class="comp-title">Galvanometer Scanner Set — 20K PPS, Dual-Axis + Mirrors</span><span class="badge pick">★ PICK</span></div>
+    <span class="comp-price">$85–120</span>
+  </div>
+  <div class="options">
+    <div class="option recommended">
+      <span class="option-rank">1</span>
+      <div class="option-details">
+        <div class="option-name">Wonsung LK-20 20Kpps Galvo Scanner Set <span class="badge pick">Most Documented</span></div>
+        <div class="option-meta">±5V analog input · ±30° optical · Includes mirrors, driver board, show card, PSU, cables · 3.5★ (22 reviews)</div>
+        <div class="option-note">⚠ Some reports of weak bundled PSU — consider upgrading PSU separately</div>
+        <div class="links">
+          <a href="https://www.amazon.com/Generic-Galvanometer-Optical-Scanner-Including/dp/B01IZPMUPO" target="_blank">Amazon — ~$85–120</a>
+        </div>
+      </div>
+      <span class="option-price">~$100</span>
+    </div>
+    <div class="option">
+      <span class="option-rank">2</span>
+      <div class="option-details">
+        <div class="option-name">AliExpress RGB 20K Galvo Bundle <span class="badge alt">Budget Pick</span></div>
+        <div class="option-meta">±5V analog · 2x galvos + 2x driver boards + PSU · ±20° scan · Hackaday-verified teardown</div>
+        <div class="links">
+          <a href="https://www.aliexpress.com/item/32820046711.html" target="_blank">AliExpress — ~$60–89</a>
+        </div>
+      </div>
+      <span class="option-price">~$70</span>
+    </div>
+    <div class="option">
+      <span class="option-rank">3</span>
+      <div class="option-details">
+        <div class="option-name">20K Animation Set w/ SD Card + Control Board <span class="badge alt">Full Kit</span></div>
+        <div class="option-meta">Standalone operation via SD card · Includes galvos, PSU, control board</div>
+        <div class="links">
+          <a href="https://www.amazon.com/Mirror-Animation-Editable-Supply-Control/dp/B085NTWGY2" target="_blank">Amazon — ~$100–150</a>
+          <a href="https://www.ebay.com/itm/376562099267" target="_blank">eBay</a>
+        </div>
+      </div>
+      <span class="option-price">~$120</span>
+    </div>
+  </div>
+</div>
+
+<!-- COMPONENT 3: GALVO DRIVER -->
+<div class="component">
+  <div class="component-header">
+    <div><span class="comp-num">3</span><span class="comp-title">Galvo Driver Board</span></div>
+    <span class="comp-price">Bundled</span>
+  </div>
+  <div class="options">
+    <div class="option recommended">
+      <span class="option-rank">✓</span>
+      <div class="option-details">
+        <div class="option-name">Included with Galvo Set <span class="badge pick">Bundled</span></div>
+        <div class="option-meta">The Wonsung LK-20 and AliExpress bundles include driver boards. No separate purchase needed. ±5V analog input (ILDA-standard), not XY2-100 digital — which is correct for this projector application.</div>
+      </div>
+      <span class="option-price">$0</span>
+    </div>
+  </div>
+</div>
+
+<!-- COMPONENT 4: ESP32-S3 -->
+<div class="component">
+  <div class="component-header">
+    <div><span class="comp-num">4</span><span class="comp-title">ESP32-S3-WROOM-1 — N16R8 (16MB Flash, 8MB PSRAM)</span><span class="badge pick">★ PICK</span></div>
+    <span class="comp-price">$12.00</span>
+  </div>
+  <div class="options">
+    <div class="option recommended">
+      <span class="option-rank">1</span>
+      <div class="option-details">
+        <div class="option-name">Waveshare ESP32-S3-DEV-KIT-N16R8 <span class="badge pick">Best Value</span></div>
+        <div class="option-meta">Official WROOM-1 module · CH343 USB/UART · Castellated pads · DevKitC-1 pinout compatible</div>
+        <div class="links">
+          <a href="https://www.waveshare.com/esp32-s3-dev-kit-n8r8.htm" target="_blank">Waveshare — ~$10–12</a>
+          <a href="https://www.amazon.com/Waveshare-Development-ESP32-S3-WROOM-1-Processor-Connector/dp/B0DLWGVXCS" target="_blank">Amazon — ~$13</a>
+        </div>
+      </div>
+      <span class="option-price">~$12</span>
+    </div>
+    <div class="option">
+      <span class="option-rank">2</span>
+      <div class="option-details">
+        <div class="option-name">Adafruit Metro ESP32-S3 <span class="badge alt">Premium / Best Docs</span></div>
+        <div class="option-meta">Adafruit-quality build · Arduino Metro form factor · Excellent documentation + community</div>
+        <div class="links">
+          <a href="https://www.adafruit.com/product/5500" target="_blank">Adafruit — $24.95</a>
+        </div>
+      </div>
+      <span class="option-price">$24.95</span>
+    </div>
+    <div class="option">
+      <span class="option-rank">3</span>
+      <div class="option-details">
+        <div class="option-name">Lonely Binary ESP32-S3 N16R8 Gold Edition <span class="badge alt">Best Wireless</span></div>
+        <div class="option-meta">ENIG gold finish · IPEX external antenna · Dual USB-C · Australian maker brand</div>
+        <div class="links">
+          <a href="https://www.amazon.com/ESP32-S3-Development-16MB-IPEX-Antenna/dp/B0FFLXM9KL" target="_blank">Amazon — ~$12–15</a>
+          <a href="https://lonelybinary.com/en-us/products/s3" target="_blank">Lonely Binary Store</a>
+        </div>
+      </div>
+      <span class="option-price">~$13</span>
+    </div>
+  </div>
+</div>
+
+<!-- COMPONENT 5: CAMERA -->
+<div class="component">
+  <div class="component-header">
+    <div><span class="comp-num">5</span><span class="comp-title">Camera Module — OV5640, 5MP, 160° Wide-Angle, DVP</span><span class="badge pick">★ PICK</span></div>
+    <span class="comp-price">$10.00</span>
+  </div>
+  <div class="options">
+    <div class="option recommended">
+      <span class="option-rank">1</span>
+      <div class="option-details">
+        <div class="option-name">Taidacent OV5640 160° DVP Module <span class="badge pick">Best Brand</span></div>
+        <div class="option-meta">5MP · 160° FOV (200° also available) · 24-pin 0.5mm DVP · Known ESP32 camera brand</div>
+        <div class="option-note">⚠ OV5640 runs hot at 3.3V — add heatsink for continuous use</div>
+        <div class="links">
+          <a href="https://www.amazon.com/Taidacent-Degree-ESP32-CAM-OV5640-Camera/dp/B09NVRCFN1" target="_blank">Amazon — ~$10</a>
+          <a href="https://www.aliexpress.com/item/1005003339528539.html" target="_blank">AliExpress — ~$5</a>
+        </div>
+      </div>
+      <span class="option-price">~$10</span>
+    </div>
+    <div class="option">
+      <span class="option-rank">2</span>
+      <div class="option-details">
+        <div class="option-name">Generic OV5640 160° DVP (Amazon) <span class="badge alt">Budget</span></div>
+        <div class="option-meta">Same sensor/lens · Unbranded · 3.5★ · Less consistent QC</div>
+        <div class="links">
+          <a href="https://www.amazon.com/OV5640-camera-million-ultra-wide-angle-interface/dp/B09PZDZ65Z" target="_blank">Amazon — ~$9</a>
+        </div>
+      </div>
+      <span class="option-price">~$9</span>
+    </div>
+  </div>
+</div>
+
+<!-- COMPONENT 6: DAC -->
+<div class="component">
+  <div class="component-header">
+    <div><span class="comp-num">6</span><span class="comp-title">DAC — MCP4822, Dual 12-bit, SPI</span><span class="badge pick">★ PICK</span></div>
+    <span class="comp-price">$3.00</span>
+  </div>
+  <div class="options">
+    <div class="option recommended">
+      <span class="option-rank">1</span>
+      <div class="option-details">
+        <div class="option-name">MCP4822-E/P (DIP-8) — Microchip <span class="badge pick">Genuine / Authorized</span></div>
+        <div class="option-meta">Dual 12-bit DAC · SPI · Breadboard-friendly DIP · Authorized Microchip distributor</div>
+        <div class="links">
+          <a href="https://www.digikey.com/en/products/detail/microchip-technology/MCP4822-E-P/951465" target="_blank">DigiKey — ~$3</a>
+          <a href="https://www.mouser.com/ProductDetail/Microchip-Technology/MCP4822-E-P?qs=usxtMOJb1RzHfzfJDNfOOg%3D%3D" target="_blank">Mouser — ~$3</a>
+        </div>
+      </div>
+      <span class="option-price">~$3</span>
+    </div>
+  </div>
+</div>
+
+<!-- COMPONENT 7: OP-AMP -->
+<div class="component">
+  <div class="component-header">
+    <div><span class="comp-num">7</span><span class="comp-title">Op-Amp Buffer — TL072CP Dual Op-Amp</span><span class="badge pick">★ PICK</span></div>
+    <span class="comp-price">$0.81</span>
+  </div>
+  <div class="options">
+    <div class="option recommended">
+      <span class="option-rank">1</span>
+      <div class="option-details">
+        <div class="option-name">TL072CP (Texas Instruments, DIP-8) <span class="badge pick">Genuine TI</span></div>
+        <div class="option-meta">Dual JFET op-amp · DIP-8 · Low noise, high slew rate</div>
+        <div class="option-note">⚠ Heavily counterfeited — only buy from DigiKey/Mouser. Amazon packs are often fake LM358s.</div>
+        <div class="links">
+          <a href="https://www.digikey.com/en/products/detail/texas-instruments/TL072CP/277421" target="_blank">DigiKey — $0.81</a>
+          <a href="https://eu.mouser.com/ProductDetail/Texas-Instruments/TL072CP?qs=5nGYs9Do7G3e6Tx9uHIgUA%3D%3D" target="_blank">Mouser — $0.80</a>
+        </div>
+      </div>
+      <span class="option-price">$0.81</span>
+    </div>
+  </div>
+</div>
+
+<!-- COMPONENT 8: POWER SUPPLY -->
+<div class="component">
+  <div class="component-header">
+    <div><span class="comp-num">8</span><span class="comp-title">Power Supply — 12V 3A DC Adapter</span><span class="badge pick">★ PICK</span></div>
+    <span class="comp-price">$10.00</span>
+  </div>
+  <div class="options">
+    <div class="option recommended">
+      <span class="option-rank">1</span>
+      <div class="option-details">
+        <div class="option-name">Facmogu 12V 3A Power Adapter <span class="badge pick">UL Certified</span></div>
+        <div class="option-meta">5.5x2.5mm + 5.5x2.1mm dual tip · UL certified · 4.5★</div>
+        <div class="links">
+          <a href="https://www.amazon.com/Facmogu-Connector-5-5x2-5mm-5-5x2-1mm-Transformer/dp/B073WSWT34" target="_blank">Amazon — ~$10</a>
+        </div>
+      </div>
+      <span class="option-price">~$10</span>
+    </div>
+    <div class="option">
+      <span class="option-rank">2</span>
+      <div class="option-details">
+        <div class="option-name">ANVISION AC-DC 12V 3A <span class="badge alt">Also UL Listed</span></div>
+        <div class="option-meta">5.5x2.1mm · UL listed · 1.2m cord · 4.4★</div>
+        <div class="links">
+          <a href="https://www.amazon.com/ANVISION-Supply-Barrel-5-5x2-1mm-Efficiency/dp/B01C010YJI" target="_blank">Amazon — ~$9</a>
+        </div>
+      </div>
+      <span class="option-price">~$9</span>
+    </div>
+  </div>
+</div>
+
+<!-- COMPONENT 9: VOLTAGE REGULATORS -->
+<div class="component">
+  <div class="component-header">
+    <div><span class="comp-num">9</span><span class="comp-title">Voltage Regulators — AMS1117-5.0 + AMS1117-3.3</span><span class="badge pick">★ PICK</span></div>
+    <span class="comp-price">$3.00</span>
+  </div>
+  <div class="options">
+    <div class="option recommended">
+      <span class="option-rank">1</span>
+      <div class="option-details">
+        <div class="option-name">AMS1117-5.0 + AMS1117-3.3 Breakout Boards <span class="badge pick">Breadboard Ready</span></div>
+        <div class="option-meta">SOT-223 on breakout PCB with pins · Easy prototyping · ~$3/pair</div>
+        <div class="links">
+          <a href="https://www.amazon.com/AMS1117-3-3V-Voltage-Regulator-4-5-7V-Output/dp/B074FDLCLB" target="_blank">Amazon — ~$3/pair</a>
+        </div>
+      </div>
+      <span class="option-price">~$3</span>
+    </div>
+    <div class="option">
+      <span class="option-rank">2</span>
+      <div class="option-details">
+        <div class="option-name">DigiKey Individual ICs (bare SOT-223) <span class="badge alt">For Custom PCB</span></div>
+        <div class="option-meta">AMS1117-5.0: $0.12 · AMS1117-3.3: $0.27 · Genuine parts, authorized distributor</div>
+        <div class="links">
+          <a href="https://www.digikey.com/en/products/detail/evvo/AMS1117-5-0/24370130" target="_blank">DigiKey 5V — $0.12</a>
+          <a href="https://www.digikey.com/en/products/detail/umw/AMS1117-3-3/17635254" target="_blank">DigiKey 3.3V — $0.27</a>
+        </div>
+      </div>
+      <span class="option-price">$0.39</span>
+    </div>
+  </div>
+</div>
+
+<!-- COMPONENT 10: ENCLOSURE -->
+<div class="component">
+  <div class="component-header">
+    <div><span class="comp-num">10</span><span class="comp-title">Enclosure — Aluminum, ~6"×4"×3"</span><span class="badge pick">★ PICK</span></div>
+    <span class="comp-price">$16.00</span>
+  </div>
+  <div class="options">
+    <div class="option recommended">
+      <span class="option-rank">1</span>
+      <div class="option-details">
+        <div class="option-name">150×100×80mm Aluminum Junction Box (IP67) <span class="badge pick">Right Size</span></div>
+        <div class="option-meta">5.9×3.9×3.1" — closest to 6×4×3 spec · Cast aluminum · Waterproof</div>
+        <div class="links">
+          <a href="https://www.amazon.com/SHIHUANI-Aluminum-Junction-Terminal-150x100x80mm/dp/B0DGCWJ8CQ" target="_blank">Amazon (SHIHUANI) — ~$16</a>
+          <a href="https://www.amazon.com/IIVVERR-150x100x80mm-Waterproof-conexiones-impermeable/dp/B087P56V91" target="_blank">Amazon (IIVVERR) — ~$16</a>
+        </div>
+      </div>
+      <span class="option-price">~$16</span>
+    </div>
+    <div class="option">
+      <span class="option-rank">2</span>
+      <div class="option-details">
+        <div class="option-name">Hammond 1590P1GY <span class="badge alt">Premium Brand</span></div>
+        <div class="option-meta">6.01×3.24×1.81" — only 1.8" tall (may be too shallow). Hammond quality.</div>
+        <div class="links">
+          <a href="https://www.amazon.com/Hammond-Manufacturing-1590-RECTANGULAR-ENCLOSURES/dp/B00E4TULNE" target="_blank">Amazon — ~$18</a>
+        </div>
+      </div>
+      <span class="option-price">~$18</span>
+    </div>
+  </div>
+</div>
+
+<!-- COMPONENT 11: TRIPOD MOUNT -->
+<div class="component">
+  <div class="component-header">
+    <div><span class="comp-num">11</span><span class="comp-title">Tripod Mount — 1/4"-20 Threaded Insert</span></div>
+    <span class="comp-price">~$1</span>
+  </div>
+  <div class="options">
+    <div class="option recommended">
+      <span class="option-rank">1</span>
+      <div class="option-details">
+        <div class="option-name">uxcell 1/4"-20 Knurled Brass Inserts (25-pack) <span class="badge pick">For Aluminum</span></div>
+        <div class="option-meta">Heat-set or epoxy into enclosure · Brass · Standard tripod thread</div>
+        <div class="links">
+          <a href="https://www.amazon.com/uxcell-Knurled-Threaded-Insert-Embedment/dp/B07LBRCRP6" target="_blank">Amazon — ~$7 (25pc, ~$0.28 ea)</a>
+        </div>
+      </div>
+      <span class="option-price">~$1 ea</span>
+    </div>
+  </div>
+</div>
+
+<!-- COMPONENT 12: MISC -->
+<div class="component">
+  <div class="component-header">
+    <div><span class="comp-num">12</span><span class="comp-title">Misc — PCB, Connectors, Wires, Headers, Hardware, Safety Lens</span></div>
+    <span class="comp-price">~$22</span>
+  </div>
+  <div class="options">
+    <div class="option">
+      <span class="option-rank">a</span>
+      <div class="option-details">
+        <div class="option-name">ELEGOO 32-Piece PCB Prototype Board Kit</div>
+        <div class="option-meta">Double-sided · FR4 · 5 sizes</div>
+        <div class="links"><a href="https://www.amazon.com/ELEGOO-Prototype-Soldering-Compatible-Arduino/dp/B072Z7Y19F" target="_blank">Amazon — ~$13</a></div>
+      </div>
+      <span class="option-price">~$13</span>
+    </div>
+    <div class="option">
+      <span class="option-rank">b</span>
+      <div class="option-details">
+        <div class="option-name">Zovfam 620-Piece JST 2.54mm Connector Kit</div>
+        <div class="option-meta">1–6 pin · Male/female · Crimp pins included</div>
+        <div class="links"><a href="https://www.amazon.com/Zovfam-JST-Connector-Kit/dp/B07BJ6WXT3" target="_blank">Amazon — ~$13</a></div>
+      </div>
+      <span class="option-price">~$13</span>
+    </div>
+    <div class="option">
+      <span class="option-rank">c</span>
+      <div class="option-details">
+        <div class="option-name">5.5×2.1mm DC Barrel Jack Panel Mount (5-pack)</div>
+        <div class="option-meta">Metal housing · Panel mount</div>
+        <div class="links"><a href="https://www.amazon.com/5-5mm-2-1mm-Metal-Barrel-Panel/dp/B017HSEDSC" target="_blank">Amazon — ~$7</a></div>
+      </div>
+      <span class="option-price">~$7</span>
+    </div>
+    <div class="option">
+      <span class="option-rank">d</span>
+      <div class="option-details">
+        <div class="option-name">TUOFENG 22AWG Solid Core Hookup Wire (6 colors)</div>
+        <div class="option-meta">180ft total · 30ft per color</div>
+        <div class="links"><a href="https://www.amazon.com/TUOFENG-Hookup-Wires-6-Different-Colored/dp/B07TX6BX47" target="_blank">Amazon — ~$12</a></div>
+      </div>
+      <span class="option-price">~$12</span>
+    </div>
+    <div class="option">
+      <span class="option-rank">e</span>
+      <div class="option-details">
+        <div class="option-name">Glarks 190-Piece Pin Header Kit</div>
+        <div class="option-meta">Male/female · Straight/angled · Single/double row</div>
+        <div class="links"><a href="https://www.amazon.com/Glarks-Connector-Assortment-Stackable-Breakaway/dp/B09BDX69VX" target="_blank">Amazon — ~$13</a></div>
+      </div>
+      <span class="option-price">~$13</span>
+    </div>
+    <div class="option">
+      <span class="option-rank">f</span>
+      <div class="option-details">
+        <div class="option-name">M2+M3 Brass Standoff/Spacer Kit (240pc)</div>
+        <div class="option-meta">Brass · Male-female hex standoffs · Screws + nuts</div>
+        <div class="links"><a href="https://www.amazon.com/Hosim-Assortment-Prototyping-Accessories-Electronics/dp/B0778WJ2G7" target="_blank">Amazon — ~$10</a></div>
+      </div>
+      <span class="option-price">~$10</span>
+    </div>
+    <div class="option">
+      <span class="option-rank">g</span>
+      <div class="option-details">
+        <div class="option-name">Laser Safety Glasses — OD5+ at 515/520/532nm</div>
+        <div class="option-meta">OD5+ · VLT >55% · With case · Covers 200mW Class 3B</div>
+        <div class="links"><a href="https://www.amazon.com/Protection-Glasses-515nm-Module-Goggles/dp/B07BBPQQPC" target="_blank">Amazon — ~$12</a></div>
+      </div>
+      <span class="option-price">~$12</span>
+    </div>
+  </div>
+</div>
+
+<!-- COMPONENT 13: IMU -->
+<div class="component">
+  <div class="component-header">
+    <div><span class="comp-num">13</span><span class="comp-title">IMU / Accelerometer — MPU6050, 6-Axis, I2C (Bump Detection)</span><span class="badge pick">★ PICK</span></div>
+    <span class="comp-price">$2.00</span>
+  </div>
+  <div class="options">
+    <div class="option recommended">
+      <span class="option-rank">1</span>
+      <div class="option-details">
+        <div class="option-name">GY-521 MPU6050 Breakout Module <span class="badge pick">Standard</span></div>
+        <div class="option-meta">6-axis accelerometer + gyroscope · I2C (shares bus with camera SCCB) · 3.3V/5V · DMP onboard · Used for instant bump/motion detection in Vision Alignment System</div>
+        <div class="links">
+          <a href="https://www.amazon.com/HiLetgo-MPU-6050-Accelerometer-Gyroscope-Converter/dp/B00LP25V1A" target="_blank">Amazon (HiLetgo 3-pack) — ~$9 ($3 ea)</a>
+          <a href="https://www.digikey.com/en/products/detail/tdk-invensense/MPU-6050/4524591" target="_blank">DigiKey (bare IC) — ~$3</a>
+        </div>
+      </div>
+      <span class="option-price">~$2</span>
+    </div>
+  </div>
+</div>
+
+<!-- TOTALS TABLE -->
+<div class="totals">
+  <h2>💰 Recommended Build — Cost Summary</h2>
+  <table>
+    <tr><th>#</th><th>Component</th><th>Recommended Pick</th><th>Price</th></tr>
+    <tr><td>1</td><td>Laser Module</td><td>Laserland 4060-530D-200</td><td>$38.00</td></tr>
+    <tr><td>2</td><td>Galvo Set + Driver</td><td>Wonsung LK-20 (Amazon)</td><td>~$100.00</td></tr>
+    <tr><td>3</td><td>Galvo Driver Board</td><td>Bundled with galvo set</td><td>$0.00</td></tr>
+    <tr><td>4</td><td>ESP32-S3 N16R8</td><td>Waveshare Dev Kit</td><td>~$12.00</td></tr>
+    <tr><td>5</td><td>Camera (OV5640 160°)</td><td>Taidacent DVP Module</td><td>~$10.00</td></tr>
+    <tr><td>6</td><td>DAC (MCP4822)</td><td>DigiKey — genuine Microchip</td><td>~$3.00</td></tr>
+    <tr><td>7</td><td>Op-Amp (TL072)</td><td>DigiKey — genuine TI</td><td>$0.81</td></tr>
+    <tr><td>8</td><td>Power Supply (12V 3A)</td><td>Facmogu (UL Certified)</td><td>~$10.00</td></tr>
+    <tr><td>9</td><td>Voltage Regulators</td><td>AMS1117 Breakout Boards</td><td>~$3.00</td></tr>
+    <tr><td>10</td><td>Enclosure (Aluminum)</td><td>150×100×80mm IP67 Box</td><td>~$16.00</td></tr>
+    <tr><td>11</td><td>Tripod Mount (1/4"-20)</td><td>uxcell Brass Insert</td><td>~$1.00</td></tr>
+    <tr><td>12</td><td>Misc (PCB, connectors, etc.)</td><td>See breakdown above</td><td>~$22.00</td></tr>
+    <tr><td>13</td><td>IMU (MPU6050)</td><td>GY-521 Breakout Module</td><td>~$2.00</td></tr>
+    <tr><td></td><td><strong>ESTIMATED TOTAL</strong></td><td></td><td><strong>~$217.81</strong></td></tr>
+  </table>
+</div>
+
+<!-- NOTES -->
+<div class="notes">
+  <h3>📋 Sourcing Notes</h3>
+  <ul>
+    <li><strong>Reliability priority:</strong> DAC and Op-Amp sourced from DigiKey/Mouser (authorized distributors) to avoid counterfeits.</li>
+    <li><strong>TL072 warning:</strong> Heavily counterfeited on Amazon — only buy from DigiKey or Mouser.</li>
+    <li><strong>Galvo set:</strong> Wonsung LK-20 is the most documented option in the DIY laser community. AliExpress bundle is $30 cheaper but less support.</li>
+    <li><strong>Camera heat:</strong> OV5640 runs hot at 3.3V. Add a small heatsink or copper tape for continuous projection use.</li>
+    <li><strong>Laser module:</strong> Laserland is the only reliable source for 520nm direct diode at this price. Most AliExpress "200mW green" modules are 532nm DPSS — avoid those.</li>
+    <li><strong>Enclosure:</strong> Hammond is premium but their closest size is only 1.8" tall. The generic 150×100×80mm boxes are the right dimensions.</li>
+    <li><strong>Order first (longest lead):</strong> Laser module from Laserland (2–3 weeks). Order galvo set from Amazon for faster shipping.</li>
+    <li><strong>Misc total:</strong> The $22 line item assumes you already have some basic supplies. Full kits for everything listed under misc would run ~$80 but provide enough stock for multiple builds.</li>
+    <li><strong>Bulk savings:</strong> At production volume (100+ units), expect 20–40% reduction across all components.</li>
+  </ul>
+</div>
+
+<p class="timestamp">Generated by Claude · February 2026 · Prices subject to change</p>
+
+</div>
+</body>
+</html>

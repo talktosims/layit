@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 450" width="800" height="450">
+<style>
+  text { font-family: 'Helvetica Neue', Arial, sans-serif; }
+  .title { font-size: 22px; font-weight: bold; fill: #1a1a2e; }
+  .subtitle { font-size: 14px; fill: #0f3460; }
+  .comp-label { font-size: 11px; font-weight: bold; fill: #2c3e50; }
+  .pin-label { font-size: 9px; fill: #555; }
+  .wire-label { font-size: 9px; font-weight: bold; }
+  .note { font-size: 10px; fill: #666; font-style: italic; }
+  .ic-label { font-size: 12px; font-weight: bold; fill: #ffffff; }
+  .ic-pin { font-size: 8px; fill: #ffffff; }
+  .ref { font-size: 9px; font-weight: bold; fill: #c0392b; }
+  .value { font-size: 9px; fill: #27ae60; }
+  .section-title { font-size: 16px; font-weight: bold; fill: #0f3460; }
+  .warning { font-size: 10px; font-weight: bold; fill: #e74c3c; }
+  .info { font-size: 10px; fill: #2980b9; }
+</style>
+<rect width="800" height="450" fill="#fefefe" rx="8"/>
+<text x="400" y="35" text-anchor="middle" class="title">Laser Driver Circuit - Step by Step</text>
+<text x="400" y="58" text-anchor="middle" class="subtitle">GPIO14 controls laser via MOSFET level shifter</text>
+<rect x="40" y="170" width="100" height="50" fill="#34495e" stroke="#2c3e50" stroke-width="2" rx="4"/>
+<text x="90" y="195" text-anchor="middle" class="ic-label" style="font-size:10px">ESP32</text>
+<text x="90" y="210" text-anchor="middle" class="ic-pin">GPIO14</text>
+<text x="90" y="160" text-anchor="middle" class="ref">U3</text>
+<line x1="140" y1="195" x2="200" y2="195" stroke="#27ae60" stroke-width="2.5" stroke-linecap="round"/>
+<text x="170" y="185" class="info">3.3V signal</text>
+<line x1="200" y1="195" x2="210" y2="195" stroke="#2c3e50" stroke-width="2"/>
+<rect x="210" y="189" width="30" height="12" fill="#ffe4b5" stroke="#2c3e50" stroke-width="1.5" rx="2"/>
+<line x1="240" y1="195" x2="250" y2="195" stroke="#2c3e50" stroke-width="2"/>
+<circle cx="200" cy="195" r="3" fill="#2c3e50"/>
+<circle cx="250" cy="195" r="3" fill="#2c3e50"/>
+<text x="225" y="185" text-anchor="middle" class="ref">R10</text>
+<text x="225" y="198" text-anchor="middle" class="value" style="font-size:8px">100 Ohm</text>
+<line x1="250" y1="195" x2="310" y2="195" stroke="#27ae60" stroke-width="2.5" stroke-linecap="round"/>
+<rect x="310" y="140" width="80" height="110" fill="#ecf0f1" stroke="#2c3e50" stroke-width="2" rx="4"/>
+<text x="350" y="170" text-anchor="middle" class="comp-label">2N7000</text>
+<text x="350" y="185" text-anchor="middle" class="comp-label">N-MOSFET</text>
+<text x="350" y="130" text-anchor="middle" class="ref">Q1</text>
+<text x="310" y="198" text-anchor="end" class="pin-label">G (Gate)</text>
+<text x="350" y="260" text-anchor="middle" class="pin-label">S (Source)</text>
+<text x="350" y="130" text-anchor="middle" class="pin-label">D (Drain)</text>
+<text x="350" y="235" text-anchor="middle" class="warning">FLAT SIDE</text>
+<text x="350" y="247" text-anchor="middle" class="warning">FACES YOU</text>
+<line x1="350" y1="250" x2="350" y2="380" stroke="#2c3e50" stroke-width="2.5" stroke-linecap="round"/>
+<rect x="300" y="370" width="100" height="22" fill="#2c3e50" rx="4"/>
+<text x="350" y="385" text-anchor="middle" style="fill:white; font-weight:bold; font-size:11px">GND</text>
+<line x1="350" y1="140" x2="350" y2="100" stroke="#27ae60" stroke-width="2.5" stroke-linecap="round"/>
+<line x1="320" y1="85" x2="330" y2="85" stroke="#2c3e50" stroke-width="2"/>
+<rect x="330" y="79" width="30" height="12" fill="#ffe4b5" stroke="#2c3e50" stroke-width="1.5" rx="2"/>
+<line x1="360" y1="85" x2="370" y2="85" stroke="#2c3e50" stroke-width="2"/>
+<circle cx="320" cy="85" r="3" fill="#2c3e50"/>
+<circle cx="370" cy="85" r="3" fill="#2c3e50"/>
+<text x="345" y="75" text-anchor="middle" class="ref">R9</text>
+<text x="345" y="88" text-anchor="middle" class="value" style="font-size:8px">4.7K</text>
+<line x1="320" y1="85" x2="280" y2="85" stroke="#e74c3c" stroke-width="2.5" stroke-linecap="round"/>
+<rect x="230" y="75" width="50" height="22" fill="#e74c3c" rx="4"/>
+<text x="255" y="90" text-anchor="middle" style="fill:white; font-weight:bold; font-size:11px">+12V</text>
+<line x1="370" y1="85" x2="500" y2="85" stroke="#e74c3c" stroke-width="2.5" stroke-linecap="round"/>
+<text x="435" y="78" class="wire-label" fill="#e74c3c">TTL Signal (0V or 12V)</text>
+<rect x="540" y="80" width="60" height="76" fill="#ecf0f1" stroke="#2c3e50" stroke-width="2" rx="3"/>
+<text x="570" y="74" text-anchor="middle" class="comp-label">LASER
+MODULE</text>
+<text x="570" y="62" text-anchor="middle" class="ref">J3</text>
+<circle cx="528" cy="96" r="4" fill="#2c3e50"/>
+<line x1="528" y1="96" x2="540" y2="96" stroke="#2c3e50" stroke-width="2"/>
+<text x="546" y="99" class="pin-label">+12V</text>
+<circle cx="528" cy="118" r="4" fill="#2c3e50"/>
+<line x1="528" y1="118" x2="540" y2="118" stroke="#2c3e50" stroke-width="2"/>
+<text x="546" y="121" class="pin-label">TTL</text>
+<circle cx="528" cy="140" r="4" fill="#2c3e50"/>
+<line x1="528" y1="140" x2="540" y2="140" stroke="#2c3e50" stroke-width="2"/>
+<text x="546" y="143" class="pin-label">GND</text>
+<line x1="528" y1="96" x2="500" y2="96" stroke="#e74c3c" stroke-width="2.5" stroke-linecap="round"/>
+<line x1="500" y1="96" x2="500" y2="85" stroke="#e74c3c" stroke-width="2.5" stroke-linecap="round"/>
+<line x1="528" y1="140" x2="500" y2="140" stroke="#2c3e50" stroke-width="2.5" stroke-linecap="round"/>
+<line x1="500" y1="140" x2="500" y2="380" stroke="#2c3e50" stroke-width="2.5" stroke-linecap="round"/>
+<rect x="450" y="250" width="310" height="140" fill="#eaf2f8" stroke="#2980b9" stroke-width="1.5" rx="6"/>
+<text x="605" y="275" text-anchor="middle" class="section-title" style="font-size:13px">How It Works</text>
+<text x="465" y="298" class="info">ESP32 GPIO14 HIGH = MOSFET ON</text>
+<text x="485" y="313" class="info">= Drain pulled to GND = TTL LOW</text>
+<text x="485" y="328" class="info">= Laser OFF</text>
+<text x="465" y="352" class="info">ESP32 GPIO14 LOW = MOSFET OFF</text>
+<text x="485" y="367" class="info">= R9 pulls TTL to 12V = TTL HIGH</text>
+<text x="485" y="382" class="info">= Laser ON</text>
+</svg>

@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 550" width="900" height="550">
+<style>
+  text { font-family: 'Helvetica Neue', Arial, sans-serif; }
+  .title { font-size: 22px; font-weight: bold; fill: #1a1a2e; }
+  .subtitle { font-size: 14px; fill: #0f3460; }
+  .comp-label { font-size: 11px; font-weight: bold; fill: #2c3e50; }
+  .pin-label { font-size: 9px; fill: #555; }
+  .wire-label { font-size: 9px; font-weight: bold; }
+  .note { font-size: 10px; fill: #666; font-style: italic; }
+  .ic-label { font-size: 12px; font-weight: bold; fill: #ffffff; }
+  .ic-pin { font-size: 8px; fill: #ffffff; }
+  .ref { font-size: 9px; font-weight: bold; fill: #c0392b; }
+  .value { font-size: 9px; fill: #27ae60; }
+  .section-title { font-size: 16px; font-weight: bold; fill: #0f3460; }
+  .warning { font-size: 10px; font-weight: bold; fill: #e74c3c; }
+  .info { font-size: 10px; fill: #2980b9; }
+</style>
+<rect width="900" height="550" fill="#fefefe" rx="8"/>
+<text x="450" y="35" text-anchor="middle" class="title">Camera, Safety Interlock & Status LED</text>
+<text x="450" y="58" text-anchor="middle" class="subtitle">Peripheral connections to ESP32</text>
+<rect x="350" y="100" width="150" height="400" fill="#34495e" stroke="#2c3e50" stroke-width="2" rx="4"/>
+<text x="425" y="290" text-anchor="middle" class="ic-label">ESP32-S3</text>
+<text x="425" y="310" text-anchor="middle" class="ic-label">WROOM-1</text>
+<text x="425" y="90" text-anchor="middle" class="ref">U3</text>
+<rect x="620" y="100" width="230" height="200" fill="#d5e8d4" stroke="#2c3e50" stroke-width="2" rx="6"/>
+<text x="735" y="125" text-anchor="middle" class="comp-label" style="font-size:14px">OV5640 Camera Module</text>
+<text x="735" y="145" text-anchor="middle" class="info">5MP 160-degree Wide Angle</text>
+<text x="735" y="165" text-anchor="middle" class="ref">Connected via 24-pin FPC ribbon (J5)</text>
+<line x1="500" y1="130" x2="620" y2="130" stroke="#27ae60" stroke-width="2.5" stroke-linecap="round"/>
+<text x="510" y="126" class="pin-label">GPIO1 (SDA)</text>
+<text x="625" y="134" class="pin-label">I2C Data</text>
+<line x1="500" y1="155" x2="620" y2="155" stroke="#27ae60" stroke-width="2.5" stroke-linecap="round"/>
+<text x="510" y="151" class="pin-label">GPIO2 (SCL)</text>
+<text x="625" y="159" class="pin-label">I2C Clock</text>
+<line x1="500" y1="180" x2="620" y2="180" stroke="#27ae60" stroke-width="2.5" stroke-linecap="round"/>
+<text x="510" y="176" class="pin-label">GPIO4 (VSYNC)</text>
+<text x="625" y="184" class="pin-label">Frame Sync</text>
+<line x1="500" y1="200" x2="620" y2="200" stroke="#27ae60" stroke-width="2.5" stroke-linecap="round"/>
+<text x="510" y="196" class="pin-label">GPIO5 (HREF)</text>
+<text x="625" y="204" class="pin-label">Line Valid</text>
+<line x1="500" y1="220" x2="620" y2="220" stroke="#27ae60" stroke-width="2.5" stroke-linecap="round"/>
+<text x="510" y="216" class="pin-label">GPIO6 (PCLK)</text>
+<text x="625" y="224" class="pin-label">Pixel Clock</text>
+<line x1="500" y1="240" x2="620" y2="240" stroke="#27ae60" stroke-width="2.5" stroke-linecap="round"/>
+<text x="510" y="236" class="pin-label">GPIO7 (XCLK)</text>
+<text x="625" y="244" class="pin-label">20MHz Ref</text>
+<line x1="500" y1="265" x2="620" y2="265" stroke="#27ae60" stroke-width="2.5" stroke-linecap="round"/>
+<text x="510" y="261" class="pin-label">D2-D9</text>
+<text x="625" y="269" class="pin-label">8-bit Data</text>
+<text x="555" y="115" class="ref">R11, R12 (4.7K pull-ups to 3.3V)</text>
+<line x1="540" y1="120" x2="550" y2="120" stroke="#2c3e50" stroke-width="2"/>
+<rect x="550" y="114" width="30" height="12" fill="#ffe4b5" stroke="#2c3e50" stroke-width="1.5" rx="2"/>
+<line x1="580" y1="120" x2="590" y2="120" stroke="#2c3e50" stroke-width="2"/>
+<circle cx="540" cy="120" r="3" fill="#2c3e50"/>
+<circle cx="590" cy="120" r="3" fill="#2c3e50"/>
+<text x="565" y="123" text-anchor="middle" class="value" style="font-size:8px">4.7K</text>
+<line x1="540" y1="140" x2="550" y2="140" stroke="#2c3e50" stroke-width="2"/>
+<rect x="550" y="134" width="30" height="12" fill="#ffe4b5" stroke="#2c3e50" stroke-width="1.5" rx="2"/>
+<line x1="580" y1="140" x2="590" y2="140" stroke="#2c3e50" stroke-width="2"/>
+<circle cx="540" cy="140" r="3" fill="#2c3e50"/>
+<circle cx="590" cy="140" r="3" fill="#2c3e50"/>
+<text x="565" y="143" text-anchor="middle" class="value" style="font-size:8px">4.7K</text>
+<text x="735" y="285" text-anchor="middle" class="info">Powered by 3.3V rail</text>
+<rect x="40" y="360" width="250" height="150" fill="#fadbd8" stroke="#e74c3c" stroke-width="2" rx="6"/>
+<text x="165" y="390" text-anchor="middle" class="comp-label" style="font-size:14px">Safety Interlock Circuit</text>
+<text x="60" y="420" class="info">3.3V ---[R15 10K]---+--- GPIO47</text>
+<text x="60" y="440" class="info">                    |</text>
+<text x="60" y="460" class="info">                   SW3 (lid switch)</text>
+<text x="60" y="480" class="info">                    |</text>
+<text x="60" y="500" class="info">                   GND</text>
+<line x1="350" y1="440" x2="290" y2="440" stroke="#27ae60" stroke-width="2.5" stroke-linecap="round"/>
+<text x="315" y="435" class="pin-label">GPIO47</text>
+<text x="165" y="420" text-anchor="middle" class="warning">Lid ON = LOW = SAFE</text>
+<text x="165" y="438" text-anchor="middle" class="warning">Lid OFF = HIGH = LASER KILLED</text>
+<rect x="620" y="360" width="230" height="140" fill="#d5f5e3" stroke="#27ae60" stroke-width="2" rx="6"/>
+<text x="735" y="390" text-anchor="middle" class="comp-label" style="font-size:14px">Status LED (WS2812B)</text>
+<line x1="500" y1="460" x2="620" y2="460" stroke="#27ae60" stroke-width="2.5" stroke-linecap="round"/>
+<text x="520" y="455" class="pin-label">GPIO48</text>
+<text x="625" y="465" class="pin-label">DIN</text>
+<circle cx="640" cy="415" r="6" fill="#27ae60"/>
+<text x="655" y="419" class="pin-label">Green = Ready</text>
+<circle cx="640" cy="435" r="6" fill="#2980b9"/>
+<text x="655" y="439" class="pin-label">Blue = Connected/Projecting</text>
+<circle cx="640" cy="455" r="6" fill="#f39c12"/>
+<text x="655" y="459" class="pin-label">Amber = Calibrating</text>
+<circle cx="640" cy="475" r="6" fill="#e74c3c"/>
+<text x="655" y="479" class="pin-label">Red = Error</text>
+<text x="735" y="500" text-anchor="middle" class="warning">Match notched corner to PCB marking!</text>
+</svg>

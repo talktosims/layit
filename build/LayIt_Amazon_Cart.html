@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LayIt Laser BOM — Amazon Shopping List</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0f1115; color: #e0e0e0; padding: 24px; }
+  h1 { font-size: 1.6rem; margin-bottom: 6px; color: #fff; }
+  .subtitle { color: #888; margin-bottom: 24px; font-size: 0.9rem; }
+  .section { margin-bottom: 32px; }
+  .section-title { font-size: 1.1rem; font-weight: 700; color: #ff9900; margin-bottom: 12px; padding-bottom: 6px; border-bottom: 1px solid #333; }
+  .item { display: flex; align-items: center; gap: 12px; padding: 12px 16px; margin-bottom: 6px; background: #1a1d23; border-radius: 8px; transition: background 0.15s; }
+  .item:hover { background: #22262e; }
+  .check { width: 20px; height: 20px; border: 2px solid #555; border-radius: 4px; cursor: pointer; flex-shrink: 0; display: flex; align-items: center; justify-content: center; transition: all 0.15s; }
+  .check.checked { background: #ff9900; border-color: #ff9900; }
+  .check.checked::after { content: '✓'; color: #000; font-weight: 700; font-size: 14px; }
+  .item.checked-item { opacity: 0.4; }
+  .info { flex: 1; min-width: 0; }
+  .name { font-weight: 600; font-size: 0.95rem; color: #fff; }
+  .spec { font-size: 0.8rem; color: #999; margin-top: 2px; }
+  .note { font-size: 0.75rem; color: #c9871a; margin-top: 2px; font-style: italic; }
+  .price { font-size: 0.85rem; color: #999; white-space: nowrap; min-width: 60px; text-align: right; }
+  .search-btn { background: #ff9900; color: #000; border: none; padding: 8px 14px; border-radius: 6px; font-weight: 600; font-size: 0.8rem; cursor: pointer; white-space: nowrap; text-decoration: none; flex-shrink: 0; transition: background 0.15s; }
+  .search-btn:hover { background: #ffad33; }
+  .search-btn.alt { background: #e44d26; color: #fff; }
+  .search-btn.alt:hover { background: #f06040; }
+  .search-btn.digikey { background: #cc0000; color: #fff; }
+  .search-btn.digikey:hover { background: #e02020; }
+  .totals { background: #1a1d23; border-radius: 8px; padding: 16px 20px; margin-top: 24px; }
+  .totals h3 { color: #ff9900; margin-bottom: 8px; }
+  .totals p { color: #ccc; font-size: 0.9rem; margin: 4px 0; }
+  .legend { display: flex; gap: 16px; margin-bottom: 20px; flex-wrap: wrap; }
+  .legend-item { display: flex; align-items: center; gap: 6px; font-size: 0.8rem; color: #999; }
+  .legend-dot { width: 12px; height: 12px; border-radius: 3px; }
+  .legend-dot.amazon { background: #ff9900; }
+  .legend-dot.ali { background: #e44d26; }
+  .legend-dot.digikey { background: #cc0000; }
+  .progress { margin-bottom: 20px; }
+  .progress-bar { height: 6px; background: #333; border-radius: 3px; overflow: hidden; }
+  .progress-fill { height: 100%; background: #ff9900; border-radius: 3px; transition: width 0.3s; }
+  .progress-text { font-size: 0.8rem; color: #888; margin-top: 4px; }
+</style>
+</head>
+<body>
+
+<h1>LayIt Laser — BOM Shopping List</h1>
+<p class="subtitle">Click each button to search on the respective store. Check items off as you add them to your cart.</p>
+
+<div class="legend">
+  <div class="legend-item"><div class="legend-dot amazon"></div> Amazon</div>
+  <div class="legend-item"><div class="legend-dot ali"></div> AliExpress / Laserland</div>
+  <div class="legend-item"><div class="legend-dot digikey"></div> DigiKey / Mouser</div>
+</div>
+
+<div class="progress">
+  <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+  <div class="progress-text" id="progressText">0 / 0 items added to cart</div>
+</div>
+
+<!-- FLAGSHIP CORE -->
+<div class="section">
+  <div class="section-title">Core Components (Flagship Model)</div>
+
+  <div class="item" data-id="1">
+    <div class="check" onclick="toggle(this)"></div>
+    <div class="info">
+      <div class="name">#1 — ESP32-S3-WROOM-1 N16R8</div>
+      <div class="spec">16MB Flash, 8MB PSRAM — Main MCU</div>
+    </div>
+    <div class="price">$8-12</div>
+    <a class="search-btn" href="https://www.amazon.com/s?k=ESP32-S3-WROOM-1+N16R8+development+board" target="_blank">Amazon</a>
+  </div>
+
+  <div class="item" data-id="2">
+    <div class="check" onclick="toggle(this)"></div>
+    <div class="info">
+      <div class="name">#2 — Galvanometer Scanner Set + Driver</div>
+      <div class="spec">20K PPS, dual-axis XY galvo with mirrors &amp; driver board</div>
+      <div class="note">Best price on AliExpress (2-4 week shipping)</div>
+    </div>
+    <div class="price">$45-65</div>
+    <a class="search-btn alt" href="https://www.aliexpress.com/w/wholesale-20kpps-galvo-scanner-set-ILDA.html" target="_blank">AliExpress</a>
+  </div>
+
+  <div class="item" data-id="3">
+    <div class="check" onclick="toggle(this)"></div>
+    <div class="info">
+      <div class="name">#3 — Laser Module (520nm 200mW)</div>
+      <div class="spec">Laserland 4060-530D-200 — 12V, TTL 15kHz, DOT pattern</div>
+      <div class="note">Buy directly from Laserland — ~$38</div>
+    </div>
+    <div class="price">$35-45</div>
+    <a class="search-btn alt" href="https://www.laserlands.net/diode-laser-module/500nm-green-laser-module/520nm-laser-module/4060-530d-200-12v-ttl.html" target="_blank">Laserland</a>
+  </div>
+
+  <div class="item" data-id="4">
+    <div class="check" onclick="toggle(this)"></div>
+    <div class="info">
+      <div class="name">#4 — OV5640 Camera Module</div>
+      <div class="spec">5MP, 160° wide-angle, DVP interface, 24-pin FPC</div>
+      <div class="note">Best price on AliExpress (2-3 week shipping)</div>
+    </div>
+    <div class="price">$15-30</div>
+    <a class="search-btn alt" href="https://www.aliexpress.com/w/wholesale-OV5640-wide-angle-DVP-module.html" target="_blank">AliExpress</a>
+  </div>
+
+  <div class="item" data-id="5">
+    <div class="check" onclick="toggle(this)"></div>
+    <div class="info">
+      <div class="name">#5 — MCP4822 Dual 12-bit DAC</div>
+      <div class="spec">SPI, DIP-8 — Channel A=Galvo X, Channel B=Galvo Y</div>
+    </div>
+    <div class="price">$3-5</div>
+    <a class="search-btn" href="https://www.amazon.com/s?k=MCP4822+DIP-8+DAC" target="_blank">Amazon</a>
+  </div>
+
+  <div class="item" data-id="6">
+    <div class="check" onclick="toggle(this)"></div>
+    <div class="info">
+      <div class="name">#6 — TL072 Dual Op-Amp</div>
+      <div class="spec">JFET-input, DIP-8 — Buffer for DAC → Galvo signals</div>
+    </div>
+    <div class="price">$1-2</div>
+    <a class="search-btn" href="https://www.amazon.com/s?k=TL072+DIP+op+amp" target="_blank">Amazon</a>
+  </div>
+
+  <div class="item" data-id="7">
+    <div class="check" onclick="toggle(this)"></div>
+    <div class="info">
+      <div class="name">#7 — 12V 3A DC Power Adapter</div>
+      <div class="spec">5.5mm x 2.1mm barrel jack, center-positive</div>
+    </div>
+    <div class="price">$8-12</div>
+    <a class="search-btn" href="https://www.amazon.com/s?k=12V+3A+DC+power+adapter+5.5x2.1mm+barrel+jack" target="_blank">Amazon</a>
+  </div>
+
+  <div class="item" data-id="8">
+    <div class="check" onclick="toggle(this)"></div>
+    <div class="info">
+      <div class="name">#8 — Voltage Regulators (AMS1117 5V + 3.3V)</div>
+      <div class="spec">AMS1117-5.0 and AMS1117-3.3 LDO regulators</div>
+    </div>
+    <div class="price">$2-3</div>
+    <a class="search-btn" href="https://www.amazon.com/s?k=AMS1117+5V+3.3V+voltage+regulator+kit" target="_blank">Amazon</a>
+  </div>
+
+  <div class="item" data-id="9">
+    <div class="check" onclick="toggle(this)"></div>
+    <div class="info">
+      <div class="name">#9 — Aluminum Project Enclosure</div>
+      <div class="spec">~6" x 4" x 3", vented, needs drilling for connectors</div>
+    </div>
+    <div class="price">$25-35</div>
+    <a class="search-btn" href="https://www.amazon.com/s?k=aluminum+project+enclosure+box+6x4x3" target="_blank">Amazon</a>
+  </div>
+
+  <div class="item" data-id="10">
+    <div class="check" onclick="toggle(this)"></div>
+    <div class="info">
+      <div class="name">#10 — Tripod Mount Insert</div>
+      <div class="spec">1/4"-20 brass threaded insert (press-fit or epoxy)</div>
+    </div>
+    <div class="price">$1-2</div>
+    <a class="search-btn" href="https://www.amazon.com/s?k=1%2F4-20+brass+threaded+insert+tripod+mount" target="_blank">Amazon</a>
+  </div>
+
+  <div class="item" data-id="11">
+    <div class="check" onclick="toggle(this)"></div>
+    <div class="info">
+      <div class="name">#11 — MPU6050 IMU Module (GY-521)</div>
+      <div class="spec">6-axis accelerometer/gyro, I2C — Bump detection</div>
+    </div>
+    <div class="price">$2-3</div>
+    <a class="search-btn" href="https://www.amazon.com/s?k=MPU6050+GY-521+module+accelerometer" target="_blank">Amazon</a>
+  </div>
+
+  <div class="item" data-id="12">
+    <div class="check" onclick="toggle(this)"></div>
+    <div class="info">
+      <div class="name">#12 — 2N7000 N-Channel MOSFET</div>
+      <div class="spec">TO-92 — Level shifter for ESP32 3.3V → 12V laser TTL</div>
+    </div>
+    <div class="price">$1-2</div>
+    <a class="search-btn" href="https://www.amazon.com/s?k=2N7000+N-channel+MOSFET+TO-92" target="_blank">Amazon</a>
+  </div>
+
+  <div class="item" data-id="13">
+    <div class="check" onclick="toggle(this)"></div>
+    <div class="info">
+      <div class="name">#13 — Schottky Diode SS34 (3A 40V)</div>
+      <div class="spec">Reverse polarity protection on 12V input</div>
+    </div>
+    <div class="price">$1</div>
+    <a class="search-btn" href="https://www.amazon.com/s?k=SS34+schottky+diode+SMA" target="_blank">Amazon</a>
+  </div>
+
+  <div class="item" data-id="14">
+    <div class="check" onclick="toggle(this)"></div>
+    <div class="info">
+      <div class="name">#14 — USB-C Cable (for debug/firmware)</div>
+      <div class="spec">USB-C to USB-A/C, 6ft</div>
+    </div>
+    <div class="price">$5</div>
+    <a class="search-btn" href="https://www.amazon.com/s?k=USB+C+cable+6ft+data+transfer" target="_blank">Amazon</a>
+  </div>
+</div>
+
+<!-- PASSIVE COMPONENTS & MISC -->
+<div class="section">
+  <div class="section-title">Passive Components &amp; Misc Electronics</div>
+
+  <div class="item" data-id="20">
+    <div class="check" onclick="toggle(this)"></div>
+    <div class="info">
+      <div class="name">Resistor Assortment Kit (0805 SMD)</div>
+      <div class="spec">Need: 10K x5, 5.1K x2, 24K x2, 4.7K x3, 100R x1</div>
+    </div>
+    <div class="price">$6-8</div>
+    <a class="search-btn" href="https://www.amazon.com/s?k=0805+SMD+resistor+assortment+kit" target="_blank">Amazon</a>
+  </div>
+
+  <div class="item" data-id="21">
+    <div class="check" onclick="toggle(this)"></div>
+    <div class="info">
+      <div class="name">Capacitor Kit (0805 SMD)</div>
+      <div class="spec">Need: 100nF x8, 10uF x1, 22uF x2, plus 470uF 25V electrolytic x1</div>
+    </div>
+    <div class="price">$6-8</div>
+    <a class="search-btn" href="https://www.amazon.com/s?k=0805+SMD+capacitor+assortment+kit+100nF+10uF" target="_blank">Amazon</a>
+  </div>
+
+  <div class="item" data-id="22">
+    <div class="check" onclick="toggle(this)"></div>
+    <div class="info">
+      <div class="name">470uF 25V Electrolytic Capacitor</div>
+      <div class="spec">Radial, bulk input filter for 12V rail</div>
+    </div>
+    <div class="price">$1</div>
+    <a class="search-btn" href="https://www.amazon.com/s?k=470uF+25V+electrolytic+capacitor+radial" target="_blank">Amazon</a>
+  </div>
+
+  <div class="item" data-id="23">
+    <div class="check" onclick="toggle(this)"></div>
+    <div class="info">
+      <div class="name">PTC Resettable Fuse (3A)</div>
+      <div class="spec">MF-R300, 1206 SMD — Overcurrent protection</div>
+    </div>
+    <div class="price">$1</div>
+    <a class="search-btn" href="https://www.amazon.com/s?k=PTC+resettable+fuse+3A+1206+SMD" target="_blank">Amazon</a>
+  </div>
+
+  <div class="item" data-id="24">
+    <div class="check" onclick="toggle(this)"></div>
+    <div class="info">
+      <div class="name">WS2812B RGB LED</div>
+      <div class="spec">Addressable, PLCC-4 5x5mm — Status indicator</div>
+    </div>
+    <div class="price">$1</div>
+    <a class="search-btn" href="https://www.amazon.com/s?k=WS2812B+individual+LED+5050+SMD" target="_blank">Amazon</a>
+  </div>
+
+  <div class="item" data-id="25">
+    <div class="check" onclick="toggle(this)"></div>
+    <div class="info">
+      <div class="name">PCB Prototype Board Kit</div>
+      <div class="spec">Double-sided, various sizes</div>
+    </div>
+    <div class="price">$5-8</div>
+    <a class="search-btn" href="https://www.amazon.com/s?k=PCB+prototype+board+kit+double+sided" target="_blank">Amazon</a>
+  </div>
+
+  <div class="item" data-id="26">
+    <div class="check" onclick="toggle(this)"></div>
+    <div class="info">
+      <div class="name">JST-XH Connector Assortment</div>
+      <div class="spec">2.5mm pitch — Need 3-pin (laser) + 6-pin (galvo) headers</div>
+    </div>
+    <div class="price">$5-8</div>
+    <a class="search-btn" href="https://www.amazon.com/s?k=JST+XH+connector+assortment+kit+2.5mm" target="_blank">Amazon</a>
+  </div>
+
+  <div class="item" data-id="27">
+    <div class="check" onclick="toggle(this)"></div>
+    <div class="info">
+      <div class="name">DC Barrel Jack (5.5x2.1mm)</div>
+      <div class="spec">Panel mount, through-hole — 12V power input</div>
+    </div>
+    <div class="price">$1</div>
+    <a class="search-btn" href="https://www.amazon.com/s?k=DC+barrel+jack+5.5x2.1mm+panel+mount" target="_blank">Amazon</a>
+  </div>
+
+  <div class="item" data-id="28">
+    <div class="check" onclick="toggle(this)"></div>
+    <div class="info">
+      <div class="name">Tactile Push Buttons (6x6mm)</div>
+      <div class="spec">Need 2: BOOT + RESET buttons for ESP32-S3</div>
+    </div>
+    <div class="price">$1</div>
+    <a class="search-btn" href="https://www.amazon.com/s?k=tactile+push+button+6x6mm+through+hole" target="_blank">Amazon</a>
+  </div>
+
+  <div class="item" data-id="29">
+    <div class="check" onclick="toggle(this)"></div>
+    <div class="info">
+      <div class="name">Safety Interlock Microswitch</div>
+      <div class="spec">Normally Closed, panel mount lever — Lid switch</div>
+    </div>
+    <div class="price">$1-2</div>
+    <a class="search-btn" href="https://www.amazon.com/s?k=microswitch+normally+closed+lever+panel+mount" target="_blank">Amazon</a>
+  </div>
+
+  <div class="item" data-id="30">
+    <div class="check" onclick="toggle(this)"></div>
+    <div class="info">
+      <div class="name">Dupont Jumper Wires + Headers</div>
+      <div class="spec">Male/female headers, jumper wire kit for prototyping</div>
+    </div>
+    <div class="price">$5</div>
+    <a class="search-btn" href="https://www.amazon.com/s?k=dupont+jumper+wire+kit+male+female+headers" target="_blank">Amazon</a>
+  </div>
+
+  <div class="item" data-id="31">
+    <div class="check" onclick="toggle(this)"></div>
+    <div class="info">
+      <div class="name">Standoffs + Screws Kit (M3)</div>
+      <div class="spec">M3 brass/nylon standoff assortment for PCB mounting</div>
+    </div>
+    <div class="price">$5</div>
+    <a class="search-btn" href="https://www.amazon.com/s?k=M3+standoff+screw+kit+brass+nylon+PCB" target="_blank">Amazon</a>
+  </div>
+
+  <div class="item" data-id="32">
+    <div class="check" onclick="toggle(this)"></div>
+    <div class="info">
+      <div class="name">Laser Safety Glasses (OD4+ 520nm)</div>
+      <div class="spec">Class 3B protection required for 200mW green laser</div>
+    </div>
+    <div class="price">$15-25</div>
+    <a class="search-btn" href="https://www.amazon.com/s?k=laser+safety+glasses+OD4+520nm+green" target="_blank">Amazon</a>
+  </div>
+</div>
+
+<!-- PRO MODEL ADDITIONS -->
+<div class="section">
+  <div class="section-title">Pro Model Additions (Battery System) — Skip for Flagship only</div>
+
+  <div class="item" data-id="40">
+    <div class="check" onclick="toggle(this)"></div>
+    <div class="info">
+      <div class="name">#14 — USB-C PD Trigger Board</div>
+      <div class="spec">12V output, PD3.0 negotiation — For charging</div>
+    </div>
+    <div class="price">$5-8</div>
+    <a class="search-btn" href="https://www.amazon.com/s?k=USB+C+PD+trigger+board+12V+output" target="_blank">Amazon</a>
+  </div>
+
+  <div class="item" data-id="41">
+    <div class="check" onclick="toggle(this)"></div>
+    <div class="info">
+      <div class="name">#15 — 3S LiPo Battery Pack (x2)</div>
+      <div class="spec">11.1V 3000mAh, XT30 connector — Pro ships with 2 packs</div>
+    </div>
+    <div class="price">$30-50</div>
+    <a class="search-btn" href="https://www.amazon.com/s?k=3S+11.1V+3000mAh+LiPo+battery+XT30" target="_blank">Amazon</a>
+  </div>
+
+  <div class="item" data-id="42">
+    <div class="check" onclick="toggle(this)"></div>
+    <div class="info">
+      <div class="name">#16 — 3S Battery BMS Board</div>
+      <div class="spec">12.6V, 20A, with balance charging</div>
+    </div>
+    <div class="price">$5-8</div>
+    <a class="search-btn" href="https://www.amazon.com/s?k=3S+BMS+board+12.6V+20A+balance+charging" target="_blank">Amazon</a>
+  </div>
+
+  <div class="item" data-id="43">
+    <div class="check" onclick="toggle(this)"></div>
+    <div class="info">
+      <div class="name">#17 — Battery Sled / Bay Housing</div>
+      <div class="spec">Removable housing with spring contacts, tool-free</div>
+      <div class="note">May need to 3D print or custom fabricate</div>
+    </div>
+    <div class="price">$8-12</div>
+    <a class="search-btn" href="https://www.amazon.com/s?k=battery+holder+sled+spring+contact+11.1V" target="_blank">Amazon</a>
+  </div>
+
+  <div class="item" data-id="44">
+    <div class="check" onclick="toggle(this)"></div>
+    <div class="info">
+      <div class="name">#18 — USB-C Li-ion Charger Board</div>
+      <div class="spec">12.6V 3S charger, CC/CV, 2A charge rate</div>
+    </div>
+    <div class="price">$5-8</div>
+    <a class="search-btn" href="https://www.amazon.com/s?k=3S+lithium+battery+charger+board+12.6V+USB+C" target="_blank">Amazon</a>
+  </div>
+
+  <div class="item" data-id="45">
+    <div class="check" onclick="toggle(this)"></div>
+    <div class="info">
+      <div class="name">#19 — Battery Level LED Indicator</div>
+      <div class="spec">3S voltage display, panel mount</div>
+    </div>
+    <div class="price">$2-3</div>
+    <a class="search-btn" href="https://www.amazon.com/s?k=3S+battery+level+indicator+LED+voltage+display" target="_blank">Amazon</a>
+  </div>
+
+  <div class="item" data-id="46">
+    <div class="check" onclick="toggle(this)"></div>
+    <div class="info">
+      <div class="name">#20 — DC-DC Buck Converter</div>
+      <div class="spec">12V stable output from 9-12.6V battery range</div>
+    </div>
+    <div class="price">$3-5</div>
+    <a class="search-btn" href="https://www.amazon.com/s?k=DC+DC+buck+converter+12V+output+adjustable" target="_blank">Amazon</a>
+  </div>
+
+  <div class="item" data-id="47">
+    <div class="check" onclick="toggle(this)"></div>
+    <div class="info">
+      <div class="name">#21 — Schottky Diode + Relay (Power Priority)</div>
+      <div class="spec">Auto-switchover between wall power and battery</div>
+    </div>
+    <div class="price">$2-3</div>
+    <a class="search-btn" href="https://www.amazon.com/s?k=schottky+diode+5V+relay+module+power+switchover" target="_blank">Amazon</a>
+  </div>
+
+  <div class="item" data-id="48">
+    <div class="check" onclick="toggle(this)"></div>
+    <div class="info">
+      <div class="name">#23 — USB-C PD Cable (6ft)</div>
+      <div class="spec">100W PD capable, braided — For charging</div>
+    </div>
+    <div class="price">$5-8</div>
+    <a class="search-btn" href="https://www.amazon.com/s?k=USB+C+PD+cable+100W+6ft+braided" target="_blank">Amazon</a>
+  </div>
+</div>
+
+<div class="totals">
+  <h3>Estimated Totals</h3>
+  <p><strong>Flagship BOM:</strong> ~$237 - $308</p>
+  <p><strong>Pro BOM:</strong> ~$302 - $413 (adds battery system)</p>
+  <p style="margin-top: 8px; color: #888; font-size: 0.8rem;">Note: Galvo set, laser module, and camera are best sourced from AliExpress/Laserland for price. Amazon links provided as alternatives.</p>
+</div>
+
+<script>
+function toggle(el) {
+  el.classList.toggle('checked');
+  el.closest('.item').classList.toggle('checked-item');
+  updateProgress();
+  saveState();
+}
+
+function updateProgress() {
+  const total = document.querySelectorAll('.check').length;
+  const checked = document.querySelectorAll('.check.checked').length;
+  const pct = total ? Math.round((checked / total) * 100) : 0;
+  document.getElementById('progressFill').style.width = pct + '%';
+  document.getElementById('progressText').textContent = checked + ' / ' + total + ' items added to cart';
+}
+
+function saveState() {
+  const checked = [];
+  document.querySelectorAll('.item').forEach(item => {
+    if (item.querySelector('.check.checked')) checked.push(item.dataset.id);
+  });
+  localStorage.setItem('layit-bom-checked', JSON.stringify(checked));
+}
+
+function loadState() {
+  try {
+    const checked = JSON.parse(localStorage.getItem('layit-bom-checked') || '[]');
+    checked.forEach(id => {
+      const item = document.querySelector('.item[data-id="' + id + '"]');
+      if (item) {
+        item.querySelector('.check').classList.add('checked');
+        item.classList.add('checked-item');
+      }
+    });
+  } catch(e) {}
+  updateProgress();
+}
+
+loadState();
+</script>
+</body>
+</html>

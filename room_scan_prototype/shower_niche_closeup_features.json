@@ -1,0 +1,41 @@
+{
+  "wall_depth_m": 0.587,
+  "features": {
+    "niche": [
+      {
+        "width_inches": 17.7,
+        "height_inches": 14.2,
+        "recess_depth_inches": 6.7,
+        "center_x_inches_from_center": -0.4,
+        "center_y_inches_from_center": -1.0,
+        "width_m": 0.449,
+        "height_m": 0.36,
+        "recess_depth_m": 0.17,
+        "fill_ratio": 0.99,
+        "pixel_bounds": {
+          "x_min": 300,
+          "x_max": 2612,
+          "y_min": 963,
+          "y_max": 2816
+        },
+        "classification": "shower_niche",
+        "confidence": "high"
+      }
+    ]
+  },
+  "constraints": [
+    {
+      "type": "fixed",
+      "feature": "shower_niche",
+      "width_inches": 17.7,
+      "height_inches": 14.2,
+      "recess_depth_inches": 6.7,
+      "position_x_from_center_inches": -0.4,
+      "position_y_from_center_inches": -1.0,
+      "confidence": "high",
+      "requires_grout_alignment": true,
+      "auto_detected": true
+    }
+  ],
+  "note": "Constraints with requires_grout_alignment=true are fixed constraints that the tile layout must align to. Auto-correction will check these before shifting the pattern."
+}

@@ -5918,29 +5918,30 @@ var TILE_PRESETS = [
     // Diamond mosaic
     {name:'1" Diamond Mosaic (12×12)', shape:'mosaic', nomW:12, nomH:12, actW:11.75, actH:11.75, grout:0.125,
      subShape:'diamond', subW:1, subH:1, subGr:0.0625},
-    // Exotic shapes
+    // Exotic shapes — simple geometry (these work)
     {name:'Rhombus 3D Cube (11×10)', shape:'mosaic', nomW:11, nomH:10, actW:11, actH:10, grout:0.125,
      subShape:'rhombus', subW:2, subH:3, subGr:0.0625},
     {name:'Triangle Mosaic (12×12)', shape:'mosaic', nomW:12, nomH:12, actW:12, actH:12, grout:0.125,
      subShape:'triangle', subW:2, subH:1.73, subGr:0.0625},
     {name:'Capsule / Pill (12×12)', shape:'mosaic', nomW:12, nomH:12, actW:12, actH:12, grout:0.125,
-     subShape:'capsule', subW:1, subH:3, subGr:0.0625},
-    {name:'Quatrefoil Clover (12×12)', shape:'mosaic', nomW:12, nomH:12, actW:12, actH:12, grout:0.125,
-     subShape:'quatrefoil', subW:4, subH:4, subGr:0.125},
-    {name:'Ogee Provenzal (10×12)', shape:'mosaic', nomW:10, nomH:12, actW:10, actH:12, grout:0.125,
-     subShape:'ogee', subW:3.5, subH:6.5, subGr:0.125},
-    {name:'Star & Cross (12×12)', shape:'mosaic', nomW:12, nomH:12, actW:12, actH:12, grout:0.125,
-     subShape:'starcross', subW:4, subH:4, subGr:0.0625},
-    {name:'Kite Mosaic (11×12)', shape:'mosaic', nomW:11, nomH:12, actW:11, actH:12, grout:0.125,
-     subShape:'kite', subW:2, subH:4, subGr:0.0625},
-    {name:'Leaf / Teardrop (10×12)', shape:'mosaic', nomW:10, nomH:12, actW:10, actH:12, grout:0.125,
-     subShape:'leaf', subW:1.5, subH:4, subGr:0.0625},
-    {name:'Dragon Scale (12×12)', shape:'mosaic', nomW:12, nomH:12, actW:12, actH:12, grout:0.125,
-     subShape:'dragonscale', subW:2, subH:2.5, subGr:0.0625},
-    {name:'Chevron Wood-Look (2×8)', shape:'mosaic', nomW:12, nomH:12, actW:12, actH:12, grout:0.125,
-     subShape:'chevron', subW:2, subH:8, subGr:0.125},
-    {name:'Chevron Marble (3×6)', shape:'mosaic', nomW:12, nomH:12, actW:12, actH:12, grout:0.125,
-     subShape:'chevron', subW:3, subH:6, subGr:0.0625}
+     subShape:'capsule', subW:1, subH:3, subGr:0.0625}
+    // ── Complex patterns temporarily excluded until tessellation is verified ──
+    // {name:'Quatrefoil Clover (12×12)', shape:'mosaic', nomW:12, nomH:12, actW:12, actH:12, grout:0.125,
+    //  subShape:'quatrefoil', subW:4, subH:4, subGr:0.125},
+    // {name:'Ogee Provenzal (10×12)', shape:'mosaic', nomW:10, nomH:12, actW:10, actH:12, grout:0.125,
+    //  subShape:'ogee', subW:3.5, subH:6.5, subGr:0.125},
+    // {name:'Star & Cross (12×12)', shape:'mosaic', nomW:12, nomH:12, actW:12, actH:12, grout:0.125,
+    //  subShape:'starcross', subW:4, subH:4, subGr:0.0625},
+    // {name:'Kite Mosaic (11×12)', shape:'mosaic', nomW:11, nomH:12, actW:11, actH:12, grout:0.125,
+    //  subShape:'kite', subW:2, subH:4, subGr:0.0625},
+    // {name:'Leaf / Teardrop (10×12)', shape:'mosaic', nomW:10, nomH:12, actW:10, actH:12, grout:0.125,
+    //  subShape:'leaf', subW:1.5, subH:4, subGr:0.0625},
+    // {name:'Dragon Scale (12×12)', shape:'mosaic', nomW:12, nomH:12, actW:12, actH:12, grout:0.125,
+    //  subShape:'dragonscale', subW:2, subH:2.5, subGr:0.0625},
+    // {name:'Chevron Wood-Look (2×8)', shape:'mosaic', nomW:12, nomH:12, actW:12, actH:12, grout:0.125,
+    //  subShape:'chevron', subW:2, subH:8, subGr:0.125},
+    // {name:'Chevron Marble (3×6)', shape:'mosaic', nomW:12, nomH:12, actW:12, actH:12, grout:0.125,
+    //  subShape:'chevron', subW:3, subH:6, subGr:0.0625}
 ];
 
 var CUSTOM_PRESETS_KEY = 'layit-custom-presets';
@@ -8993,11 +8994,12 @@ function drawMosaicField(ox, oy, s, wall, voidPolys, patternOx, patternOy, projM
         stRowIn = subH * 0.5 + subGr;
         // Tiles in odd rows rotate 180° (handled in draw loop)
     } else if (subShape === 'starcross') {
-        // Star & Cross (p4m wallpaper group): 8-pointed stars interlock via tips,
-        // cross fillers sit at diagonal gaps between 4 stars.
-        // Stars placed at their width apart — tips interlock between cells.
-        stColIn = subW + subGr;
-        stRowIn = subH + subGr;
+        // Star & Cross: 4-pointed concave stars on square grid, tapered crosses at diagonals.
+        // Grid spacing must accommodate both star AND cross tiles.
+        // STAR_CELL_RATIO = star tip-to-tip / unit cell size.
+        var SC_RATIO = 0.78;
+        stColIn = subW / SC_RATIO;
+        stRowIn = subH / SC_RATIO;
     } else if (subShape === 'kite') {
         // Periodic kite: brick offset, alternating rows flip 180°
         stColIn = subW + subGr;
@@ -9175,16 +9177,13 @@ function drawMosaicField(ox, oy, s, wall, voidPolys, patternOx, patternOy, projM
                     [px - hw * 0.5, py + hh * 0.6], [px - hw, py + hh * 0.1],
                     [px - hw, py - hh * 0.2], [px - hw * 0.6, py - hh * 0.7]];
         } else if (subShape === 'starcross') {
-            // 8-pointed star — 16 vertices for precise hit testing
+            // 4-pointed star — 8 vertices for hit testing
             var R = Math.min(stWpx, stHpx) / 2;
-            var ri = R * 0.7654;
-            var pts = [];
-            for (var si = 0; si < 16; si++) {
-                var sa = si * Math.PI / 8 - Math.PI / 2;
-                var sr = (si % 2 === 0) ? R : ri;
-                pts.push([px + sr * Math.cos(sa), py + sr * Math.sin(sa)]);
-            }
-            return pts;
+            var inR = R * 0.42;
+            return [[px, py - R], [px + inR, py - inR],
+                    [px + R, py], [px + inR, py + inR],
+                    [px, py + R], [px - inR, py + inR],
+                    [px - R, py], [px - inR, py - inR]];
         } else if (subShape === 'kite') {
             var hw = stWpx / 2, hh = stHpx / 2;
             var topH = hh * 0.3;
@@ -9388,16 +9387,19 @@ function drawMosaicField(ox, oy, s, wall, voidPolys, patternOx, patternOy, projM
                              px, py - hh);
             cx.closePath();
         } else if (subShape === 'starcross') {
-            // 8-pointed star — Islamic geometric construction (two overlapping squares)
-            // 16-vertex polygon: 8 tips at R, 8 notches at ri = R * √(2-√2) = R * 0.7654
+            // 4-pointed star with straight concave sides
+            // 8 vertices: 4 tips at cardinal directions, 4 inner notches at diagonals
             var R = Math.min(stWpx, stHpx) / 2 - stGrPx / 2;
-            var ri = R * 0.7654;
-            cx.moveTo(px, py - R);
-            for (var si = 1; si < 16; si++) {
-                var sa = si * Math.PI / 8 - Math.PI / 2;
-                var sr = (si % 2 === 0) ? R : ri;
-                cx.lineTo(px + sr * Math.cos(sa), py + sr * Math.sin(sa));
-            }
+            var SC_K = 0.42; // concavity ratio
+            var inR = R * SC_K;
+            cx.moveTo(px, py - R);           // top tip
+            cx.lineTo(px + inR, py - inR);   // inner upper-right
+            cx.lineTo(px + R, py);           // right tip
+            cx.lineTo(px + inR, py + inR);   // inner lower-right
+            cx.lineTo(px, py + R);           // bottom tip
+            cx.lineTo(px - inR, py + inR);   // inner lower-left
+            cx.lineTo(px - R, py);           // left tip
+            cx.lineTo(px - inR, py - inR);   // inner upper-left
             cx.closePath();
         } else if (subShape === 'kite') {
             // 4-sided kite: narrow top, wide middle, pointed bottom
@@ -9697,7 +9699,7 @@ function drawMosaicField(ox, oy, s, wall, voidPolys, patternOx, patternOy, projM
                 }
             }
 
-            // Star & Cross: draw cross tile (mathematically derived complement)
+            // Star & Cross: draw tapered cross tile (complement of 4-pointed star)
             if (subShape === 'starcross') {
                 var crossX = px + stColPx / 2;
                 var crossY = py + stRowPx / 2;
@@ -9707,23 +9709,31 @@ function drawMosaicField(ox, oy, s, wall, voidPolys, patternOx, patternOy, projM
                         cx.fillStyle = isCut ? '#FF9800' : '#81C784';
                         cx.strokeStyle = isCut ? '#E65100' : '#2E7D32';
                         cx.lineWidth = 0.5;
-                        // Cross — 12-vertex + polygon, arm width from star's sin(π/8) geometry
+                        // Cross geometry derived from star: tapered arms fill concavities
                         var cR = Math.min(stWpx, stHpx) / 2 - stGrPx / 2;
-                        var armHW = cR * 0.383; // sin(π/8), matches star notch spacing
-                        var armHL = cR * 0.92;
+                        var cK = 0.42; // must match star's concavity
+                        var cInR = cR * cK;
+                        var cS = stColPx;
+                        var armBase = cS / 2 - cInR - stGrPx / 2; // wide end at notch
+                        var armTip = Math.max(cS / 2 - cR + stGrPx / 2, 1); // narrow end at star tips
+                        var armLen = cS / 2 - stGrPx / 2; // arm length from center
                         cx.beginPath();
-                        cx.moveTo(crossX - armHW, crossY - armHL);
-                        cx.lineTo(crossX + armHW, crossY - armHL);
-                        cx.lineTo(crossX + armHW, crossY - armHW);
-                        cx.lineTo(crossX + armHL, crossY - armHW);
-                        cx.lineTo(crossX + armHL, crossY + armHW);
-                        cx.lineTo(crossX + armHW, crossY + armHW);
-                        cx.lineTo(crossX + armHW, crossY + armHL);
-                        cx.lineTo(crossX - armHW, crossY + armHL);
-                        cx.lineTo(crossX - armHW, crossY + armHW);
-                        cx.lineTo(crossX - armHL, crossY + armHW);
-                        cx.lineTo(crossX - armHL, crossY - armHW);
-                        cx.lineTo(crossX - armHW, crossY - armHW);
+                        // N arm
+                        cx.moveTo(crossX - armBase, crossY - armBase);   // NW notch
+                        cx.lineTo(crossX - armTip, crossY - armLen);     // N tip left
+                        cx.lineTo(crossX + armTip, crossY - armLen);     // N tip right
+                        cx.lineTo(crossX + armBase, crossY - armBase);   // NE notch
+                        // E arm
+                        cx.lineTo(crossX + armLen, crossY - armTip);     // E tip top
+                        cx.lineTo(crossX + armLen, crossY + armTip);     // E tip bottom
+                        cx.lineTo(crossX + armBase, crossY + armBase);   // SE notch
+                        // S arm
+                        cx.lineTo(crossX + armTip, crossY + armLen);     // S tip right
+                        cx.lineTo(crossX - armTip, crossY + armLen);     // S tip left
+                        cx.lineTo(crossX - armBase, crossY + armBase);   // SW notch
+                        // W arm
+                        cx.lineTo(crossX - armLen, crossY + armTip);     // W tip bottom
+                        cx.lineTo(crossX - armLen, crossY - armTip);     // W tip top
                         cx.closePath();
                         cx.fill();
                         cx.stroke();

@@ -1,0 +1,74 @@
+{
+  "wall_depth_m": 1.667,
+  "features": {
+    "niche": [
+      {
+        "width_inches": 27.7,
+        "height_inches": 37.3,
+        "recess_depth_inches": 3.6,
+        "center_x_inches_from_center": 12.2,
+        "center_y_inches_from_center": 14.3,
+        "width_m": 0.703,
+        "height_m": 0.947,
+        "recess_depth_m": 0.093,
+        "fill_ratio": 0.62,
+        "pixel_bounds": {
+          "x_min": 1431,
+          "x_max": 2784,
+          "y_min": 1805,
+          "y_max": 3628
+        },
+        "classification": "shower_niche",
+        "confidence": "high"
+      }
+    ],
+    "protrusion": [
+      {
+        "width_inches": 52.1,
+        "height_inches": 5.7,
+        "recess_depth_inches": -10.8,
+        "center_x_inches_from_center": 0.0,
+        "center_y_inches_from_center": -30.7,
+        "width_m": 1.322,
+        "height_m": 0.144,
+        "recess_depth_m": -0.275,
+        "fill_ratio": 0.9,
+        "pixel_bounds": {
+          "x_min": 240,
+          "x_max": 2784,
+          "y_min": 375,
+          "y_max": 653
+        },
+        "classification": "shelf_or_ledge",
+        "confidence": "medium"
+      }
+    ]
+  },
+  "constraints": [
+    {
+      "type": "fixed",
+      "feature": "shower_niche",
+      "width_inches": 27.7,
+      "height_inches": 37.3,
+      "recess_depth_inches": 3.6,
+      "position_x_from_center_inches": 12.2,
+      "position_y_from_center_inches": 14.3,
+      "confidence": "high",
+      "requires_grout_alignment": true,
+      "auto_detected": true
+    },
+    {
+      "type": "fixed",
+      "feature": "shelf_or_ledge",
+      "width_inches": 52.1,
+      "height_inches": 5.7,
+      "recess_depth_inches": -10.8,
+      "position_x_from_center_inches": 0.0,
+      "position_y_from_center_inches": -30.7,
+      "confidence": "medium",
+      "requires_grout_alignment": false,
+      "auto_detected": true
+    }
+  ],
+  "note": "Constraints with requires_grout_alignment=true are fixed constraints that the tile layout must align to. Auto-correction will check these before shifting the pattern."
+}

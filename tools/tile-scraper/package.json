@@ -1,0 +1,19 @@
+{
+  "name": "layit-tile-scraper",
+  "version": "1.0.0",
+  "description": "Scrape tile specs from retailer websites and generate LayIt presets",
+  "type": "module",
+  "scripts": {
+    "scrape": "node scrape.js",
+    "parse": "node parse-urls.js",
+    "upload": "node upload.js"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.52.0",
+    "dotenv": "^17.3.1",
+    "firebase-admin": "^13.0.0",
+    "puppeteer": "^24.0.0",
+    "puppeteer-extra": "^3.3.6",
+    "puppeteer-extra-plugin-stealth": "^2.11.2"
+  }
+}
