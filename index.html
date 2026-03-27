@@ -5930,8 +5930,8 @@ var TILE_PRESETS = [
     //  subShape:'quatrefoil', subW:4, subH:4, subGr:0.125},
     // {name:'Ogee Provenzal (10×12)', shape:'mosaic', nomW:10, nomH:12, actW:10, actH:12, grout:0.125,
     //  subShape:'ogee', subW:3.5, subH:6.5, subGr:0.125},
-    {name:'Star & Cross (12×12)', shape:'mosaic', nomW:12, nomH:12, actW:12, actH:12, grout:0.125,
-     subShape:'starcross', subW:4, subH:4, subGr:0.0625},
+    {name:'Star & Cross 8" Cement', shape:'mosaic', nomW:8, nomH:8, actW:7.875, actH:7.875, grout:0.125,
+     subShape:'starcross', subW:8, subH:8, subGr:0.125},
     // {name:'Kite Mosaic (11×12)', shape:'mosaic', nomW:11, nomH:12, actW:11, actH:12, grout:0.125,
     //  subShape:'kite', subW:2, subH:4, subGr:0.0625},
     // {name:'Leaf / Teardrop (10×12)', shape:'mosaic', nomW:10, nomH:12, actW:10, actH:12, grout:0.125,
@@ -9398,8 +9398,9 @@ function drawMosaicField(ox, oy, s, wall, voidPolys, patternOx, patternOy, projM
                 // Tilted cross: 4 arms at 45° with parallel sides + pointed tips
                 var hw = (R - ri) * 0.92; // arm half-width (fills star notch)
                 var sq2 = 1.4142;
-                var armL = stColPx / 2 * 0.7071 - hw * 0.4; // parallel section length
-                var triH = hw * sq2 * 0.9; // pointed tip height
+                var cellDiagHalf = stColPx * 0.5 * 0.7071; // half-cell diagonal
+                var armL = cellDiagHalf * 0.78 - hw * 0.3; // parallel section — reach 78% of diagonal
+                var triH = hw * sq2 * 0.95; // pointed tip height
                 var D = armL + triH;
                 // 4 notch vertices between arms (on cardinal axes)
                 var notches = [[0, -hw*sq2], [hw*sq2, 0], [0, hw*sq2], [-hw*sq2, 0]];
