@@ -32,12 +32,12 @@ except ImportError:
 CELL = 200
 
 # Star tip-to-tip as fraction of cell
-STAR_RATIO = 0.78
+STAR_RATIO = 0.94
 
 # Concavity: inner vertex distance / tip radius
 # Lower = more concave (deeper notches, wider cross arms)
 # Higher = less concave (shallow notches, narrower cross arms)
-CONCAVITY_K = 0.42
+CONCAVITY_K = 0.48
 
 # Grout width in pixels
 GROUT = 4

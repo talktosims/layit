@@ -9179,7 +9179,7 @@ function drawMosaicField(ox, oy, s, wall, voidPolys, patternOx, patternOy, projM
         } else if (subShape === 'starcross') {
             // 4-pointed star — 8 vertices for hit testing
             var R = Math.min(stWpx, stHpx) / 2;
-            var inR = R * 0.48;
+            var inR = R * 0.42;
             return [[px, py - R], [px + inR, py - inR],
                     [px + R, py], [px + inR, py + inR],
                     [px, py + R], [px - inR, py + inR],
@@ -9390,7 +9390,7 @@ function drawMosaicField(ox, oy, s, wall, voidPolys, patternOx, patternOy, projM
             // 4-pointed star with straight concave sides
             // 8 vertices: 4 tips at cardinal directions, 4 inner notches at diagonals
             var R = Math.min(stWpx, stHpx) / 2 - stGrPx / 2;
-            var SC_K = 0.48; // concavity ratio (tip angle ~80°, matches cement tile)
+            var SC_K = 0.42; // concavity ratio (tip angle ~72°, sharp points matching cement tile)
             var inR = R * SC_K;
             cx.moveTo(px, py - R);           // top tip
             cx.lineTo(px + inR, py - inR);   // inner upper-right
@@ -9711,7 +9711,7 @@ function drawMosaicField(ox, oy, s, wall, voidPolys, patternOx, patternOy, projM
                         cx.lineWidth = 0.5;
                         // Cross geometry derived from star: tapered arms fill concavities
                         var cR = Math.min(stWpx, stHpx) / 2 - stGrPx / 2;
-                        var cK = 0.48; // must match star's concavity
+                        var cK = 0.42; // must match star's concavity
                         var cInR = cR * cK;
                         var cS = stColPx;
                         var armBase = cS / 2 - cInR - stGrPx / 2; // wide end at notch
