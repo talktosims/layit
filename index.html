@@ -9384,8 +9384,11 @@ function drawMosaicField(ox, oy, s, wall, voidPolys, patternOx, patternOy, projM
         } else if (subShape === 'starcross') {
             // Star & Cross: checkerboard of 8-pointed star + tilted cross
             var _isStarCell = ((row + col) % 2 + 2) % 2 === 0;
-            var R = Math.min(stWpx, stHpx) / 2 - stGrPx / 2;
-            var ri = R * 0.76; // inner notch radius (~135° notch angle)
+            // Star & cross interlock: both shapes extend to fill cells with only grout gap
+            var halfCell = Math.min(stColPx, stRowPx) / 2;
+            var g2 = stGrPx / 2;
+            var R = halfCell - g2; // star outer tip radius — nearly fills cell
+            var ri = R * 0.76;    // star inner notch radius (~135° notch angle)
             if (_isStarCell) {
                 // 8-pointed star: 16 vertices alternating tips (R) and notches (ri)
                 cx.moveTo(px, py - R); // top tip
@@ -9395,12 +9398,14 @@ function drawMosaicField(ox, oy, s, wall, voidPolys, patternOx, patternOy, projM
                     cx.lineTo(px + sr * Math.cos(sa), py + sr * Math.sin(sa));
                 }
             } else {
-                // Tilted cross: 4 arms at 45° with parallel sides + pointed tips
-                var hw = (R - ri) * 0.92; // arm half-width (fills star notch)
+                // Tilted cross: arms extend to interlock with adjacent star notches
                 var sq2 = 1.4142;
-                var cellDiagHalf = stColPx * 0.5 * 0.7071; // half-cell diagonal
-                var armL = cellDiagHalf * 0.78 - hw * 0.3; // parallel section — reach 78% of diagonal
-                var triH = hw * sq2 * 0.95; // pointed tip height
+                // Arm half-width matches the star notch gap
+                var hw = (R - ri) * 0.95;
+                // Arms reach to cell boundary (where adjacent star's notch is)
+                var armReach = halfCell * sq2 - g2; // full diagonal minus grout
+                var armL = armReach * 0.72;  // parallel section
+                var triH = armReach - armL;  // triangle tip fills the rest
                 var D = armL + triH;
                 // 4 notch vertices between arms (on cardinal axes)
                 var notches = [[0, -hw*sq2], [hw*sq2, 0], [0, hw*sq2], [-hw*sq2, 0]];
