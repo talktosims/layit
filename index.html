@@ -8996,8 +8996,8 @@ function drawMosaicField(ox, oy, s, wall, voidPolys, patternOx, patternOy, projM
     } else if (subShape === 'starcross') {
         // Star & Cross: 4-pointed concave stars on square grid, tapered crosses at diagonals.
         // Grid spacing must accommodate both star AND cross tiles.
-        // STAR_CELL_RATIO = star tip-to-tip / unit cell size.
-        var SC_RATIO = 0.78;
+        // SC_RATIO = star tip-to-tip / unit cell size (0.94 matches real cement tile proportions)
+        var SC_RATIO = 0.94;
         stColIn = subW / SC_RATIO;
         stRowIn = subH / SC_RATIO;
     } else if (subShape === 'kite') {
@@ -9179,7 +9179,7 @@ function drawMosaicField(ox, oy, s, wall, voidPolys, patternOx, patternOy, projM
         } else if (subShape === 'starcross') {
             // 4-pointed star — 8 vertices for hit testing
             var R = Math.min(stWpx, stHpx) / 2;
-            var inR = R * 0.42;
+            var inR = R * 0.48;
             return [[px, py - R], [px + inR, py - inR],
                     [px + R, py], [px + inR, py + inR],
                     [px, py + R], [px - inR, py + inR],
@@ -9390,7 +9390,7 @@ function drawMosaicField(ox, oy, s, wall, voidPolys, patternOx, patternOy, projM
             // 4-pointed star with straight concave sides
             // 8 vertices: 4 tips at cardinal directions, 4 inner notches at diagonals
             var R = Math.min(stWpx, stHpx) / 2 - stGrPx / 2;
-            var SC_K = 0.42; // concavity ratio
+            var SC_K = 0.48; // concavity ratio (tip angle ~80°, matches cement tile)
             var inR = R * SC_K;
             cx.moveTo(px, py - R);           // top tip
             cx.lineTo(px + inR, py - inR);   // inner upper-right
@@ -9711,7 +9711,7 @@ function drawMosaicField(ox, oy, s, wall, voidPolys, patternOx, patternOy, projM
                         cx.lineWidth = 0.5;
                         // Cross geometry derived from star: tapered arms fill concavities
                         var cR = Math.min(stWpx, stHpx) / 2 - stGrPx / 2;
-                        var cK = 0.42; // must match star's concavity
+                        var cK = 0.48; // must match star's concavity
                         var cInR = cR * cK;
                         var cS = stColPx;
                         var armBase = cS / 2 - cInR - stGrPx / 2; // wide end at notch
