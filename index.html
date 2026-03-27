@@ -9384,32 +9384,26 @@ function drawMosaicField(ox, oy, s, wall, voidPolys, patternOx, patternOy, projM
         } else if (subShape === 'starcross') {
             // Star & Cross: checkerboard of 8-pointed star + tilted cross
             var _isStarCell = ((row + col) % 2 + 2) % 2 === 0;
-            // Star & cross interlock: both shapes extend to fill cells with only grout gap
+            // Star & cross — parameters from working Python render
             var halfCell = Math.min(stColPx, stRowPx) / 2;
             var g2 = stGrPx / 2;
-            var R = halfCell * 1.30 - g2; // star tips extend INTO adjacent cross cells
-            var ri = R * 0.76;    // star inner notch radius (~135° notch angle)
+            var R = halfCell - g2;        // star tip radius (fits cell)
+            var ri = R * 0.76;            // inner notch (~135° angle)
             if (_isStarCell) {
                 // 8-pointed star: 16 vertices alternating tips (R) and notches (ri)
-                cx.moveTo(px, py - R); // top tip
+                cx.moveTo(px, py - R);
                 for (var si = 1; si < 16; si++) {
                     var sa = si * Math.PI / 8 - Math.PI / 2;
                     var sr = (si % 2 === 0) ? R : ri;
                     cx.lineTo(px + sr * Math.cos(sa), py + sr * Math.sin(sa));
                 }
             } else {
-                // Tilted cross: computed to EXACTLY interlock with adjacent stars
+                // Tilted cross: w=0.50, L=0.60 from Python render that worked
                 var sq2 = 1.4142;
-                var cellPx = Math.min(stColPx, stRowPx);
-                // Arm half-width: fills the gap between star tip and cell edge
-                // Star cardinal tip at R reaches into this cross cell
-                // Cross notch at hw*sqrt(2) from center must meet star tip with grout
-                var hw = (cellPx - R - stGrPx) / sq2;
-                // Arm reach: extends diagonally toward adjacent star's notch
-                // Must reach cell corner (cell*sqrt(2)/2) minus the star's overlap into this cell
-                var armReach = cellPx * 0.7071 * 0.85;
-                var armL = armReach * 0.70;  // parallel section
-                var triH = armReach - armL;  // triangle tip fills the rest
+                var s = halfCell - g2;
+                var hw = s * 0.50 / 2;            // arm half-width
+                var armL = s * 0.60;               // parallel section length
+                var triH = hw * sq2 * 0.95;        // pointed tip height
                 var D = armL + triH;
                 // 4 notch vertices between arms (on cardinal axes)
                 var notches = [[0, -hw*sq2], [hw*sq2, 0], [0, hw*sq2], [-hw*sq2, 0]];
