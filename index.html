@@ -9398,13 +9398,17 @@ function drawMosaicField(ox, oy, s, wall, voidPolys, patternOx, patternOy, projM
                     cx.lineTo(px + sr * Math.cos(sa), py + sr * Math.sin(sa));
                 }
             } else {
-                // Tilted cross: arms extend to interlock with adjacent star notches
+                // Tilted cross: computed to EXACTLY interlock with adjacent stars
                 var sq2 = 1.4142;
-                // Arm half-width matches the star notch gap
-                var hw = (R - ri) * 0.95;
-                // Arms reach to cell boundary (where adjacent star's notch is)
-                var armReach = halfCell * sq2 - g2; // full diagonal minus grout
-                var armL = armReach * 0.72;  // parallel section
+                var cellPx = Math.min(stColPx, stRowPx);
+                // Arm half-width: fills the gap between star tip and cell edge
+                // Star cardinal tip at R reaches into this cross cell
+                // Cross notch at hw*sqrt(2) from center must meet star tip with grout
+                var hw = (cellPx - R - stGrPx) / sq2;
+                // Arm reach: extends diagonally to adjacent star's notch
+                // Adjacent star on diagonal is cell*sqrt(2) away, notch at ri from its center
+                var armReach = cellPx * sq2 - ri - stGrPx;
+                var armL = armReach * 0.70;  // parallel section
                 var triH = armReach - armL;  // triangle tip fills the rest
                 var D = armL + triH;
                 // 4 notch vertices between arms (on cardinal axes)
