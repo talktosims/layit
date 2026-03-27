@@ -9405,9 +9405,9 @@ function drawMosaicField(ox, oy, s, wall, voidPolys, patternOx, patternOy, projM
                 // Star cardinal tip at R reaches into this cross cell
                 // Cross notch at hw*sqrt(2) from center must meet star tip with grout
                 var hw = (cellPx - R - stGrPx) / sq2;
-                // Arm reach: extends diagonally to adjacent star's notch
-                // Adjacent star on diagonal is cell*sqrt(2) away, notch at ri from its center
-                var armReach = cellPx * sq2 - ri - stGrPx;
+                // Arm reach: extends diagonally toward adjacent star's notch
+                // Must reach cell corner (cell*sqrt(2)/2) minus the star's overlap into this cell
+                var armReach = cellPx * 0.7071 * 0.85;
                 var armL = armReach * 0.70;  // parallel section
                 var triH = armReach - armL;  // triangle tip fills the rest
                 var D = armL + triH;
