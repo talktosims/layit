@@ -1,80 +1,108 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>Star & Cross Tessellation Lab</title>
+<title>Star & Cross Lab v4</title>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body { background: #1a1a1a; color: #eee; font-family: 'SF Mono', 'Menlo', monospace; font-size: 13px; }
 .layout { display: flex; height: 100vh; }
-.sidebar { width: 320px; padding: 16px; overflow-y: auto; background: #222; border-right: 1px solid #444; flex-shrink: 0; }
+.sidebar { width: 300px; padding: 12px; overflow-y: auto; background: #222; border-right: 1px solid #444; flex-shrink: 0; }
 .main { flex: 1; display: flex; flex-direction: column; }
-canvas { flex: 1; cursor: crosshair; }
-h2 { font-size: 15px; margin-bottom: 12px; color: #7fdbca; }
-h3 { font-size: 12px; margin: 16px 0 8px; color: #c792ea; text-transform: uppercase; letter-spacing: 1px; }
-.row { display: flex; align-items: center; margin: 6px 0; gap: 8px; }
-.row label { flex: 0 0 120px; color: #999; }
+canvas { flex: 1; cursor: grab; }
+canvas.dragging { cursor: grabbing; }
+h2 { font-size: 15px; margin-bottom: 8px; color: #7fdbca; }
+h3 { font-size: 11px; margin: 10px 0 5px; color: #c792ea; text-transform: uppercase; letter-spacing: 1px; }
+.row { display: flex; align-items: center; margin: 3px 0; gap: 6px; }
+.row label { flex: 0 0 90px; color: #999; font-size: 12px; }
 .row input[type=range] { flex: 1; }
-.row .val { flex: 0 0 50px; text-align: right; color: #ffcb6b; }
-.info { padding: 8px 12px; background: #2a2a2a; border-top: 1px solid #444; font-size: 11px; color: #888; }
-.btn { background: #3a3a3a; border: 1px solid #555; color: #eee; padding: 6px 12px; cursor: pointer; border-radius: 3px; font-size: 12px; margin: 4px 2px; }
-.btn:hover { background: #4a4a4a; }
-.btn.active { background: #2a5a3a; border-color: #4a8a5a; }
-.color-row { display: flex; gap: 8px; align-items: center; margin: 4px 0; }
-.color-row label { flex: 0 0 60px; color: #999; }
-.color-row input[type=color] { width: 40px; height: 24px; border: none; cursor: pointer; }
-#dropZone { border: 2px dashed #555; border-radius: 8px; padding: 16px; text-align: center; margin: 8px 0; color: #666; cursor: pointer; font-size: 11px; }
-#dropZone.dragover { border-color: #7fdbca; color: #7fdbca; }
-.metrics { background: #1e2d1e; border: 1px solid #3a5a3a; border-radius: 4px; padding: 8px; margin: 8px 0; font-size: 11px; line-height: 1.6; }
+.row .val { flex: 0 0 40px; text-align: right; color: #ffcb6b; font-size: 11px; }
+.info { padding: 6px 12px; background: #2a2a2a; border-top: 1px solid #444; font-size: 11px; color: #888; }
+.color-row { display: flex; gap: 6px; align-items: center; margin: 3px 0; }
+.color-row label { flex: 0 0 50px; color: #999; font-size: 12px; }
+.color-row input[type=color] { width: 30px; height: 18px; border: none; cursor: pointer; }
+.hint { color: #555; font-size: 10px; margin: 2px 0 4px; }
+.metrics { background: #1e2d1e; border: 1px solid #3a5a3a; border-radius: 4px; padding: 6px; margin: 6px 0; font-size: 10px; line-height: 1.5; }
 </style>
 </head>
 <body>
 <div class="layout">
   <div class="sidebar">
-    <h2>Star & Cross Lab v2</h2>
+    <h2>Star & Cross v4</h2>
+    <div class="hint">Cubic bezier: shoulder (fat body) + notch (concave pinch)</div>
 
     <h3>Geometry</h3>
-    <div class="row"><label>Cell Size</label><input type="range" id="cellSize" min="60" max="300" step="2" value="160"><span class="val" id="cellSizeV">160</span></div>
-    <div class="row"><label>Star/Cell Ratio</label><input type="range" id="starRatio" min="0.70" max="0.99" step="0.01" value="0.94"><span class="val" id="starRatioV">0.94</span></div>
-    <div class="row"><label>Curve Depth</label><input type="range" id="curveDepth" min="0.00" max="0.95" step="0.01" value="0.55"><span class="val" id="curveDepthV">0.55</span></div>
-    <div class="row"><label>Grout (px)</label><input type="range" id="grout" min="0" max="12" step="0.5" value="3"><span class="val" id="groutV">3</span></div>
+    <div class="row"><label>Cell Size</label><input type="range" id="cellSize" min="60" max="400" step="2" value="160"><span class="val" id="cellSizeV">160</span></div>
+    <div class="row"><label>Star Ratio</label><input type="range" id="starRatio" min="0.80" max="1.00" step="0.01" value="0.96"><span class="val" id="starRatioV">0.96</span></div>
+    <div class="row"><label>Shoulder</label><input type="range" id="shoulder" min="0.20" max="0.90" step="0.01" value="0.62"><span class="val" id="shoulderV">0.62</span></div>
+    <div class="row"><label>Notch</label><input type="range" id="notch" min="0.05" max="0.60" step="0.01" value="0.18"><span class="val" id="notchV">0.18</span></div>
+    <div class="row"><label>Grout</label><input type="range" id="grout" min="0" max="10" step="0.5" value="2"><span class="val" id="groutV">2</span></div>
+    <div class="hint">Shoulder: how wide the star bulges (high=fat)<br>Notch: how deep the pinch at diagonals (low=deep)</div>
 
     <h3>Colors</h3>
-    <div class="color-row"><label>Star</label><input type="color" id="starColor" value="#4a7c6f"></div>
-    <div class="color-row"><label>Cross</label><input type="color" id="crossColor" value="#f0ead6"></div>
-    <div class="color-row"><label>Grout</label><input type="color" id="groutColor" value="#c8c0b0"></div>
+    <div class="color-row"><label>Star</label><input type="color" id="starColor" value="#5a8a9a"></div>
+    <div class="color-row"><label>Cross</label><input type="color" id="crossColor" value="#d4c4a0"></div>
+    <div class="color-row"><label>Grout</label><input type="color" id="groutColor" value="#888880"></div>
 
-    <h3>Reference Image</h3>
-    <div id="dropZone">Drop image here or click<input type="file" id="refFile" accept="image/*" style="display:none"></div>
+    <h3>Overlay</h3>
+    <div class="hint">Drop image anywhere. Drag canvas to move, scroll to scale.</div>
     <div class="row"><label>Opacity</label><input type="range" id="overlayOpacity" min="0" max="100" step="5" value="0"><span class="val" id="overlayOpacityV">0</span></div>
-    <div class="row"><label>Scale</label><input type="range" id="refScale" min="0.1" max="4.0" step="0.05" value="1.0"><span class="val" id="refScaleV">1.0</span></div>
-    <div class="row"><label>Offset X</label><input type="range" id="refOffX" min="-500" max="500" step="1" value="0"><span class="val" id="refOffXV">0</span></div>
-    <div class="row"><label>Offset Y</label><input type="range" id="refOffY" min="-500" max="500" step="1" value="0"><span class="val" id="refOffYV">0</span></div>
 
     <h3>Measurements</h3>
     <div class="metrics" id="metrics"></div>
   </div>
   <div class="main">
     <canvas id="c"></canvas>
-    <div class="info" id="statusBar">Drag a reference image to overlay and compare</div>
+    <div class="info" id="statusBar">Drop reference image, drag to position, scroll to scale</div>
   </div>
 </div>
 
 <script>
-const canvas = document.getElementById('c');
-const ctx = canvas.getContext('2d');
-let refImg = null;
+var canvas = document.getElementById('c');
+var ctx = canvas.getContext('2d');
+var refImg = null, refX = 0, refY = 0, refScale = 1.0;
+var isDragging = false, dsx = 0, dsy = 0, drx = 0, dry = 0;
 
-// ─── Prevent browser from navigating on drop anywhere ───
+// ─── Drop anywhere ───
 document.addEventListener('dragover', function(e) { e.preventDefault(); });
 document.addEventListener('drop', function(e) {
   e.preventDefault();
-  if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]) {
-    loadImg(e.dataTransfer.files[0]);
-    // Auto-set opacity to 50% so you can see it
-    document.getElementById('overlayOpacity').value = 50;
-    document.getElementById('overlayOpacityV').textContent = '50';
+  if (e.dataTransfer && e.dataTransfer.files[0]) {
+    var img = new Image();
+    img.onload = function() {
+      refImg = img;
+      refX = (canvas.clientWidth - img.width) / 2;
+      refY = (canvas.clientHeight - img.height) / 2;
+      refScale = 1.0;
+      document.getElementById('overlayOpacity').value = 50;
+      document.getElementById('overlayOpacityV').textContent = '50';
+      draw();
+    };
+    img.src = URL.createObjectURL(e.dataTransfer.files[0]);
   }
 });
+
+// ─── Drag to move overlay ───
+canvas.addEventListener('mousedown', function(e) {
+  if (!refImg) return;
+  isDragging = true; dsx = e.clientX; dsy = e.clientY; drx = refX; dry = refY;
+  canvas.classList.add('dragging');
+});
+window.addEventListener('mousemove', function(e) {
+  if (!isDragging) return;
+  refX = drx + (e.clientX - dsx);
+  refY = dry + (e.clientY - dsy);
+  draw();
+});
+window.addEventListener('mouseup', function() { isDragging = false; canvas.classList.remove('dragging'); });
+
+// ─── Scroll to scale overlay ───
+canvas.addEventListener('wheel', function(e) {
+  if (!refImg) return;
+  e.preventDefault();
+  refScale += e.deltaY > 0 ? -0.03 : 0.03;
+  refScale = Math.max(0.1, Math.min(5.0, refScale));
+  draw();
+}, { passive: false });
 
 // ─── Resize ───
 function resize() {
@@ -86,193 +114,183 @@ function resize() {
 window.addEventListener('resize', resize);
 
 // ─── Controls ───
-const sliders = ['cellSize','starRatio','curveDepth','grout','overlayOpacity','refScale','refOffX','refOffY'];
-sliders.forEach(id => {
+['cellSize','starRatio','shoulder','notch','grout','overlayOpacity'].forEach(function(id) {
   document.getElementById(id).addEventListener('input', function() {
     document.getElementById(id + 'V').textContent = this.value;
     draw();
   });
 });
-['starColor','crossColor','groutColor'].forEach(id => {
+['starColor','crossColor','groutColor'].forEach(function(id) {
   document.getElementById(id).addEventListener('input', draw);
 });
 
-// ─── Reference Image ───
-const dropZone = document.getElementById('dropZone');
-const refFile = document.getElementById('refFile');
-dropZone.addEventListener('click', () => refFile.click());
-dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
-dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
-dropZone.addEventListener('drop', e => { e.preventDefault(); dropZone.classList.remove('dragover'); loadImg(e.dataTransfer.files[0]); });
-refFile.addEventListener('change', e => { if (e.target.files[0]) loadImg(e.target.files[0]); });
-function loadImg(file) {
-  const img = new Image();
-  img.onload = () => { refImg = img; dropZone.textContent = file.name; draw(); };
-  img.src = URL.createObjectURL(file);
+// ═══════════════════════════════════════════
+// CUBIC BEZIER star edge with S-curve profile
+// The edge from tip A to tip B:
+//   - Bulges OUTWARD near each tip (shoulder)
+//   - Pinches INWARD at the diagonal midpoint (notch)
+// ═══════════════════════════════════════════
+
+function drawStarCubicEdge(cx, cy, R, ax, ay, bx, by, shoulder, notch) {
+  // For edge from A to B:
+  // P1 (near A): push perpendicular to the A-to-center direction, creating outward bulge
+  // P2 (near B): pull toward center at the diagonal, creating inward pinch
+
+  // Vector from center to A
+  var cax = ax - cx, cay = ay - cy;
+  // Vector from center to B
+  var cbx = bx - cx, cby = by - cy;
+
+  // P1: offset from A in the direction of B, scaled by shoulder
+  // This makes the curve leave tip A heading toward B, but pushed outward
+  var p1x = ax + (bx - ax) * shoulder;
+  var p1y = ay + (by - ay) * shoulder;
+  // But keep P1 at distance R from center (on the cell boundary circle)
+  var p1dx = p1x - cx, p1dy = p1y - cy;
+  var p1dist = Math.sqrt(p1dx * p1dx + p1dy * p1dy);
+  if (p1dist > 0) {
+    p1x = cx + p1dx / p1dist * R * 0.97;  // slightly inside R
+    p1y = cy + p1dy / p1dist * R * 0.97;
+  }
+
+  // P2: same idea but from B toward A, kept on the boundary
+  var p2x = bx + (ax - bx) * shoulder;
+  var p2y = by + (ay - by) * shoulder;
+  var p2dx = p2x - cx, p2dy = p2y - cy;
+  var p2dist = Math.sqrt(p2dx * p2dx + p2dy * p2dy);
+  if (p2dist > 0) {
+    p2x = cx + p2dx / p2dist * R * 0.97;
+    p2y = cy + p2dy / p2dist * R * 0.97;
+  }
+
+  // Now pull P1 and P2 INWARD toward center by (1-notch)
+  // notch=1.0 means no pull (stays on boundary), notch=0.0 means pulled to center
+  var midx = (ax + bx) / 2, midy = (ay + by) / 2;
+  var diagDx = cx - midx, diagDy = cy - midy;
+
+  p1x += diagDx * (1 - notch) * 0.5;
+  p1y += diagDy * (1 - notch) * 0.5;
+  p2x += diagDx * (1 - notch) * 0.5;
+  p2y += diagDy * (1 - notch) * 0.5;
+
+  ctx.bezierCurveTo(p1x, p1y, p2x, p2y, bx, by);
 }
 
-// ─── Star Edge: Quadratic Bezier Curve ───
-// Draws one curved edge of the star from tip A to tip B with concave bow toward center.
-// depth: 0 = straight line, 1 = curve passes through center
-function drawStarEdge(cx, cy, ax, ay, bx, by, depth) {
-  // Midpoint of straight line A→B
-  var mx = (ax + bx) / 2;
-  var my = (ay + by) / 2;
-  // Vector from midpoint toward star center
-  var dx = cx - mx;
-  var dy = cy - my;
-  // Control point: interpolate from midpoint toward center by 'depth'
-  var cpx = mx + dx * depth;
-  var cpy = my + dy * depth;
-  ctx.quadraticCurveTo(cpx, cpy, bx, by);
-}
-
-// ─── Draw Star ───
-function drawStar(cx, cy, R, depth, g) {
+// ─── Draw Star (tips at DIAGONALS: NE, SE, SW, NW) ───
+function drawStar(cx, cy, R, shoulder, notch, g) {
   var r = R - g / 2;
+  var d = r * 0.7071; // r / sqrt(2) — tip distance along each axis
+  // Tips at 45° angles (diagonal directions)
+  var tips = [
+    [cx + d, cy - d],   // NE tip
+    [cx + d, cy + d],   // SE tip
+    [cx - d, cy + d],   // SW tip
+    [cx - d, cy - d]    // NW tip
+  ];
   ctx.beginPath();
-  ctx.moveTo(cx, cy - r);  // top tip
-  drawStarEdge(cx, cy, cx, cy - r, cx + r, cy, depth);         // top → right
-  drawStarEdge(cx, cy, cx + r, cy, cx, cy + r, depth);         // right → bottom
-  drawStarEdge(cx, cy, cx, cy + r, cx - r, cy, depth);         // bottom → left
-  drawStarEdge(cx, cy, cx - r, cy, cx, cy - r, depth);         // left → top
+  ctx.moveTo(tips[0][0], tips[0][1]);
+  for (var i = 0; i < 4; i++) {
+    var a = tips[i], b = tips[(i + 1) % 4];
+    drawStarCubicEdge(cx, cy, r, a[0], a[1], b[0], b[1], shoulder, notch);
+  }
   ctx.closePath();
 }
 
-// ─── Draw Cross (complement of 4 surrounding stars) ───
-function drawCross(cx, cy, S, R, depth, g) {
-  // The cross at (cx,cy) is surrounded by 4 stars at diagonal offsets.
-  // Each cross arm side IS a star edge from the adjacent star.
-  // The cross has 4 curved sides + 4 straight arm tips.
-
-  var b = S/2 - R + g/2;    // arm tip half-width
-  var arm = S/2 - g/2;       // arm length from center
-  var r = R;                  // star radius (no grout reduction — cross edge matches star edge)
-
-  // Stars at: NE(+S/2, -S/2), SE(+S/2, +S/2), SW(-S/2, +S/2), NW(-S/2, -S/2)
-  // Each star contributes one curved edge to the cross.
-
-  // For star at (sx, sy), the edge from its bottom tip to its left tip
-  // borders the cross. The control point for this edge is computed
-  // relative to the star center.
+// ─── Draw Cross (complement) ───
+function drawCross(cx, cy, S, R, shoulder, notch, g) {
+  var b = Math.max(S/2 - R + g/2, 0.5);
+  var arm = S/2 - g/2;
 
   ctx.beginPath();
-
-  // N arm tip (straight)
   ctx.moveTo(cx - b, cy - arm);
   ctx.lineTo(cx + b, cy - arm);
 
-  // NE curve: star at (cx+S/2, cy-S/2), edge from left tip to bottom tip
-  // Star left tip: (cx+S/2-r, cy-S/2), Star bottom tip: (cx+S/2, cy-S/2+r)
-  // This edge goes from the star's left tip to bottom tip
-  var ne_sx = cx + S/2, ne_sy = cy - S/2;
-  drawStarEdge(ne_sx, ne_sy, ne_sx - r, ne_sy, ne_sx, ne_sy + r, depth);
+  // NE star at (cx+S/2, cy-S/2): edge from its left tip to bottom tip
+  var ne_cx = cx + S/2, ne_cy = cy - S/2;
+  var ne_r = R;
+  drawStarCubicEdge(ne_cx, ne_cy, ne_r,
+    ne_cx - ne_r, ne_cy,    // left tip of NE star
+    ne_cx, ne_cy + ne_r,    // bottom tip of NE star
+    shoulder, notch);
 
-  // E arm tip (straight)
   ctx.lineTo(cx + arm, cy - b);
   ctx.lineTo(cx + arm, cy + b);
 
-  // SE curve: star at (cx+S/2, cy+S/2), edge from top tip to left tip
-  var se_sx = cx + S/2, se_sy = cy + S/2;
-  drawStarEdge(se_sx, se_sy, se_sx, se_sy - r, se_sx - r, se_sy, depth);
+  // SE star
+  var se_cx = cx + S/2, se_cy = cy + S/2;
+  drawStarCubicEdge(se_cx, se_cy, R,
+    se_cx, se_cy - R, se_cx - R, se_cy, shoulder, notch);
 
-  // S arm tip
   ctx.lineTo(cx + b, cy + arm);
   ctx.lineTo(cx - b, cy + arm);
 
-  // SW curve: star at (cx-S/2, cy+S/2), edge from right tip to top tip
-  var sw_sx = cx - S/2, sw_sy = cy + S/2;
-  drawStarEdge(sw_sx, sw_sy, sw_sx + r, sw_sy, sw_sx, sw_sy - r, depth);
+  // SW star
+  var sw_cx = cx - S/2, sw_cy = cy + S/2;
+  drawStarCubicEdge(sw_cx, sw_cy, R,
+    sw_cx + R, sw_cy, sw_cx, sw_cy - R, shoulder, notch);
 
-  // W arm tip
   ctx.lineTo(cx - arm, cy + b);
   ctx.lineTo(cx - arm, cy - b);
 
-  // NW curve: star at (cx-S/2, cy-S/2), edge from bottom tip to right tip
-  var nw_sx = cx - S/2, nw_sy = cy - S/2;
-  drawStarEdge(nw_sx, nw_sy, nw_sx, nw_sy + r, nw_sx + r, nw_sy, depth);
+  // NW star
+  var nw_cx = cx - S/2, nw_cy = cy - S/2;
+  drawStarCubicEdge(nw_cx, nw_cy, R,
+    nw_cx, nw_cy + R, nw_cx + R, nw_cy, shoulder, notch);
 
   ctx.closePath();
 }
 
 // ─── Main Draw ───
 function draw() {
-  var W = canvas.clientWidth;
-  var H = canvas.clientHeight;
+  var W = canvas.clientWidth, H = canvas.clientHeight;
   var S = parseFloat(document.getElementById('cellSize').value);
-  var starRatio = parseFloat(document.getElementById('starRatio').value);
-  var depth = parseFloat(document.getElementById('curveDepth').value);
+  var sr = parseFloat(document.getElementById('starRatio').value);
+  var sh = parseFloat(document.getElementById('shoulder').value);
+  var nt = parseFloat(document.getElementById('notch').value);
   var g = parseFloat(document.getElementById('grout').value);
-  var starColor = document.getElementById('starColor').value;
-  var crossColor = document.getElementById('crossColor').value;
-  var groutColor = document.getElementById('groutColor').value;
   var opacity = parseInt(document.getElementById('overlayOpacity').value) / 100;
+  var R = S * sr / 2;
 
-  var R = S * starRatio / 2;
-
-  // Clear with grout color
-  ctx.fillStyle = groutColor;
+  ctx.fillStyle = document.getElementById('groutColor').value;
   ctx.fillRect(0, 0, W, H);
 
-  // Reference image (behind tiles)
+  // Ref behind
   if (refImg && opacity > 0) {
-    ctx.save();
-    ctx.globalAlpha = opacity;
-    var sc = parseFloat(document.getElementById('refScale').value);
-    var ox = parseFloat(document.getElementById('refOffX').value);
-    var oy = parseFloat(document.getElementById('refOffY').value);
-    ctx.drawImage(refImg, ox, oy, refImg.width * sc, refImg.height * sc);
+    ctx.save(); ctx.globalAlpha = opacity * 0.6;
+    ctx.drawImage(refImg, refX, refY, refImg.width * refScale, refImg.height * refScale);
     ctx.restore();
   }
 
-  var cols = Math.ceil(W / S) + 2;
-  var rows = Math.ceil(H / S) + 2;
-  var startX = S / 2;
-  var startY = S / 2;
+  var cols = Math.ceil(W / S) + 2, rows = Math.ceil(H / S) + 2;
+  var ox = S / 2, oy = S / 2;
 
-  // Draw all stars
-  ctx.fillStyle = starColor;
-  for (var row = -1; row < rows; row++) {
-    for (var col = -1; col < cols; col++) {
-      var sx = startX + col * S;
-      var sy = startY + row * S;
-      drawStar(sx, sy, R, depth, g);
+  ctx.fillStyle = document.getElementById('starColor').value;
+  for (var r = -1; r < rows; r++)
+    for (var c = -1; c < cols; c++) {
+      drawStar(ox + c * S, oy + r * S, R, sh, nt, g);
       ctx.fill();
     }
-  }
 
-  // Draw all crosses
-  ctx.fillStyle = crossColor;
-  for (var row = -1; row < rows; row++) {
-    for (var col = -1; col < cols; col++) {
-      var sx = startX + col * S;
-      var sy = startY + row * S;
-      drawCross(sx + S/2, sy + S/2, S, R, depth, g);
+  ctx.fillStyle = document.getElementById('crossColor').value;
+  for (var r = -1; r < rows; r++)
+    for (var c = -1; c < cols; c++) {
+      drawCross(ox + c * S + S/2, oy + r * S + S/2, S, R, sh, nt, g);
       ctx.fill();
     }
-  }
 
-  // Reference image overlay (on top of tiles)
+  // Ref on top
   if (refImg && opacity > 0) {
-    ctx.save();
-    ctx.globalAlpha = opacity;
-    var sc = parseFloat(document.getElementById('refScale').value);
-    var ox = parseFloat(document.getElementById('refOffX').value);
-    var oy = parseFloat(document.getElementById('refOffY').value);
-    ctx.drawImage(refImg, ox, oy, refImg.width * sc, refImg.height * sc);
+    ctx.save(); ctx.globalAlpha = opacity * 0.4;
+    ctx.drawImage(refImg, refX, refY, refImg.width * refScale, refImg.height * refScale);
     ctx.restore();
   }
 
-  // Metrics
-  var tipGap = S - 2 * R;
   document.getElementById('metrics').innerHTML =
-    'Star tip-to-tip: ' + (2*R).toFixed(0) + 'px (' + (starRatio*100).toFixed(0) + '% of cell)<br>' +
-    'Curve depth: ' + depth + ' (0=straight, 1=to center)<br>' +
-    'Arm tip width: ' + (2*(S/2-R)+g).toFixed(1) + 'px<br>' +
-    'Tip gap: ' + tipGap.toFixed(1) + 'px (grout: ' + g + 'px)';
-
+    'Cell: ' + S + 'px | R: ' + R.toFixed(0) + 'px (' + (sr*100).toFixed(0) + '%)<br>' +
+    'Shoulder: ' + sh + ' | Notch: ' + nt + '<br>' +
+    'Tip gap: ' + (S - 2*R).toFixed(1) + 'px | Grout: ' + g + 'px';
   document.getElementById('statusBar').textContent =
-    'Cell: ' + S + 'px | Star: ' + (2*R).toFixed(0) + 'px (' + (starRatio*100).toFixed(0) + '%) | depth=' + depth + ' | Grout: ' + g + 'px';
+    'Cell=' + S + ' ratio=' + sr + ' shoulder=' + sh + ' notch=' + nt + ' grout=' + g;
 }
 
 resize();
