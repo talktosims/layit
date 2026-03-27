@@ -9387,7 +9387,7 @@ function drawMosaicField(ox, oy, s, wall, voidPolys, patternOx, patternOy, projM
             // Star & cross interlock: both shapes extend to fill cells with only grout gap
             var halfCell = Math.min(stColPx, stRowPx) / 2;
             var g2 = stGrPx / 2;
-            var R = halfCell - g2; // star outer tip radius — nearly fills cell
+            var R = halfCell * 1.30 - g2; // star tips extend INTO adjacent cross cells
             var ri = R * 0.76;    // star inner notch radius (~135° notch angle)
             if (_isStarCell) {
                 // 8-pointed star: 16 vertices alternating tips (R) and notches (ri)
