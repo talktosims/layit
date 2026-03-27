@@ -6,7 +6,7 @@
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body { background: #1a1a1a; color: #eee; font-family: 'SF Mono', 'Menlo', monospace; font-size: 13px; }
 .layout { display: flex; height: 100vh; }
-.sidebar { width: 320px; padding: 16px; overflow-y: auto; background: #222; border-right: 1px solid #444; }
+.sidebar { width: 320px; padding: 16px; overflow-y: auto; background: #222; border-right: 1px solid #444; flex-shrink: 0; }
 .main { flex: 1; display: flex; flex-direction: column; }
 canvas { flex: 1; cursor: crosshair; }
 h2 { font-size: 15px; margin-bottom: 12px; color: #7fdbca; }
@@ -22,525 +22,259 @@ h3 { font-size: 12px; margin: 16px 0 8px; color: #c792ea; text-transform: upperc
 .color-row { display: flex; gap: 8px; align-items: center; margin: 4px 0; }
 .color-row label { flex: 0 0 60px; color: #999; }
 .color-row input[type=color] { width: 40px; height: 24px; border: none; cursor: pointer; }
-#dropZone { border: 2px dashed #555; border-radius: 8px; padding: 20px; text-align: center; margin: 8px 0; color: #666; cursor: pointer; }
+#dropZone { border: 2px dashed #555; border-radius: 8px; padding: 16px; text-align: center; margin: 8px 0; color: #666; cursor: pointer; font-size: 11px; }
 #dropZone.dragover { border-color: #7fdbca; color: #7fdbca; }
-.metrics { background: #1e2d1e; border: 1px solid #3a5a3a; border-radius: 4px; padding: 8px; margin: 8px 0; font-size: 11px; }
-.metrics .good { color: #a5d6a7; }
-.metrics .warn { color: #ffcc02; }
-.metrics .bad { color: #ef5350; }
+.metrics { background: #1e2d1e; border: 1px solid #3a5a3a; border-radius: 4px; padding: 8px; margin: 8px 0; font-size: 11px; line-height: 1.6; }
 </style>
 </head>
 <body>
 <div class="layout">
   <div class="sidebar">
-    <h2>Star & Cross Lab</h2>
+    <h2>Star & Cross Lab v2</h2>
 
     <h3>Geometry</h3>
-    <div class="row"><label>Cell Size</label><input type="range" id="cellSize" min="40" max="300" step="2" value="140"><span class="val" id="cellSizeV">140</span></div>
-    <div class="row"><label>Star/Cell Ratio</label><input type="range" id="starRatio" min="0.50" max="0.99" step="0.01" value="0.94"><span class="val" id="starRatioV">0.94</span></div>
-    <div class="row"><label>Concavity (k)</label><input type="range" id="concavity" min="0.15" max="0.65" step="0.01" value="0.48"><span class="val" id="concavityV">0.48</span></div>
-    <div class="row"><label>Grout (px)</label><input type="range" id="grout" min="0" max="16" step="0.5" value="3"><span class="val" id="groutV">3</span></div>
+    <div class="row"><label>Cell Size</label><input type="range" id="cellSize" min="60" max="300" step="2" value="160"><span class="val" id="cellSizeV">160</span></div>
+    <div class="row"><label>Star/Cell Ratio</label><input type="range" id="starRatio" min="0.70" max="0.99" step="0.01" value="0.94"><span class="val" id="starRatioV">0.94</span></div>
+    <div class="row"><label>Curve Depth</label><input type="range" id="curveDepth" min="0.00" max="0.95" step="0.01" value="0.55"><span class="val" id="curveDepthV">0.55</span></div>
+    <div class="row"><label>Grout (px)</label><input type="range" id="grout" min="0" max="12" step="0.5" value="3"><span class="val" id="groutV">3</span></div>
 
     <h3>Colors</h3>
     <div class="color-row"><label>Star</label><input type="color" id="starColor" value="#4a7c6f"></div>
     <div class="color-row"><label>Cross</label><input type="color" id="crossColor" value="#f0ead6"></div>
     <div class="color-row"><label>Grout</label><input type="color" id="groutColor" value="#c8c0b0"></div>
 
-    <h3>Display</h3>
-    <div class="row">
-      <button class="btn" id="toggleGrid">Grid</button>
-      <button class="btn" id="toggleVertices">Vertices</button>
-      <button class="btn" id="toggleGaps">Gap Check</button>
-    </div>
-    <div class="row">
-      <button class="btn" id="toggleOverlay">Overlay</button>
-      <span style="margin-left:8px; color:#666">Opacity:</span>
-    </div>
-    <div class="row"><label></label><input type="range" id="overlayOpacity" min="0" max="100" step="5" value="50"><span class="val" id="overlayOpacityV">50</span></div>
-
     <h3>Reference Image</h3>
-    <div id="dropZone">Drop image here or click to browse<input type="file" id="refFile" accept="image/*" style="display:none"></div>
-    <div class="row">
-      <button class="btn" id="refScale100">1:1</button>
-      <button class="btn" id="refScaleFit">Fit</button>
-      <label style="flex:0">Scale:</label>
-      <input type="range" id="refScale" min="0.1" max="3.0" step="0.05" value="1.0"><span class="val" id="refScaleV">1.0</span>
-    </div>
-    <div class="row"><label>Offset X</label><input type="range" id="refOffX" min="-400" max="400" step="1" value="0"><span class="val" id="refOffXV">0</span></div>
-    <div class="row"><label>Offset Y</label><input type="range" id="refOffY" min="-400" max="400" step="1" value="0"><span class="val" id="refOffYV">0</span></div>
+    <div id="dropZone">Drop image here or click<input type="file" id="refFile" accept="image/*" style="display:none"></div>
+    <div class="row"><label>Opacity</label><input type="range" id="overlayOpacity" min="0" max="100" step="5" value="0"><span class="val" id="overlayOpacityV">0</span></div>
+    <div class="row"><label>Scale</label><input type="range" id="refScale" min="0.1" max="4.0" step="0.05" value="1.0"><span class="val" id="refScaleV">1.0</span></div>
+    <div class="row"><label>Offset X</label><input type="range" id="refOffX" min="-500" max="500" step="1" value="0"><span class="val" id="refOffXV">0</span></div>
+    <div class="row"><label>Offset Y</label><input type="range" id="refOffY" min="-500" max="500" step="1" value="0"><span class="val" id="refOffYV">0</span></div>
 
     <h3>Measurements</h3>
-    <div class="metrics" id="metrics">Adjust parameters to see measurements</div>
-
-    <h3>Export</h3>
-    <button class="btn" id="exportCode">Copy Code → index.html</button>
-    <button class="btn" id="exportPNG">Save PNG</button>
-
-    <h3>Presets</h3>
-    <button class="btn" id="presetMoroccan">Moroccan</button>
-    <button class="btn" id="presetCement">Cement Tile</button>
-    <button class="btn" id="presetMinimal">Minimal</button>
+    <div class="metrics" id="metrics"></div>
   </div>
   <div class="main">
     <canvas id="c"></canvas>
-    <div class="info" id="statusBar">Ready — drag reference image to compare</div>
+    <div class="info" id="statusBar">Drag a reference image to overlay and compare</div>
   </div>
 </div>
 
 <script>
-// ──────────────────────────────────────────────────────
-// State
-// ──────────────────────────────────────────────────────
 const canvas = document.getElementById('c');
 const ctx = canvas.getContext('2d');
 let refImg = null;
-let showGrid = false, showVertices = false, showGaps = false, showOverlay = true;
 
-// ──────────────────────────────────────────────────────
-// Resize
-// ──────────────────────────────────────────────────────
+// ─── Prevent browser from navigating on drop anywhere ───
+document.addEventListener('dragover', function(e) { e.preventDefault(); });
+document.addEventListener('drop', function(e) {
+  e.preventDefault();
+  if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]) {
+    loadImg(e.dataTransfer.files[0]);
+    // Auto-set opacity to 50% so you can see it
+    document.getElementById('overlayOpacity').value = 50;
+    document.getElementById('overlayOpacityV').textContent = '50';
+  }
+});
+
+// ─── Resize ───
 function resize() {
   canvas.width = canvas.clientWidth * devicePixelRatio;
   canvas.height = canvas.clientHeight * devicePixelRatio;
-  ctx.scale(devicePixelRatio, devicePixelRatio);
+  ctx.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0);
   draw();
 }
 window.addEventListener('resize', resize);
 
-// ──────────────────────────────────────────────────────
-// Controls
-// ──────────────────────────────────────────────────────
-const sliders = ['cellSize','starRatio','concavity','grout','overlayOpacity','refScale','refOffX','refOffY'];
+// ─── Controls ───
+const sliders = ['cellSize','starRatio','curveDepth','grout','overlayOpacity','refScale','refOffX','refOffY'];
 sliders.forEach(id => {
-  const el = document.getElementById(id);
-  el.addEventListener('input', () => {
-    document.getElementById(id + 'V').textContent = el.value;
+  document.getElementById(id).addEventListener('input', function() {
+    document.getElementById(id + 'V').textContent = this.value;
     draw();
   });
 });
-
 ['starColor','crossColor','groutColor'].forEach(id => {
   document.getElementById(id).addEventListener('input', draw);
 });
 
-function toggleBtn(id, stateKey) {
-  const btn = document.getElementById(id);
-  btn.addEventListener('click', () => {
-    window[stateKey] = !window[stateKey];
-    btn.classList.toggle('active', window[stateKey]);
-    draw();
-  });
-}
-toggleBtn('toggleGrid', 'showGrid');
-toggleBtn('toggleVertices', 'showVertices');
-toggleBtn('toggleGaps', 'showGaps');
-toggleBtn('toggleOverlay', 'showOverlay');
-document.getElementById('toggleOverlay').classList.add('active');
-
-// ──────────────────────────────────────────────────────
-// Reference image handling
-// ──────────────────────────────────────────────────────
+// ─── Reference Image ───
 const dropZone = document.getElementById('dropZone');
 const refFile = document.getElementById('refFile');
 dropZone.addEventListener('click', () => refFile.click());
 dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
 dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
-dropZone.addEventListener('drop', e => {
-  e.preventDefault(); dropZone.classList.remove('dragover');
-  loadImage(e.dataTransfer.files[0]);
-});
-refFile.addEventListener('change', e => { if (e.target.files[0]) loadImage(e.target.files[0]); });
-
-function loadImage(file) {
+dropZone.addEventListener('drop', e => { e.preventDefault(); dropZone.classList.remove('dragover'); loadImg(e.dataTransfer.files[0]); });
+refFile.addEventListener('change', e => { if (e.target.files[0]) loadImg(e.target.files[0]); });
+function loadImg(file) {
   const img = new Image();
   img.onload = () => { refImg = img; dropZone.textContent = file.name; draw(); };
   img.src = URL.createObjectURL(file);
 }
 
-// ──────────────────────────────────────────────────────
-// Presets
-// ──────────────────────────────────────────────────────
-const presets = {
-  presetMoroccan: { cellSize: 140, starRatio: 0.78, concavity: 0.42, grout: 3, starColor: '#2e5e8e', crossColor: '#d4c9a8', groutColor: '#b0a890' },
-  presetCement: { cellSize: 160, starRatio: 0.80, concavity: 0.38, grout: 4, starColor: '#3a3a3a', crossColor: '#e8e0d0', groutColor: '#c0b8a8' },
-  presetMinimal: { cellSize: 120, starRatio: 0.75, concavity: 0.45, grout: 2, starColor: '#5a9a7a', crossColor: '#ffffff', groutColor: '#dddddd' }
-};
-Object.keys(presets).forEach(id => {
-  document.getElementById(id).addEventListener('click', () => {
-    const p = presets[id];
-    Object.entries(p).forEach(([k, v]) => {
-      const el = document.getElementById(k);
-      if (el) {
-        el.value = v;
-        const valEl = document.getElementById(k + 'V');
-        if (valEl) valEl.textContent = v;
-      }
-    });
-    draw();
-  });
-});
-
-// ──────────────────────────────────────────────────────
-// Export
-// ──────────────────────────────────────────────────────
-document.getElementById('exportPNG').addEventListener('click', () => {
-  const link = document.createElement('a');
-  link.download = 'starcross-pattern.png';
-  link.href = canvas.toDataURL('image/png');
-  link.click();
-});
-
-document.getElementById('exportCode').addEventListener('click', () => {
-  const code = generateCode();
-  navigator.clipboard.writeText(code).then(() => {
-    document.getElementById('statusBar').textContent = 'Code copied to clipboard!';
-  });
-});
-
-// ──────────────────────────────────────────────────────
-// Core Geometry
-// ──────────────────────────────────────────────────────
-
-function getParams() {
-  return {
-    S: parseFloat(document.getElementById('cellSize').value),
-    starRatio: parseFloat(document.getElementById('starRatio').value),
-    k: parseFloat(document.getElementById('concavity').value),
-    g: parseFloat(document.getElementById('grout').value),
-    starColor: document.getElementById('starColor').value,
-    crossColor: document.getElementById('crossColor').value,
-    groutColor: document.getElementById('groutColor').value,
-    overlayOpacity: parseInt(document.getElementById('overlayOpacity').value) / 100,
-    refScale: parseFloat(document.getElementById('refScale').value),
-    refOffX: parseFloat(document.getElementById('refOffX').value),
-    refOffY: parseFloat(document.getElementById('refOffY').value)
-  };
+// ─── Star Edge: Quadratic Bezier Curve ───
+// Draws one curved edge of the star from tip A to tip B with concave bow toward center.
+// depth: 0 = straight line, 1 = curve passes through center
+function drawStarEdge(cx, cy, ax, ay, bx, by, depth) {
+  // Midpoint of straight line A→B
+  var mx = (ax + bx) / 2;
+  var my = (ay + by) / 2;
+  // Vector from midpoint toward star center
+  var dx = cx - mx;
+  var dy = cy - my;
+  // Control point: interpolate from midpoint toward center by 'depth'
+  var cpx = mx + dx * depth;
+  var cpy = my + dy * depth;
+  ctx.quadraticCurveTo(cpx, cpy, bx, by);
 }
 
-function starVertices(cx, cy, R, inR) {
-  // 8-vertex 4-pointed star with straight concave sides
-  return [
-    [cx, cy - R],           // top tip
-    [cx + inR, cy - inR],   // inner upper-right
-    [cx + R, cy],           // right tip
-    [cx + inR, cy + inR],   // inner lower-right
-    [cx, cy + R],           // bottom tip
-    [cx - inR, cy + inR],   // inner lower-left
-    [cx - R, cy],           // left tip
-    [cx - inR, cy - inR]    // inner upper-left
-  ];
-}
-
-function crossVertices(cx, cy, S, R, inR, g) {
-  // 12-vertex tapered plus sign
-  // a = arm half-width at base (notch point)
-  // b = arm half-width at tip
-  // armLen = arm length from center to tip
-
-  const a = S/2 - inR - g/2;  // base half-width (at 45° notch, inset by grout)
-  const b = S/2 - R + g/2;    // tip half-width (at star tip gap, inset by grout)
-  // Ensure tip is at least 1px wide
-  const bClamped = Math.max(b, 1);
-  const armLen = S/2 - g/2;   // arm extends to near star center line, minus grout
-
-  return [
-    // N arm (going clockwise)
-    [cx - a, cy - a],           // NW notch
-    [cx - bClamped, cy - armLen], // N arm tip left
-    [cx + bClamped, cy - armLen], // N arm tip right
-    [cx + a, cy - a],           // NE notch
-    // E arm
-    [cx + armLen, cy - bClamped], // E arm tip top
-    [cx + armLen, cy + bClamped], // E arm tip bottom
-    [cx + a, cy + a],           // SE notch
-    // S arm
-    [cx + bClamped, cy + armLen], // S arm tip right
-    [cx - bClamped, cy + armLen], // S arm tip left
-    [cx - a, cy + a],           // SW notch
-    // W arm
-    [cx - armLen, cy + bClamped], // W arm tip bottom
-    [cx - armLen, cy - bClamped]  // W arm tip top
-  ];
-}
-
-function drawPath(verts) {
+// ─── Draw Star ───
+function drawStar(cx, cy, R, depth, g) {
+  var r = R - g / 2;
   ctx.beginPath();
-  ctx.moveTo(verts[0][0], verts[0][1]);
-  for (let i = 1; i < verts.length; i++) {
-    ctx.lineTo(verts[i][0], verts[i][1]);
-  }
+  ctx.moveTo(cx, cy - r);  // top tip
+  drawStarEdge(cx, cy, cx, cy - r, cx + r, cy, depth);         // top → right
+  drawStarEdge(cx, cy, cx + r, cy, cx, cy + r, depth);         // right → bottom
+  drawStarEdge(cx, cy, cx, cy + r, cx - r, cy, depth);         // bottom → left
+  drawStarEdge(cx, cy, cx - r, cy, cx, cy - r, depth);         // left → top
   ctx.closePath();
 }
 
-// ──────────────────────────────────────────────────────
-// Gap Analysis
-// ──────────────────────────────────────────────────────
+// ─── Draw Cross (complement of 4 surrounding stars) ───
+function drawCross(cx, cy, S, R, depth, g) {
+  // The cross at (cx,cy) is surrounded by 4 stars at diagonal offsets.
+  // Each cross arm side IS a star edge from the adjacent star.
+  // The cross has 4 curved sides + 4 straight arm tips.
 
-function analyzeGaps(S, R, inR, g) {
-  // Check if tiles perfectly fill the plane (minus grout)
+  var b = S/2 - R + g/2;    // arm tip half-width
+  var arm = S/2 - g/2;       // arm length from center
+  var r = R;                  // star radius (no grout reduction — cross edge matches star edge)
 
-  // Star area (8-vertex polygon)
-  // Area = sum of triangle areas from center
-  const starArea = 4 * R * inR; // 4 triangles, each with base R and height inR (approximately)
-  // More precisely: 8 triangles. Each from center to edge.
-  // Top triangle: (0,-R) to (inR,-inR), area = 0.5 * |cross product|
-  // = 0.5 * |0*(-inR) - (-R)*inR| = 0.5 * R * inR
-  // Right-top: (inR,-inR) to (R,0), area = 0.5 * |inR*0 - (-inR)*R| = 0.5 * R * inR
-  // Total: 8 * 0.5 * R * inR = 4 * R * inR
-  const exactStarArea = 4 * R * inR;
+  // Stars at: NE(+S/2, -S/2), SE(+S/2, +S/2), SW(-S/2, +S/2), NW(-S/2, -S/2)
+  // Each star contributes one curved edge to the cross.
 
-  // Cross area: we compute from the 12 vertices using shoelace
-  const cv = crossVertices(0, 0, S, R, inR, g);
-  let crossArea = 0;
-  for (let i = 0; i < cv.length; i++) {
-    const j = (i + 1) % cv.length;
-    crossArea += cv[i][0] * cv[j][1] - cv[j][0] * cv[i][1];
-  }
-  crossArea = Math.abs(crossArea) / 2;
+  // For star at (sx, sy), the edge from its bottom tip to its left tip
+  // borders the cross. The control point for this edge is computed
+  // relative to the star center.
 
-  // Cell area
-  const cellArea = S * S;
+  ctx.beginPath();
 
-  // Ideal: star + cross + grout = cell
-  const tileArea = exactStarArea + crossArea;
-  const groutArea = cellArea - tileArea;
-  const coverage = tileArea / cellArea * 100;
+  // N arm tip (straight)
+  ctx.moveTo(cx - b, cy - arm);
+  ctx.lineTo(cx + b, cy - arm);
 
-  // Grout uniformity check
-  // Between star tips: S - 2R
-  const tipGap = S - 2 * R;
-  // Between star inner and cross notch: distance check
-  const innerToCross = Math.sqrt(2) * (S/2 - inR) - Math.sqrt(2) * (S/2 - inR - g/2);
-  // = Math.sqrt(2) * g/2
-  const diagonalGrout = g / Math.sqrt(2) * 2; // apparent grout width at 45°
+  // NE curve: star at (cx+S/2, cy-S/2), edge from left tip to bottom tip
+  // Star left tip: (cx+S/2-r, cy-S/2), Star bottom tip: (cx+S/2, cy-S/2+r)
+  // This edge goes from the star's left tip to bottom tip
+  var ne_sx = cx + S/2, ne_sy = cy - S/2;
+  drawStarEdge(ne_sx, ne_sy, ne_sx - r, ne_sy, ne_sx, ne_sy + r, depth);
 
-  return {
-    starArea: exactStarArea,
-    crossArea,
-    cellArea,
-    tileArea,
-    groutArea,
-    coverage,
-    tipGap,
-    tipGapTarget: g,  // should be ~g for uniform grout
-    diagonalGrout: Math.sqrt(2) * g / 2 * 2 // perpendicular grout width at diagonal
-  };
+  // E arm tip (straight)
+  ctx.lineTo(cx + arm, cy - b);
+  ctx.lineTo(cx + arm, cy + b);
+
+  // SE curve: star at (cx+S/2, cy+S/2), edge from top tip to left tip
+  var se_sx = cx + S/2, se_sy = cy + S/2;
+  drawStarEdge(se_sx, se_sy, se_sx, se_sy - r, se_sx - r, se_sy, depth);
+
+  // S arm tip
+  ctx.lineTo(cx + b, cy + arm);
+  ctx.lineTo(cx - b, cy + arm);
+
+  // SW curve: star at (cx-S/2, cy+S/2), edge from right tip to top tip
+  var sw_sx = cx - S/2, sw_sy = cy + S/2;
+  drawStarEdge(sw_sx, sw_sy, sw_sx + r, sw_sy, sw_sx, sw_sy - r, depth);
+
+  // W arm tip
+  ctx.lineTo(cx - arm, cy + b);
+  ctx.lineTo(cx - arm, cy - b);
+
+  // NW curve: star at (cx-S/2, cy-S/2), edge from bottom tip to right tip
+  var nw_sx = cx - S/2, nw_sy = cy - S/2;
+  drawStarEdge(nw_sx, nw_sy, nw_sx, nw_sy + r, nw_sx + r, nw_sy, depth);
+
+  ctx.closePath();
 }
 
-// ──────────────────────────────────────────────────────
-// Main Draw
-// ──────────────────────────────────────────────────────
-
+// ─── Main Draw ───
 function draw() {
-  const W = canvas.clientWidth;
-  const H = canvas.clientHeight;
-  const p = getParams();
-  const { S, starRatio, k, g } = p;
+  var W = canvas.clientWidth;
+  var H = canvas.clientHeight;
+  var S = parseFloat(document.getElementById('cellSize').value);
+  var starRatio = parseFloat(document.getElementById('starRatio').value);
+  var depth = parseFloat(document.getElementById('curveDepth').value);
+  var g = parseFloat(document.getElementById('grout').value);
+  var starColor = document.getElementById('starColor').value;
+  var crossColor = document.getElementById('crossColor').value;
+  var groutColor = document.getElementById('groutColor').value;
+  var opacity = parseInt(document.getElementById('overlayOpacity').value) / 100;
 
-  const R = S * starRatio / 2;  // star tip radius (full size, grout handled separately)
-  const inR = R * k;             // inner vertex distance
+  var R = S * starRatio / 2;
 
   // Clear with grout color
-  ctx.fillStyle = p.groutColor;
+  ctx.fillStyle = groutColor;
   ctx.fillRect(0, 0, W, H);
 
   // Reference image (behind tiles)
-  if (refImg && showOverlay && p.overlayOpacity > 0) {
+  if (refImg && opacity > 0) {
     ctx.save();
-    ctx.globalAlpha = p.overlayOpacity;
-    const rw = refImg.width * p.refScale;
-    const rh = refImg.height * p.refScale;
-    ctx.drawImage(refImg, p.refOffX, p.refOffY, rw, rh);
+    ctx.globalAlpha = opacity;
+    var sc = parseFloat(document.getElementById('refScale').value);
+    var ox = parseFloat(document.getElementById('refOffX').value);
+    var oy = parseFloat(document.getElementById('refOffY').value);
+    ctx.drawImage(refImg, ox, oy, refImg.width * sc, refImg.height * sc);
     ctx.restore();
   }
 
-  // Calculate grid
-  const cols = Math.ceil(W / S) + 2;
-  const rows = Math.ceil(H / S) + 2;
-  const ox = S / 2;  // offset so stars center nicely
-  const oy = S / 2;
+  var cols = Math.ceil(W / S) + 2;
+  var rows = Math.ceil(H / S) + 2;
+  var startX = S / 2;
+  var startY = S / 2;
 
-  // Draw all tiles
-  for (let row = -1; row < rows; row++) {
-    for (let col = -1; col < cols; col++) {
-      const sx = ox + col * S;
-      const sy = oy + row * S;
-
-      // Draw star
-      const sv = starVertices(sx, sy, R - g/2, inR - g/2 * k);
-      drawPath(sv);
-      ctx.fillStyle = p.starColor;
-      ctx.fill();
-
-      // Draw cross at diagonal offset
-      const cv = crossVertices(sx + S/2, sy + S/2, S, R, inR, g);
-      drawPath(cv);
-      ctx.fillStyle = p.crossColor;
+  // Draw all stars
+  ctx.fillStyle = starColor;
+  for (var row = -1; row < rows; row++) {
+    for (var col = -1; col < cols; col++) {
+      var sx = startX + col * S;
+      var sy = startY + row * S;
+      drawStar(sx, sy, R, depth, g);
       ctx.fill();
     }
   }
 
-  // Debug overlays
-  if (showGrid) {
-    ctx.strokeStyle = 'rgba(255,255,0,0.3)';
-    ctx.lineWidth = 1;
-    for (let i = -1; i < cols + 1; i++) {
-      ctx.beginPath();
-      ctx.moveTo(ox + i * S, 0);
-      ctx.lineTo(ox + i * S, H);
-      ctx.stroke();
-    }
-    for (let i = -1; i < rows + 1; i++) {
-      ctx.beginPath();
-      ctx.moveTo(0, oy + i * S);
-      ctx.lineTo(W, oy + i * S);
-      ctx.stroke();
+  // Draw all crosses
+  ctx.fillStyle = crossColor;
+  for (var row = -1; row < rows; row++) {
+    for (var col = -1; col < cols; col++) {
+      var sx = startX + col * S;
+      var sy = startY + row * S;
+      drawCross(sx + S/2, sy + S/2, S, R, depth, g);
+      ctx.fill();
     }
   }
 
-  if (showVertices) {
-    // Draw vertices of one star and one cross
-    const sx = ox + S, sy = oy + S;
-    const sv = starVertices(sx, sy, R - g/2, inR - g/2 * k);
-    sv.forEach(([x,y], i) => {
-      ctx.beginPath();
-      ctx.arc(x, y, 4, 0, Math.PI*2);
-      ctx.fillStyle = i % 2 === 0 ? '#ff4444' : '#ffaa00';
-      ctx.fill();
-      ctx.fillStyle = '#fff';
-      ctx.font = '10px monospace';
-      ctx.fillText('S'+i, x+6, y-2);
-    });
-    const cv = crossVertices(sx + S/2, sy + S/2, S, R, inR, g);
-    cv.forEach(([x,y], i) => {
-      ctx.beginPath();
-      ctx.arc(x, y, 3, 0, Math.PI*2);
-      ctx.fillStyle = '#44ff44';
-      ctx.fill();
-      ctx.fillStyle = '#fff';
-      ctx.font = '10px monospace';
-      ctx.fillText('C'+i, x+5, y-2);
-    });
+  // Reference image overlay (on top of tiles)
+  if (refImg && opacity > 0) {
+    ctx.save();
+    ctx.globalAlpha = opacity;
+    var sc = parseFloat(document.getElementById('refScale').value);
+    var ox = parseFloat(document.getElementById('refOffX').value);
+    var oy = parseFloat(document.getElementById('refOffY').value);
+    ctx.drawImage(refImg, ox, oy, refImg.width * sc, refImg.height * sc);
+    ctx.restore();
   }
 
-  if (showGaps) {
-    // Highlight gaps/overlaps by drawing with XOR or checking pixel coverage
-    // Simple approach: draw star and cross outlines to check alignment
-    const sx = ox + S, sy = oy + S;
-    ctx.strokeStyle = '#ff0000';
-    ctx.lineWidth = 2;
+  // Metrics
+  var tipGap = S - 2 * R;
+  document.getElementById('metrics').innerHTML =
+    'Star tip-to-tip: ' + (2*R).toFixed(0) + 'px (' + (starRatio*100).toFixed(0) + '% of cell)<br>' +
+    'Curve depth: ' + depth + ' (0=straight, 1=to center)<br>' +
+    'Arm tip width: ' + (2*(S/2-R)+g).toFixed(1) + 'px<br>' +
+    'Tip gap: ' + tipGap.toFixed(1) + 'px (grout: ' + g + 'px)';
 
-    const sv = starVertices(sx, sy, R - g/2, inR - g/2 * k);
-    drawPath(sv);
-    ctx.stroke();
-
-    const cv = crossVertices(sx + S/2, sy + S/2, S, R, inR, g);
-    drawPath(cv);
-    ctx.stroke();
-
-    // Draw the theoretical star edge (without grout reduction) to show the boundary
-    ctx.strokeStyle = 'rgba(0,255,255,0.5)';
-    ctx.lineWidth = 1;
-    ctx.setLineDash([4,4]);
-    const sv2 = starVertices(sx, sy, R, inR);
-    drawPath(sv2);
-    ctx.stroke();
-    ctx.setLineDash([]);
-  }
-
-  // Update metrics
-  const metrics = analyzeGaps(S, R, inR, g);
-  const metricsEl = document.getElementById('metrics');
-  const tipGapClass = Math.abs(metrics.tipGap - g) < 2 ? 'good' : Math.abs(metrics.tipGap - g) < 5 ? 'warn' : 'bad';
-  metricsEl.innerHTML = `
-    <div>Star area: ${metrics.starArea.toFixed(1)}px² | Cross area: ${metrics.crossArea.toFixed(1)}px²</div>
-    <div>Cell area: ${metrics.cellArea.toFixed(1)}px² | Tile coverage: <span class="${metrics.coverage > 85 ? 'good' : 'warn'}">${metrics.coverage.toFixed(1)}%</span></div>
-    <div>Star tip-to-tip: ${(2*R).toFixed(1)}px | Cell: ${S}px | Ratio: ${(2*R/S*100).toFixed(1)}%</div>
-    <div>Tip gap: <span class="${tipGapClass}">${metrics.tipGap.toFixed(1)}px</span> (target: ${g}px)</div>
-    <div>Cross arm base: ${(S - 2*inR - g).toFixed(1)}px | tip: ${(S - 2*R + g).toFixed(1)}px</div>
-    <div>Inner vertex ratio: ${k} | inR: ${inR.toFixed(1)}px</div>
-  `;
-
-  // Status bar
   document.getElementById('statusBar').textContent =
-    `Cell: ${S}px | Star: ${(2*R).toFixed(0)}px (${(starRatio*100).toFixed(0)}%) | ` +
-    `k=${k} | Grout: ${g}px | Coverage: ${metrics.coverage.toFixed(1)}%`;
+    'Cell: ' + S + 'px | Star: ' + (2*R).toFixed(0) + 'px (' + (starRatio*100).toFixed(0) + '%) | depth=' + depth + ' | Grout: ' + g + 'px';
 }
 
-// ──────────────────────────────────────────────────────
-// Generate index.html compatible code
-// ──────────────────────────────────────────────────────
-
-function generateCode() {
-  const p = getParams();
-  return `// Star & Cross tessellation parameters (from test lab)
-// STAR_CELL_RATIO: ${p.starRatio}  (star tip-to-tip / unit cell)
-// CONCAVITY_K: ${p.k}  (inner vertex / star tip radius)
-// These define the complete geometry — star shape, cross shape, and grid spacing.
-
-// ── Grid spacing (in drawMosaicField spacing section) ──
-} else if (subShape === 'starcross') {
-    var STAR_CELL_RATIO = ${p.starRatio};
-    var CONCAVITY_K = ${p.k};
-    stColIn = subW / STAR_CELL_RATIO;
-    stRowIn = subH / STAR_CELL_RATIO;
-
-// ── Star shape (in drawSubTilePath) ──
-} else if (subShape === 'starcross') {
-    // 4-pointed star with straight concave sides
-    var R = Math.min(stWpx, stHpx) / 2 - stGrPx / 2;
-    var CONCAVITY_K = ${p.k};
-    var inR = R * CONCAVITY_K;
-    cx.moveTo(px, py - R);
-    cx.lineTo(px + inR, py - inR);
-    cx.lineTo(px + R, py);
-    cx.lineTo(px + inR, py + inR);
-    cx.lineTo(px, py + R);
-    cx.lineTo(px - inR, py + inR);
-    cx.lineTo(px - R, py);
-    cx.lineTo(px - inR, py - inR);
-    cx.closePath();
-
-// ── Cross shape (in draw loop starcross section) ──
-if (subShape === 'starcross') {
-    var crossX = px + stColPx / 2;
-    var crossY = py + stRowPx / 2;
-    if (crossX > wallMinX && crossX < wallMaxX && crossY > wallMinY && crossY < wallMaxY) {
-        var crossInWall = inPoly([crossX, crossY], wall);
-        if (crossInWall) {
-            cx.fillStyle = isCut ? '#FF9800' : '#81C784';
-            cx.strokeStyle = isCut ? '#E65100' : '#2E7D32';
-            cx.lineWidth = 0.5;
-            var cR = Math.min(stWpx, stHpx) / 2 - stGrPx / 2;
-            var cInR = cR * ${p.k};
-            var cS = stColPx;
-            var armBase = cS/2 - cInR - stGrPx/2;
-            var armTip = Math.max(cS/2 - cR + stGrPx/2, 1);
-            var armLen = cS/2 - stGrPx/2;
-            cx.beginPath();
-            cx.moveTo(crossX - armBase, crossY - armBase);
-            cx.lineTo(crossX - armTip, crossY - armLen);
-            cx.lineTo(crossX + armTip, crossY - armLen);
-            cx.lineTo(crossX + armBase, crossY - armBase);
-            cx.lineTo(crossX + armLen, crossY - armTip);
-            cx.lineTo(crossX + armLen, crossY + armTip);
-            cx.lineTo(crossX + armBase, crossY + armBase);
-            cx.lineTo(crossX + armTip, crossY + armLen);
-            cx.lineTo(crossX - armTip, crossY + armLen);
-            cx.lineTo(crossX - armBase, crossY + armBase);
-            cx.lineTo(crossX - armLen, crossY + armTip);
-            cx.lineTo(crossX - armLen, crossY - armTip);
-            cx.closePath();
-            cx.fill();
-            cx.stroke();
-        }
-    }
-}`;
-}
-
-// ──────────────────────────────────────────────────────
-// Init
-// ──────────────────────────────────────────────────────
 resize();
 </script>
 </body>
