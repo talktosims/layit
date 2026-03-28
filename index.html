@@ -6117,7 +6117,7 @@ function applyPreset() {
 
     document.getElementById('tileShape').value = preset.shape;
     onShape();
-    document.getElementById('grout').value = preset.grout || 0.125;
+    document.getElementById('grout').value = (preset.grout !== undefined && preset.grout !== null) ? preset.grout : 0.125;
 
     var nom = document.getElementById('nominalMode').checked;
     if (nom) {
