@@ -9477,9 +9477,21 @@ function drawMosaicField(ox, oy, s, wall, voidPolys, patternOx, patternOy, projM
         }
     }
 
+    // For starcross: two-pass rendering (stars first, crosses on top)
+    // so star extensions don't overwrite adjacent crosses
+    var _scPasses = (subShape === 'starcross') ? 2 : 1;
+    for (var _scPass = 0; _scPass < _scPasses; _scPass++) {
+
     // Iterate over all sub-tile positions
     for (var row = startRow; row <= endRow; row++) {
         for (var col = startCol; col <= endCol; col++) {
+            // Starcross two-pass: pass 0 = stars only, pass 1 = crosses only
+            if (subShape === 'starcross' && _scPasses > 1) {
+                var _isStar = ((row + col) % 2 + 2) % 2 === 0;
+                if (_scPass === 0 && !_isStar) continue;
+                if (_scPass === 1 && _isStar) continue;
+            }
+
             // Sub-tile center in pixels
             var px = ox + col * stColPx + patternOx;
             var py = oy + row * stRowPx + patternOy;
@@ -9760,6 +9772,7 @@ function drawMosaicField(ox, oy, s, wall, voidPolys, patternOx, patternOy, projM
             }
         }
     }
+    } // end _scPass loop (two-pass for starcross)
 
     // Build sheet-level cutTilesData entries (one per cut sheet, not per sub-tile)
     if (!projMode || window.segmentProjMode) {
