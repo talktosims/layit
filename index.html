@@ -5091,16 +5091,13 @@ function drawMosaicSheetDetail(tile) {
             var r = (subWd - subGrd) / 2;
             ctx.arc(dx, dy, r, 0, Math.PI * 2);
         } else if (subShape === 'fishscale') {
-            // Fishscale preview — matches main renderer
+            // Fishscale preview — circular arc tessellation (matches main renderer)
             var rw = (subWd - subGrd) / 2;
-            var fsStemLen = rw * 0.5;
-            var fsTotalH = rw + fsStemLen;
-            var flatY = dy - fsTotalH / 2 + rw;
-            var stemY = dy + fsTotalH / 2;
-            var stemLen = stemY - flatY;
-            ctx.arc(dx, flatY, rw, Math.PI, 2 * Math.PI, false);
-            ctx.quadraticCurveTo(dx + rw * 0.15, flatY + stemLen * 0.45, dx, stemY);
-            ctx.quadraticCurveTo(dx - rw * 0.15, flatY + stemLen * 0.45, dx - rw, flatY);
+            var domeY = dy;
+            var pointY = dy + rw;
+            ctx.arc(dx, domeY, rw, Math.PI, 2 * Math.PI, false);
+            ctx.arc(dx + rw, pointY, rw, -Math.PI / 2, Math.PI, true);
+            ctx.arc(dx - rw, pointY, rw, 0, -Math.PI / 2, true);
             ctx.closePath();
         } else if (subShape === 'diamond') {
             var hw = (subWd - subGrd) / 2, hh = (subHd - subGrd) / 2;
@@ -5175,13 +5172,14 @@ function drawMosaicSheetDetail(tile) {
             ctx.bezierCurveTo(dx - hw, dy - ly, dx - lx, dy - hh, dx, dy - hh);
             ctx.closePath();
         } else if (subShape === 'ogee') {
-            // Ogee preview — matches main renderer's S-curve
+            // Ogee preview — anti-symmetric bezier (matches main renderer)
             var hw = (subWd - subGrd) / 2, hh = (subHd - subGrd) / 2;
+            var A = 0.55;
             ctx.moveTo(dx, dy - hh);
-            ctx.bezierCurveTo(dx + hw * 0.7, dy - hh * 0.88, dx + hw, dy - hh * 0.45, dx + hw, dy - hh * 0.05);
-            ctx.bezierCurveTo(dx + hw, dy + hh * 0.3, dx + hw * 0.35, dy + hh * 0.75, dx, dy + hh);
-            ctx.bezierCurveTo(dx - hw * 0.35, dy + hh * 0.75, dx - hw, dy + hh * 0.3, dx - hw, dy - hh * 0.05);
-            ctx.bezierCurveTo(dx - hw, dy - hh * 0.45, dx - hw * 0.7, dy - hh * 0.88, dx, dy - hh);
+            ctx.bezierCurveTo(dx, dy - hh * (1-A), dx + hw, dy - hh * A, dx + hw, dy);
+            ctx.bezierCurveTo(dx + hw, dy + hh * A, dx, dy + hh * (1-A), dx, dy + hh);
+            ctx.bezierCurveTo(dx, dy + hh * (1-A), dx - hw, dy + hh * A, dx - hw, dy);
+            ctx.bezierCurveTo(dx - hw, dy - hh * A, dx, dy - hh * (1-A), dx, dy - hh);
             ctx.closePath();
         } else if (subShape === 'starcross') {
             // 8-pointed star preview — 16-vertex polygon matching main renderer
@@ -8949,10 +8947,11 @@ function drawMosaicField(ox, oy, s, wall, voidPolys, patternOx, patternOy, projM
         stRowIn = subH + subGr;
     } else if (subShape === 'fishscale') {
         stColIn = subW + subGr;
-        // Fishscale geometry: dome radius = rw = subW/2, stem = rw * 0.5
-        // Row spacing = stem length so domes nest into concave gaps
+        // Fishscale geometry: dome radius = rw = subW/2
+        // MATH-PROVEN: when stemLen = rw, sides are quarter-circle arcs that
+        // exactly match the dome circle of the neighbor below → zero-gap nesting
         var fsRw = subW / 2;
-        var fsStemLen = fsRw * 0.5;
+        var fsStemLen = fsRw;  // stem = dome radius (exact circular arc tessellation)
         stRowIn = fsStemLen + subGr;
     } else if (subShape === 'diamond') {
         // Diamonds are rotated 45deg squares, spacing is along the diagonal
@@ -8989,9 +8988,13 @@ function drawMosaicField(ox, oy, s, wall, voidPolys, patternOx, patternOy, projM
         stColIn = subW * 0.85 + subGr;
         stRowIn = subH * 0.85 + subGr;
     } else if (subShape === 'ogee') {
-        // Ogee/provenzal — interlocking by half height, brick offset
+        // Ogee/provenzal — MATH-PROVEN interlocking via kappa bezier anti-symmetry.
+        // The identity x(t)+x(1-t)=hw requires row spacing = face half-height exactly.
+        // Proof: y_A + y_B = (y-cyA) + (cyB-y) = rowSpacing. For anti-symmetry pairs
+        // to sum to hh, we need rowSpacing = hh = (subH-subGr)/2.
+        // Grout appears as the horizontal gap (subGr) between interlocking S-curves.
         stColIn = subW + subGr;
-        stRowIn = subH * 0.5 + subGr;
+        stRowIn = (subH - subGr) / 2;  // = face hh, exact anti-symmetry
         // Tiles in odd rows rotate 180° (handled in draw loop)
     } else if (subShape === 'starcross') {
         // Star & Cross: 8-pointed star + tilted cross alternate in checkerboard.
@@ -9089,26 +9092,27 @@ function drawMosaicField(ox, oy, s, wall, voidPolys, patternOx, patternOy, projM
             }
             return pts;
         } else if (subShape === 'fishscale') {
-            // Fish scale — dome arc + concave sides
+            // Fish scale — circular arc tessellation: dome + quarter-circle sides
             var rw = stWpx / 2;
-            var fsStemLen = rw * 0.5;
-            var fsTotalH = rw + fsStemLen;
-            var flatY = py - fsTotalH / 2 + rw;
-            var stemY = py + fsTotalH / 2;
-            var stemLen = stemY - flatY;
+            var domeY = py;
+            var pointY = py + rw;
             var pts = [];
             // Semicircular dome arc (8 sample points)
             for (var a = 0; a <= 8; a++) {
                 var angle = Math.PI + (a / 8) * Math.PI;
-                pts.push([px + rw * Math.cos(angle), flatY + rw * Math.sin(angle)]);
+                pts.push([px + rw * Math.cos(angle), domeY + rw * Math.sin(angle)]);
             }
-            // Right concave side
-            pts.push([px + rw * 0.4, flatY + stemLen * 0.25]);
-            pts.push([px + rw * 0.15, flatY + stemLen * 0.45]);
-            pts.push([px, stemY]);
-            // Left concave side
-            pts.push([px - rw * 0.15, flatY + stemLen * 0.45]);
-            pts.push([px - rw * 0.4, flatY + stemLen * 0.25]);
+            // Right quarter-circle side (4 sample points)
+            for (var a = 1; a <= 3; a++) {
+                var angle = -Math.PI / 2 - (a / 4) * Math.PI / 2;
+                pts.push([px + rw + rw * Math.cos(angle), pointY + rw * Math.sin(angle)]);
+            }
+            pts.push([px, pointY]);
+            // Left quarter-circle side (4 sample points)
+            for (var a = 1; a <= 3; a++) {
+                var angle = (a / 4) * Math.PI / 2;
+                pts.push([px - rw + rw * Math.cos(angle), pointY + rw * Math.sin(angle)]);
+            }
             return pts;
         } else if (subShape === 'diamond') {
             // Rotated 45-degree square
@@ -9167,13 +9171,15 @@ function drawMosaicField(ox, oy, s, wall, voidPolys, patternOx, patternOy, projM
                     [px, py + hh], [px - hw * 0.6, py + hh * 0.6],
                     [px - hw, py], [px - hw * 0.6, py - hh * 0.6]];
         } else if (subShape === 'ogee') {
-            // Ogee: convex upper, concave lower — 10 sample points along the curve
+            // Ogee: kappa bezier S-curve (midY=0) — 12 sample points
             var hw = stWpx / 2, hh = stHpx / 2;
-            return [[px, py - hh], [px + hw * 0.6, py - hh * 0.7],
-                    [px + hw, py - hh * 0.2], [px + hw, py + hh * 0.1],
-                    [px + hw * 0.5, py + hh * 0.6], [px, py + hh],
-                    [px - hw * 0.5, py + hh * 0.6], [px - hw, py + hh * 0.1],
-                    [px - hw, py - hh * 0.2], [px - hw * 0.6, py - hh * 0.7]];
+            return [[px, py - hh], [px + hw * 0.4, py - hh * 0.85],
+                    [px + hw * 0.85, py - hh * 0.4], [px + hw, py],
+                    [px + hw * 0.85, py + hh * 0.4], [px + hw * 0.4, py + hh * 0.85],
+                    [px, py + hh],
+                    [px - hw * 0.4, py + hh * 0.85], [px - hw * 0.85, py + hh * 0.4],
+                    [px - hw, py], [px - hw * 0.85, py - hh * 0.4],
+                    [px - hw * 0.4, py - hh * 0.85]];
         } else if (subShape === 'starcross') {
             // 8-pointed star or tilted cross — use bounding box for hit test
             var R = Math.min(stWpx, stHpx) / 2;
@@ -9243,20 +9249,23 @@ function drawMosaicField(ox, oy, s, wall, voidPolys, patternOx, patternOy, projM
             var r = (stWpx - stGrPx) / 2;
             cx.arc(px, py, r, 0, Math.PI * 2);
         } else if (subShape === 'fishscale') {
-            // Fish scale / scallop — semicircular dome top, concave tapered sides to stem
-            // Dome radius = half-width, stem length controls nesting overlap
+            // Fish scale / scallop — MATH-PROVEN circular arc tessellation
+            // When stemLen = domeRadius, the tile is composed entirely of circular arcs:
+            //   1. Top: semicircle (dome)
+            //   2. Right side: quarter-circle (concave inward)
+            //   3. Left side: quarter-circle (concave inward)
+            // The side arcs ARE the dome circles of the neighbor tiles below,
+            // guaranteeing zero-gap nesting.
             var rw = (stWpx - stGrPx) / 2;
-            var fsStemLen = rw * 0.5;
-            var fsTotalH = rw + fsStemLen;
-            var flatY = py - fsTotalH / 2 + rw;
-            var stemY = py + fsTotalH / 2;
-            var stemLen = stemY - flatY;
-            // Semicircular dome
-            cx.arc(px, flatY, rw, Math.PI, 2 * Math.PI, false);
-            // Right concave side — wider control point for smoother taper
-            cx.quadraticCurveTo(px + rw * 0.15, flatY + stemLen * 0.45, px, stemY);
-            // Left concave side — mirror
-            cx.quadraticCurveTo(px - rw * 0.15, flatY + stemLen * 0.45, px - rw, flatY);
+            var stemLen = rw;  // exact: stem = dome radius
+            var domeY = py;    // dome center at tile center
+            var pointY = py + rw;  // bottom point
+            // Semicircular dome: left to right across top
+            cx.arc(px, domeY, rw, Math.PI, 2 * Math.PI, false);
+            // Right side: quarter-circle from dome-right to bottom point
+            cx.arc(px + rw, pointY, rw, -Math.PI / 2, Math.PI, true);
+            // Left side: quarter-circle from bottom point to dome-left
+            cx.arc(px - rw, pointY, rw, 0, -Math.PI / 2, true);
             cx.closePath();
         } else if (subShape === 'diamond') {
             var hw = (stWpx - stGrPx) / 2, hh = (stHpx - stGrPx) / 2;
@@ -9367,19 +9376,36 @@ function drawMosaicField(ox, oy, s, wall, voidPolys, patternOx, patternOy, projM
             cx.bezierCurveTo(px - hw, py - ly, px - lx, py - hh, px, py - hh);
             cx.closePath();
         } else if (subShape === 'ogee') {
-            // Ogee / Provençal — S-curve: convex upper arch + concave lower taper
-            // Bilateral symmetry (left mirrors right). Interlocks via staggered 180° rows.
-            // Widest at ~5% below center, tapers to points at top and bottom.
+            // Ogee / Provençal — MATH-PROVEN anti-symmetric bezier tessellation
+            //
+            // PROOF: For cubic bezier P0=(hw,0), P1=(hw,A*hh), P2=(0,(1-A)*hh), P3=(0,hh)
+            // where CP1_x = P0_x and CP2_x = P3_x:
+            //   x(t) = hw * (1-t)²(1+2t)
+            //   x(t) + x(1-t) = hw  for ALL t  (algebraic identity)
+            //   y(t) + y(1-t) = hh  for ALL t
+            // This guarantees ZERO-GAP, ZERO-OVERLAP tessellation when row spacing = hh
+            // and tiles are 180°-flipped in alternating rows.
+            //
+            // A controls curvature: 0.55 gives a nice ogee S-curve shape.
             var hw = (stWpx - stGrPx) / 2, hh = (stHpx - stGrPx) / 2;
-            cx.moveTo(px, py - hh);                                                                     // top point
-            cx.bezierCurveTo(px + hw * 0.7, py - hh * 0.88, px + hw, py - hh * 0.45,                  // right upper: convex arch
-                             px + hw, py - hh * 0.05);                                                  // max width
-            cx.bezierCurveTo(px + hw, py + hh * 0.3, px + hw * 0.35, py + hh * 0.75,                  // right lower: concave taper
-                             px, py + hh);                                                               // bottom point
-            cx.bezierCurveTo(px - hw * 0.35, py + hh * 0.75, px - hw, py + hh * 0.3,                  // left lower: mirror
-                             px - hw, py - hh * 0.05);
-            cx.bezierCurveTo(px - hw, py - hh * 0.45, px - hw * 0.7, py - hh * 0.88,                  // left upper: mirror
-                             px, py - hh);
+            var A = 0.55;
+            cx.moveTo(px, py - hh);                                         // top tip
+            // Upper right: derived by 180° rotating the anti-symmetric lower-left
+            cx.bezierCurveTo(px, py - hh * (1 - A),
+                             px + hw, py - hh * A,
+                             px + hw, py);                                   // max width
+            // Lower right: anti-symmetric (provably tiles)
+            cx.bezierCurveTo(px + hw, py + hh * A,
+                             px, py + hh * (1 - A),
+                             px, py + hh);                                   // bottom tip
+            // Lower left: mirror of lower-right, reverse direction
+            cx.bezierCurveTo(px, py + hh * (1 - A),
+                             px - hw, py + hh * A,
+                             px - hw, py);                                   // left max width
+            // Upper left: mirror of upper-right, reverse direction
+            cx.bezierCurveTo(px - hw, py - hh * A,
+                             px, py - hh * (1 - A),
+                             px, py - hh);                                   // back to top tip
             cx.closePath();
         } else if (subShape === 'starcross') {
             // Star & Cross: checkerboard of 8-pointed star + tilted cross

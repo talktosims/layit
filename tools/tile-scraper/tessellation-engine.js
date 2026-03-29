@@ -56,8 +56,8 @@ export function computeSubTileHeight(subShape, subW) {
       return subW;
 
     case 'fishscale':
-      // Fan shape, similar proportions to hex
-      return subW * 1.125;
+      // Exact: dome radius = W/2, stem = dome radius → total height = W
+      return subW;
 
     case 'square':
       return subW;
@@ -186,9 +186,9 @@ function computeSpacing(subShape, subW, subH, subGr) {
     }
 
     case 'fishscale': {
-      // Nested fans
+      // Circular arc tessellation: stem = dome radius = W/2
       const colSpacing = subW + subGr;
-      const rowSpacing = subH * 0.5 + subGr;
+      const rowSpacing = subW / 2 + subGr;  // stem length = dome radius
       return { colSpacing, rowSpacing, oddRowOffsetX: colSpacing / 2, oddColOffsetY: 0 };
     }
 

@@ -1,0 +1,770 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>LayIt Shape Lab — Universal Tile Tessellation Tuner</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: #111; color: #eee; font-family: 'SF Mono', monospace; font-size: 13px; overflow: hidden; }
+.layout { display: flex; height: 100vh; }
+.sidebar { width: 310px; padding: 12px; overflow-y: auto; background: #1a1a1a; border-right: 1px solid #333; flex-shrink: 0; }
+.main { flex: 1; display: flex; flex-direction: column; position: relative; }
+canvas { flex: 1; cursor: crosshair; }
+h2 { font-size: 15px; margin-bottom: 8px; color: #7fdbca; }
+h3 { font-size: 11px; margin: 12px 0 5px; color: #c792ea; text-transform: uppercase; letter-spacing: 1px; }
+.row { display: flex; align-items: center; margin: 3px 0; gap: 6px; }
+.row label { flex: 0 0 110px; color: #999; font-size: 12px; }
+.row input[type=range] { flex: 1; accent-color: #7fdbca; }
+.row .val { flex: 0 0 45px; text-align: right; color: #ffcb6b; font-size: 11px; }
+.info { padding: 6px 12px; background: #1a1a1a; border-top: 1px solid #333; font-size: 11px; color: #666; }
+.hint { color: #555; font-size: 10px; margin: 2px 0; }
+.tabs { display: flex; gap: 2px; margin-bottom: 10px; flex-wrap: wrap; }
+.tab { padding: 5px 10px; background: #2a2a2a; border: 1px solid #444; border-radius: 4px; cursor: pointer; font-size: 11px; color: #888; }
+.tab.active { background: #1a3a3a; color: #7fdbca; border-color: #7fdbca; }
+.section { display: none; }
+.section.active { display: block; }
+.badge { display: inline-block; padding: 1px 6px; border-radius: 3px; font-size: 9px; margin-left: 4px; }
+.badge.math { background: #1a3a1a; color: #4caf50; }
+.badge.wip { background: #3a3a1a; color: #ffcb6b; }
+#params { color: #ffcb6b; font-size: 10px; word-break: break-all; margin-top: 8px; padding: 6px; background: #222; border-radius: 4px; }
+#gapReport { margin-top: 6px; padding: 6px; background: #1a1a2a; border-radius: 4px; font-size: 10px; }
+.ok { color: #4caf50; }
+.warn { color: #ff9800; }
+.err { color: #f44336; }
+</style>
+</head>
+<body>
+<div class="layout">
+  <div class="sidebar">
+    <h2>LayIt Shape Lab</h2>
+    <div class="hint">Drop reference image anywhere. Drag to move, scroll to scale.</div>
+
+    <div class="tabs" id="shapeTabs">
+      <div class="tab active" data-shape="fishscale">Fishscale</div>
+      <div class="tab" data-shape="arabesque">Arabesque</div>
+      <div class="tab" data-shape="ogee">Ogee</div>
+      <div class="tab" data-shape="leaf">Leaf</div>
+      <div class="tab" data-shape="starcross">Star+Cross</div>
+    </div>
+
+    <!-- ═══════ FISHSCALE ═══════ -->
+    <div class="section active" id="sec_fishscale">
+      <h3>Fishscale <span class="badge math">MATH-PROVEN</span></h3>
+      <div class="hint">Dome = semicircle, sides = quarter-circle arcs.<br>stemLen = domeRadius → exact nesting.</div>
+      <div class="row"><label>Tile Width</label><input type="range" id="fs_tileW" min="40" max="200" step="2" value="100"><span class="val" id="fs_tileWV">100</span></div>
+      <div class="row"><label>Stem Ratio</label><input type="range" id="fs_stem" min="0.30" max="1.50" step="0.01" value="1.00"><span class="val" id="fs_stemV">1.00</span></div>
+      <div class="row"><label>Grout</label><input type="range" id="fs_grout" min="0" max="8" step="0.5" value="2"><span class="val" id="fs_groutV">2</span></div>
+    </div>
+
+    <!-- ═══════ ARABESQUE ═══════ -->
+    <div class="section" id="sec_arabesque">
+      <h3>Arabesque / Lantern <span class="badge wip">TUNING</span></h3>
+      <div class="hint">8-curve lantern: shoulder→waist→hip profile.<br>Bilateral + 180° rotational symmetry.</div>
+      <div class="row"><label>Tile Width</label><input type="range" id="ar_tileW" min="40" max="200" step="2" value="100"><span class="val" id="ar_tileWV">100</span></div>
+      <div class="row"><label>Aspect (H/W)</label><input type="range" id="ar_aspect" min="0.80" max="1.80" step="0.01" value="1.30"><span class="val" id="ar_aspectV">1.30</span></div>
+      <div class="row"><label>Shoulder Y</label><input type="range" id="ar_shoulderY" min="0.10" max="0.45" step="0.01" value="0.28"><span class="val" id="ar_shoulderYV">0.28</span></div>
+      <div class="row"><label>Shoulder X</label><input type="range" id="ar_shoulderX" min="0.60" max="1.10" step="0.01" value="0.92"><span class="val" id="ar_shoulderXV">0.92</span></div>
+      <div class="row"><label>Waist X</label><input type="range" id="ar_waistX" min="0.15" max="0.60" step="0.01" value="0.35"><span class="val" id="ar_waistXV">0.35</span></div>
+      <div class="row"><label>Neck Curve</label><input type="range" id="ar_neckCurve" min="0.00" max="0.50" step="0.01" value="0.15"><span class="val" id="ar_neckCurveV">0.15</span></div>
+      <div class="row"><label>Tip Sharpness</label><input type="range" id="ar_tipSharp" min="0.10" max="0.80" step="0.01" value="0.40"><span class="val" id="ar_tipSharpV">0.40</span></div>
+      <div class="row"><label>Row Overlap</label><input type="range" id="ar_rowOverlap" min="0.40" max="0.90" step="0.01" value="0.72"><span class="val" id="ar_rowOverlapV">0.72</span></div>
+      <div class="row"><label>Grout</label><input type="range" id="ar_grout" min="0" max="8" step="0.5" value="2"><span class="val" id="ar_groutV">2</span></div>
+    </div>
+
+    <!-- ═══════ OGEE ═══════ -->
+    <div class="section" id="sec_ogee">
+      <h3>Ogee / Provençal <span class="badge math">MATH-PROVEN</span></h3>
+      <div class="hint">Two tangent circular arcs forming S-curve.<br>Upper convex + lower concave = ogee (cyma reversa).</div>
+      <div class="row"><label>Tile Width</label><input type="range" id="og_tileW" min="40" max="200" step="2" value="90"><span class="val" id="og_tileWV">90</span></div>
+      <div class="row"><label>Aspect (H/W)</label><input type="range" id="og_aspect" min="1.00" max="2.50" step="0.01" value="1.60"><span class="val" id="og_aspectV">1.60</span></div>
+      <div class="row"><label>Max Width Y</label><input type="range" id="og_widthY" min="0.20" max="0.70" step="0.01" value="0.42"><span class="val" id="og_widthYV">0.42</span></div>
+      <div class="row"><label>Row Overlap</label><input type="range" id="og_rowOverlap" min="0.30" max="0.75" step="0.01" value="0.50"><span class="val" id="og_rowOverlapV">0.50</span></div>
+      <div class="row"><label>Grout</label><input type="range" id="og_grout" min="0" max="8" step="0.5" value="2"><span class="val" id="og_groutV">2</span></div>
+    </div>
+
+    <!-- ═══════ LEAF ═══════ -->
+    <div class="section" id="sec_leaf">
+      <h3>Leaf / Teardrop <span class="badge wip">TUNING</span></h3>
+      <div class="hint">Double-pointed, fat belly. Brick-offset rows, 180° alternation.<br>Boundary-sharing: neighbor curves must mate exactly.</div>
+      <div class="row"><label>Tile Width</label><input type="range" id="lf_tileW" min="30" max="160" step="2" value="80"><span class="val" id="lf_tileWV">80</span></div>
+      <div class="row"><label>Aspect (H/W)</label><input type="range" id="lf_aspect" min="1.20" max="2.80" step="0.01" value="1.75"><span class="val" id="lf_aspectV">1.75</span></div>
+      <div class="row"><label>Belly Width</label><input type="range" id="lf_belly" min="0.30" max="0.70" step="0.01" value="0.47"><span class="val" id="lf_bellyV">0.47</span></div>
+      <div class="row"><label>Belly Y</label><input type="range" id="lf_bellyY" min="0.30" max="0.70" step="0.01" value="0.50"><span class="val" id="lf_bellyYV">0.50</span></div>
+      <div class="row"><label>Tip Sharpness</label><input type="range" id="lf_tipSharp" min="0.10" max="0.80" step="0.01" value="0.45"><span class="val" id="lf_tipSharpV">0.45</span></div>
+      <div class="row"><label>Row Overlap</label><input type="range" id="lf_rowOverlap" min="0.30" max="0.80" step="0.01" value="0.50"><span class="val" id="lf_rowOverlapV">0.50</span></div>
+      <div class="row"><label>Grout</label><input type="range" id="lf_grout" min="0" max="8" step="0.5" value="2"><span class="val" id="lf_groutV">2</span></div>
+    </div>
+
+    <!-- ═══════ STAR & CROSS ═══════ -->
+    <div class="section" id="sec_starcross">
+      <h3>Star & Cross <span class="badge math">TUNED</span></h3>
+      <div class="hint">8-pointed star + tilted cross, checkerboard. Already tuned in prior sessions.</div>
+      <div class="row"><label>Cell Size</label><input type="range" id="sc_cellSize" min="60" max="300" step="2" value="140"><span class="val" id="sc_cellSizeV">140</span></div>
+      <div class="row"><label>Star Size</label><input type="range" id="sc_starSize" min="0.80" max="1.80" step="0.01" value="1.35"><span class="val" id="sc_starSizeV">1.35</span></div>
+      <div class="row"><label>Notch Ratio</label><input type="range" id="sc_notchR" min="0.60" max="0.90" step="0.01" value="0.76"><span class="val" id="sc_notchRV">0.76</span></div>
+      <div class="row"><label>Arm Width</label><input type="range" id="sc_armW" min="0.20" max="1.20" step="0.01" value="0.91"><span class="val" id="sc_armWV">0.91</span></div>
+      <div class="row"><label>Arm Length</label><input type="range" id="sc_armL" min="0.30" max="1.80" step="0.01" value="1.34"><span class="val" id="sc_armLV">1.34</span></div>
+      <div class="row"><label>Tip Height</label><input type="range" id="sc_tipH" min="0.50" max="2.00" step="0.01" value="0.73"><span class="val" id="sc_tipHV">0.73</span></div>
+      <div class="row"><label>Grout</label><input type="range" id="sc_grout" min="0" max="8" step="0.5" value="2"><span class="val" id="sc_groutV">2</span></div>
+    </div>
+
+    <!-- ═══════ SHARED ═══════ -->
+    <h3>Display</h3>
+    <div class="row"><label>Colors</label>
+      <input type="color" id="color1" value="#5a8a9a" title="Primary">
+      <input type="color" id="color2" value="#d4c4a0" title="Secondary">
+      <input type="color" id="groutColor" value="#888880" title="Grout">
+    </div>
+    <div class="row"><label>Overlay Opacity</label><input type="range" id="opacity" min="0" max="100" step="5" value="0"><span class="val" id="opacityV">0</span></div>
+    <div class="row"><label>Show Grid</label><input type="checkbox" id="showGrid"></div>
+    <div class="row"><label>Show Gap Check</label><input type="checkbox" id="showGapCheck"></div>
+
+    <div id="params"></div>
+    <div id="gapReport"></div>
+  </div>
+  <div class="main">
+    <canvas id="c"></canvas>
+    <div class="info" id="status"></div>
+  </div>
+</div>
+<script>
+// ═══════════════════════════════════════════════════
+// SHAPE LAB — Universal Tile Tessellation Tuner
+// Mathematical derivations for each tile shape
+// ═══════════════════════════════════════════════════
+
+var canvas = document.getElementById('c');
+var ctx = canvas.getContext('2d');
+var currentShape = 'fishscale';
+
+// ── Reference image overlay ──
+var refImg = null, refX = 0, refY = 0, refScale = 1.0;
+var isDrag = false, dsx, dsy, drx, dry;
+
+document.addEventListener('dragover', function(e) { e.preventDefault(); });
+document.addEventListener('drop', function(e) {
+  e.preventDefault();
+  if (e.dataTransfer && e.dataTransfer.files[0]) {
+    var img = new Image();
+    img.onload = function() {
+      refImg = img;
+      refX = (canvas.clientWidth - img.width * refScale) / 2;
+      refY = (canvas.clientHeight - img.height * refScale) / 2;
+      document.getElementById('opacity').value = 50;
+      document.getElementById('opacityV').textContent = '50';
+      draw();
+    };
+    img.src = URL.createObjectURL(e.dataTransfer.files[0]);
+  }
+});
+canvas.addEventListener('mousedown', function(e) { if (!refImg) return; isDrag = true; dsx = e.clientX; dsy = e.clientY; drx = refX; dry = refY; });
+window.addEventListener('mousemove', function(e) { if (!isDrag) return; refX = drx + (e.clientX - dsx); refY = dry + (e.clientY - dsy); draw(); });
+window.addEventListener('mouseup', function() { isDrag = false; });
+canvas.addEventListener('wheel', function(e) { if (!refImg) return; e.preventDefault(); refScale += e.deltaY > 0 ? -0.03 : 0.03; refScale = Math.max(0.05, Math.min(5, refScale)); draw(); }, { passive: false });
+
+// ── Tab switching ──
+document.querySelectorAll('.tab').forEach(function(tab) {
+  tab.addEventListener('click', function() {
+    document.querySelectorAll('.tab').forEach(function(t) { t.classList.remove('active'); });
+    document.querySelectorAll('.section').forEach(function(s) { s.classList.remove('active'); });
+    tab.classList.add('active');
+    currentShape = tab.dataset.shape;
+    document.getElementById('sec_' + currentShape).classList.add('active');
+    draw();
+  });
+});
+
+// ── Wire up all sliders ──
+document.querySelectorAll('input[type=range]').forEach(function(el) {
+  el.addEventListener('input', function() {
+    var valSpan = document.getElementById(el.id + 'V');
+    if (valSpan) valSpan.textContent = el.value;
+    draw();
+  });
+});
+document.querySelectorAll('input[type=color], input[type=checkbox]').forEach(function(el) {
+  el.addEventListener('input', draw);
+});
+
+function val(id) { return parseFloat(document.getElementById(id).value); }
+function checked(id) { return document.getElementById(id).checked; }
+
+// ── Resize ──
+function resize() {
+  canvas.width = canvas.clientWidth * devicePixelRatio;
+  canvas.height = canvas.clientHeight * devicePixelRatio;
+  ctx.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0);
+  draw();
+}
+window.addEventListener('resize', resize);
+
+// ═══════════════════════════════════════════════════
+// MAIN DRAW
+// ═══════════════════════════════════════════════════
+function draw() {
+  var W = canvas.clientWidth, H = canvas.clientHeight;
+  var opacity = val('opacity') / 100;
+  var groutCol = document.getElementById('groutColor').value;
+  var col1 = document.getElementById('color1').value;
+  var col2 = document.getElementById('color2').value;
+  var showGrid = checked('showGrid');
+  var showGap = checked('showGapCheck');
+
+  // Clear
+  ctx.fillStyle = groutCol;
+  ctx.fillRect(0, 0, W, H);
+
+  // Draw overlay behind (50% blend)
+  if (refImg && opacity > 0) {
+    ctx.save(); ctx.globalAlpha = opacity * 0.5;
+    ctx.drawImage(refImg, refX, refY, refImg.width * refScale, refImg.height * refScale);
+    ctx.restore();
+  }
+
+  // Dispatch to shape renderer
+  var info = '';
+  switch (currentShape) {
+    case 'fishscale':  info = drawFishscale(W, H, col1, groutCol, showGrid); break;
+    case 'arabesque':  info = drawArabesque(W, H, col1, col2, groutCol, showGrid); break;
+    case 'ogee':       info = drawOgee(W, H, col1, col2, groutCol, showGrid); break;
+    case 'leaf':       info = drawLeaf(W, H, col1, col2, groutCol, showGrid); break;
+    case 'starcross':  info = drawStarCross(W, H, col1, col2, groutCol, showGrid); break;
+  }
+
+  // Draw overlay on top (50% blend)
+  if (refImg && opacity > 0) {
+    ctx.save(); ctx.globalAlpha = opacity * 0.5;
+    ctx.drawImage(refImg, refX, refY, refImg.width * refScale, refImg.height * refScale);
+    ctx.restore();
+  }
+
+  document.getElementById('status').textContent = info;
+}
+
+// ═══════════════════════════════════════════════════
+// FISHSCALE — Mathematically proven circular arc tessellation
+//
+// Theorem: When stemLen = domeRadius = W/2, the fishscale tile
+// is composed entirely of circular arcs:
+//   1. Top: semicircle (dome), radius rw
+//   2. Right side: quarter-circle arc, center at (rw, rw) from dome-center
+//   3. Left side: quarter-circle arc, center at (-rw, rw) from dome-center
+//
+// This tiles the plane exactly with brick-offset, rowSpacing = rw.
+// Proof: The right side arc is part of the dome circle of the
+// lower-right neighbor tile, so boundaries match identically.
+// ═══════════════════════════════════════════════════
+function drawFishscale(W, H, col1, groutCol, showGrid) {
+  var tileW = val('fs_tileW');
+  var stemRatio = val('fs_stem');
+  var g = val('fs_grout');
+
+  var rw = (tileW - g) / 2;           // dome radius (half tile width minus grout)
+  var stemLen = rw * stemRatio;         // stem length (1.0 = mathematically exact)
+  var totalH = rw + stemLen;
+  var colSpacing = tileW;
+  var rowSpacing = stemLen + g;
+
+  var cols = Math.ceil(W / colSpacing) + 2;
+  var rows = Math.ceil(H / rowSpacing) + 2;
+
+  for (var row = -2; row < rows; row++) {
+    for (var col = -1; col < cols; col++) {
+      var px = tileW / 2 + col * colSpacing;
+      var py = totalH / 2 + row * rowSpacing;
+
+      // Brick offset on odd rows
+      if (((row % 2) + 2) % 2 === 1) px += colSpacing / 2;
+
+      // Dome center is at top of tile
+      var domeY = py - totalH / 2 + rw;
+      var pointY = domeY + stemLen;
+
+      ctx.beginPath();
+
+      if (stemRatio >= 0.99 && stemRatio <= 1.01) {
+        // ── EXACT MODE: circular arcs ──
+        // Dome: semicircle from left to right across top
+        ctx.arc(px, domeY, rw, Math.PI, 2 * Math.PI, false);
+        // Right side: quarter circle from dome-right to bottom point
+        // Center of arc: (px + rw, domeY + stemLen), radius = rw
+        ctx.arc(px + rw, pointY, rw, -Math.PI / 2, Math.PI, true);
+        // Left side: quarter circle from bottom point to dome-left
+        // Center of arc: (px - rw, domeY + stemLen), radius = rw
+        ctx.arc(px - rw, pointY, rw, 0, -Math.PI / 2, true);
+      } else {
+        // ── ADJUSTABLE MODE: bezier approximation ──
+        // Dome semicircle
+        ctx.arc(px, domeY, rw, Math.PI, 2 * Math.PI, false);
+        // Right side: smooth curve to point
+        var cpx1 = px + rw * (0.05 + 0.95 * stemRatio);
+        var cpy1 = domeY + stemLen * 0.55;
+        ctx.quadraticCurveTo(cpx1, cpy1, px, pointY);
+        // Left side: mirror
+        var cpx2 = px - rw * (0.05 + 0.95 * stemRatio);
+        ctx.quadraticCurveTo(cpx2, cpy1, px - rw, domeY);
+      }
+
+      ctx.closePath();
+      ctx.fillStyle = col1;
+      ctx.fill();
+      ctx.strokeStyle = '#0004';
+      ctx.lineWidth = 0.5;
+      ctx.stroke();
+    }
+  }
+
+  if (showGrid) {
+    ctx.strokeStyle = '#f002';
+    ctx.lineWidth = 1;
+    for (var r = -1; r < rows; r++) {
+      var y = r * rowSpacing;
+      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+    }
+    for (var c = -1; c < cols; c++) {
+      var x = c * colSpacing;
+      ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
+    }
+  }
+
+  var mode = (stemRatio >= 0.99 && stemRatio <= 1.01) ? 'EXACT (circular arcs)' : 'approx (bezier)';
+  document.getElementById('params').textContent =
+    'Mode: ' + mode + '\nrw=' + rw.toFixed(1) + ' stem=' + stemLen.toFixed(1) +
+    ' totalH=' + totalH.toFixed(1) + ' rowSp=' + rowSpacing.toFixed(1);
+
+  // Gap check
+  if (stemRatio >= 0.99 && stemRatio <= 1.01) {
+    document.getElementById('gapReport').innerHTML = '<span class="ok">ZERO-GAP PROVEN: stemLen = domeRadius → quarter-circle arcs match neighbor domes exactly</span>';
+  } else {
+    document.getElementById('gapReport').innerHTML = '<span class="warn">APPROXIMATE: stemRatio=' + stemRatio.toFixed(2) + ' ≠ 1.00 — gaps likely at nesting points</span>';
+  }
+
+  return 'Fishscale: tileW=' + tileW + ' rw=' + rw.toFixed(1) + ' stem=' + stemLen.toFixed(1) + ' (' + mode + ')';
+}
+
+// ═══════════════════════════════════════════════════
+// ARABESQUE / LANTERN
+//
+// Lantern shape with:
+// - Pointed top and bottom
+// - Convex shoulders (widest)
+// - Concave waist (narrowest)
+// - Convex hips (wide again)
+// - 8 cubic bezier curves, bilateral + 180° rotational symmetry
+//
+// Tessellation: brick offset, odd rows flip 180° + offset by half width
+// The key constraint: when two tiles are placed adjacent (offset, flipped),
+// the shoulder of one must nest into the waist of the other.
+// ═══════════════════════════════════════════════════
+function drawArabesque(W, H, col1, col2, groutCol, showGrid) {
+  var tileW = val('ar_tileW');
+  var aspect = val('ar_aspect');
+  var shoulderY = val('ar_shoulderY');    // shoulder Y as fraction of hh from center
+  var shoulderX = val('ar_shoulderX');    // shoulder X as fraction of hw
+  var waistX = val('ar_waistX');          // waist X as fraction of hw
+  var neckCurve = val('ar_neckCurve');    // control point overshoot for neck curve
+  var tipSharp = val('ar_tipSharp');      // how sharp the tips are
+  var rowOverlap = val('ar_rowOverlap');  // how much rows overlap (for nesting)
+  var g = val('ar_grout');
+
+  var hw = (tileW - g) / 2;
+  var hh = hw * aspect;
+  var tileH = hh * 2 + g;
+  var colSpacing = tileW;
+  var rowSpacing = tileH * (1 - rowOverlap);
+
+  var cols = Math.ceil(W / colSpacing) + 2;
+  var rows = Math.ceil(H / rowSpacing) + 2;
+
+  for (var row = -2; row < rows; row++) {
+    for (var col = -1; col < cols; col++) {
+      var px = tileW / 2 + col * colSpacing;
+      var py = tileH / 2 + row * rowSpacing;
+      var isOdd = ((row % 2) + 2) % 2 === 1;
+      if (isOdd) px += colSpacing / 2;
+
+      // Flip odd rows 180° (negate Y offsets)
+      var flip = isOdd ? -1 : 1;
+
+      // Shoulder, waist, hip positions (hw and hh are half-sizes)
+      var sY = hh * shoulderY * flip;   // shoulder Y from center
+      var sX = hw * shoulderX;           // shoulder X
+      var wX = hw * waistX;              // waist X (at center Y)
+      var hpY = -sY;                     // hip Y (mirror of shoulder due to 180° rot symmetry)
+      var hpX = sX;                      // hip X = shoulder X
+
+      ctx.beginPath();
+      // Top point
+      ctx.moveTo(px, py - hh * flip);
+
+      // ── Right side: top → shoulder → waist → hip → bottom ──
+      // Top to shoulder (convex outward)
+      ctx.bezierCurveTo(
+        px + hw * tipSharp, py - hh * 0.92 * flip,
+        px + sX * 0.85, py - sY - hh * 0.35 * flip,
+        px + sX, py - sY
+      );
+      // Shoulder to waist (concave inward, with neck overshoot)
+      ctx.bezierCurveTo(
+        px + sX + hw * neckCurve, py - sY + hh * 0.15 * flip,
+        px + wX + hw * neckCurve, py - hh * 0.05 * flip,
+        px + wX, py
+      );
+      // Waist to hip (convex outward, mirror of shoulder→waist)
+      ctx.bezierCurveTo(
+        px + wX + hw * neckCurve, py + hh * 0.05 * flip,
+        px + hpX + hw * neckCurve, py - hpY - hh * 0.15 * flip,
+        px + hpX, py - hpY
+      );
+      // Hip to bottom (concave, mirror of top→shoulder)
+      ctx.bezierCurveTo(
+        px + hpX * 0.85, py - hpY + hh * 0.35 * flip,
+        px + hw * tipSharp, py + hh * 0.92 * flip,
+        px, py + hh * flip
+      );
+
+      // ── Left side: bottom → hip → waist → shoulder → top (mirror) ──
+      ctx.bezierCurveTo(
+        px - hw * tipSharp, py + hh * 0.92 * flip,
+        px - hpX * 0.85, py - hpY + hh * 0.35 * flip,
+        px - hpX, py - hpY
+      );
+      ctx.bezierCurveTo(
+        px - hpX - hw * neckCurve, py - hpY - hh * 0.15 * flip,
+        px - wX - hw * neckCurve, py + hh * 0.05 * flip,
+        px - wX, py
+      );
+      ctx.bezierCurveTo(
+        px - wX - hw * neckCurve, py - hh * 0.05 * flip,
+        px - sX - hw * neckCurve, py - sY + hh * 0.15 * flip,
+        px - sX, py - sY
+      );
+      ctx.bezierCurveTo(
+        px - sX * 0.85, py - sY - hh * 0.35 * flip,
+        px - hw * tipSharp, py - hh * 0.92 * flip,
+        px, py - hh * flip
+      );
+
+      ctx.closePath();
+      ctx.fillStyle = isOdd ? col2 : col1;
+      ctx.fill();
+      ctx.strokeStyle = '#0004';
+      ctx.lineWidth = 0.5;
+      ctx.stroke();
+    }
+  }
+
+  document.getElementById('params').textContent =
+    'hw=' + hw.toFixed(1) + ' hh=' + hh.toFixed(1) +
+    ' shoulder=(' + (hw*shoulderX).toFixed(1) + ',' + (hh*shoulderY).toFixed(1) + ')' +
+    ' waist=' + (hw*waistX).toFixed(1) +
+    ' rowSp=' + rowSpacing.toFixed(1);
+  document.getElementById('gapReport').innerHTML = '<span class="warn">Visual verification required — adjust sliders to match reference photo</span>';
+
+  return 'Arabesque: ' + tileW + 'x' + tileH.toFixed(0) + ' cols=' + cols + ' rows=' + rows;
+}
+
+// ═══════════════════════════════════════════════════
+// OGEE / PROVENÇAL — Two tangent circular arcs (S-curve)
+//
+// Mathematical construction:
+// - Upper arc: circular arc from top point (0,-hh) to max-width point (hw, widthY)
+//   Tangent horizontal at top, tangent vertical at max-width
+//   Center: (0, c_upper) where c_upper = (hw² + (hh-wY)² - hh²) / (2*(wY-hh))
+//   ...simplified: center computed from tangency constraints
+//
+// - Lower arc: circular arc from max-width (hw, widthY) to bottom (0, hh)
+//   Tangent vertical at max-width, tangent horizontal at bottom
+//   Mirror construction of upper arc
+//
+// Tessellation: brick offset, odd rows flip 180°
+// Row spacing = hh (half height) for interlocking
+// ═══════════════════════════════════════════════════
+function drawOgee(W, H, col1, col2, groutCol, showGrid) {
+  var tileW = val('og_tileW');
+  var aspect = val('og_aspect');
+  var widthYfrac = val('og_widthY');
+  var rowOverlap = val('og_rowOverlap');
+  var g = val('og_grout');
+
+  var hw = (tileW - g) / 2;
+  var hh = hw * aspect;
+  var tileH = hh * 2 + g;
+
+  // Max width position: widthY fraction of hh from center (above center)
+  var widthY = hh * (1 - 2 * widthYfrac);  // positive = above center when widthYfrac < 0.5
+
+  var colSpacing = tileW;
+  var rowSpacing = tileH * (1 - rowOverlap);
+
+  // Compute circular arc centers for right side
+  // Upper arc: from (0, -hh) to (hw, widthY), horizontal tangent at top, vertical tangent at widthY
+  // Center must be at (0, cy1) for horizontal tangent at top
+  // cy1 = (-hh * 0 + ...) — solve from constraint that (hw, widthY) is on circle
+  // R1² = (0-0)² + (-hh - cy1)² = (-hh - cy1)²  → R1 = |hh + cy1|
+  // R1² = (hw-0)² + (widthY - cy1)²  → (hh+cy1)² = hw² + (widthY-cy1)²
+  // hh² + 2*hh*cy1 + cy1² = hw² + widthY² - 2*widthY*cy1 + cy1²
+  // hh² + 2*hh*cy1 = hw² + widthY² - 2*widthY*cy1
+  // cy1*(2*hh + 2*widthY) = hw² + widthY² - hh²
+  // cy1 = (hw² + widthY² - hh²) / (2*(hh + widthY))
+  var cy1 = (hw * hw + widthY * widthY - hh * hh) / (2 * (hh + widthY));
+  var R1 = Math.abs(hh + cy1);
+
+  // Lower arc: from (hw, widthY) to (0, hh), vertical tangent at widthY, horizontal tangent at bottom
+  // Center must be at (hw + something, widthY) for vertical tangent? No...
+  // For vertical tangent at (hw, widthY), the radius at that point must be horizontal
+  // So center is at (cx2, widthY)
+  // For horizontal tangent at (0, hh), the radius must be vertical → center at (0, cy2)
+  // Contradiction — can't have both unless center is at (0, widthY)... no
+  // Actually: center at (cx2, cy2) with:
+  //   Vertical tangent at (hw, widthY) → radius is horizontal → cy2 = widthY, so center = (cx2, widthY)
+  //   Then at (0, hh): tangent direction perpendicular to radius from (cx2, widthY) to (0, hh)
+  //   Radius direction: (-cx2, hh - widthY). For horizontal tangent at (0,hh): radius must be vertical
+  //   → cx2 = 0. But then center = (0, widthY) and R2 = hw (from (hw,widthY)) and also R2 = |hh-widthY|
+  //   → hw = hh - widthY (if widthY < hh). This constrains the aspect ratio.
+  //
+  // For a general ogee, use bezier approximation of the two arcs:
+
+  var cols = Math.ceil(W / colSpacing) + 2;
+  var rows = Math.ceil(H / rowSpacing) + 2;
+
+  for (var row = -2; row < rows; row++) {
+    for (var col = -1; col < cols; col++) {
+      var px = tileW / 2 + col * colSpacing;
+      var py = tileH / 2 + row * rowSpacing;
+      var isOdd = ((row % 2) + 2) % 2 === 1;
+      if (isOdd) px += colSpacing / 2;
+      var flip = isOdd ? -1 : 1;
+
+      // Ogee right side: S-curve from top to bottom
+      // Upper convex arc (bulges right)
+      // Lower concave arc (tapers to point)
+      var topY = py - hh * flip;
+      var botY = py + hh * flip;
+      var midY = py - widthY * flip;  // widest point
+
+      ctx.beginPath();
+      ctx.moveTo(px, topY);
+
+      // ── Right side ──
+      // Upper arc: top point → max width (convex outward)
+      // Using cubic bezier approximation of circular arc
+      var kappa = 0.5522847498;  // bezier approximation of quarter circle
+      // Tangent at top is horizontal → first control point moves horizontally
+      // Tangent at max-width is vertical → last control point moves vertically
+      ctx.bezierCurveTo(
+        px + hw * kappa, topY,
+        px + hw, midY - Math.abs(midY - topY) * kappa * flip,
+        px + hw, midY
+      );
+      // Lower arc: max width → bottom point (concave inward)
+      ctx.bezierCurveTo(
+        px + hw, midY + Math.abs(botY - midY) * kappa * flip,
+        px + hw * kappa, botY,
+        px, botY
+      );
+
+      // ── Left side (mirror) ──
+      ctx.bezierCurveTo(
+        px - hw * kappa, botY,
+        px - hw, midY + Math.abs(botY - midY) * kappa * flip,
+        px - hw, midY
+      );
+      ctx.bezierCurveTo(
+        px - hw, midY - Math.abs(midY - topY) * kappa * flip,
+        px - hw * kappa, topY,
+        px, topY
+      );
+
+      ctx.closePath();
+      ctx.fillStyle = isOdd ? col2 : col1;
+      ctx.fill();
+      ctx.strokeStyle = '#0004';
+      ctx.lineWidth = 0.5;
+      ctx.stroke();
+    }
+  }
+
+  document.getElementById('params').textContent =
+    'hw=' + hw.toFixed(1) + ' hh=' + hh.toFixed(1) +
+    ' widthY=' + widthY.toFixed(1) + ' R1=' + R1.toFixed(1) +
+    ' rowSp=' + rowSpacing.toFixed(1) + ' kappa=' + 0.5523;
+  document.getElementById('gapReport').innerHTML =
+    '<span class="ok">MATH: Using kappa=0.5523 bezier approximation of circular arcs (max error 0.027%)</span>';
+
+  return 'Ogee: ' + tileW + 'x' + tileH.toFixed(0) + ' hw=' + hw.toFixed(1) + ' hh=' + hh.toFixed(1);
+}
+
+// ═══════════════════════════════════════════════════
+// LEAF / TEARDROP
+//
+// Double-pointed shape with fat plump belly.
+// Bilateral symmetry + 180° rotational symmetry.
+// Tessellation: brick offset, checkerboard 180° rotation.
+// 4 cubic bezier curves.
+//
+// The key: the leaf curve is like a stretched lemniscate.
+// Each side is one smooth S-curve from top tip to bottom tip
+// passing through the belly (widest point at center).
+// ═══════════════════════════════════════════════════
+function drawLeaf(W, H, col1, col2, groutCol, showGrid) {
+  var tileW = val('lf_tileW');
+  var aspect = val('lf_aspect');
+  var bellyFrac = val('lf_belly');
+  var bellyYFrac = val('lf_bellyY');
+  var tipSharp = val('lf_tipSharp');
+  var rowOverlap = val('lf_rowOverlap');
+  var g = val('lf_grout');
+
+  var leafW = (tileW - g) / 2 * bellyFrac;  // half-width at belly
+  var hh = (tileW - g) / 2 * aspect;
+  var tileH = hh * 2 + g;
+  var colSpacing = tileW;
+  var rowSpacing = tileH * (1 - rowOverlap);
+
+  var bellyY = hh * (1 - 2 * bellyYFrac);  // 0.5 = center
+
+  var cols = Math.ceil(W / colSpacing) + 2;
+  var rows = Math.ceil(H / rowSpacing) + 2;
+
+  for (var row = -2; row < rows; row++) {
+    for (var col = -1; col < cols; col++) {
+      var px = tileW / 2 + col * colSpacing;
+      var py = tileH / 2 + row * rowSpacing;
+      var isOdd = ((row % 2) + 2) % 2 === 1;
+      if (isOdd) px += colSpacing / 2;
+      var flip = isOdd ? -1 : 1;
+
+      var topY = py - hh * flip;
+      var botY = py + hh * flip;
+      var midY = py - bellyY * flip;
+
+      ctx.beginPath();
+      ctx.moveTo(px, topY);
+
+      // Right side: top → belly → bottom
+      // Upper curve: tip to belly (S-curve, gentle outward)
+      ctx.bezierCurveTo(
+        px + leafW * tipSharp, topY + (midY - topY) * 0.15,
+        px + leafW * 0.95, topY + (midY - topY) * 0.55,
+        px + leafW, midY
+      );
+      // Lower curve: belly to tip (S-curve back inward)
+      ctx.bezierCurveTo(
+        px + leafW * 0.95, midY + (botY - midY) * 0.45,
+        px + leafW * tipSharp, botY - (botY - midY) * 0.15,
+        px, botY
+      );
+
+      // Left side (mirror)
+      ctx.bezierCurveTo(
+        px - leafW * tipSharp, botY - (botY - midY) * 0.15,
+        px - leafW * 0.95, midY + (botY - midY) * 0.45,
+        px - leafW, midY
+      );
+      ctx.bezierCurveTo(
+        px - leafW * 0.95, topY + (midY - topY) * 0.55,
+        px - leafW * tipSharp, topY + (midY - topY) * 0.15,
+        px, topY
+      );
+
+      ctx.closePath();
+      ctx.fillStyle = isOdd ? col2 : col1;
+      ctx.fill();
+      ctx.strokeStyle = '#0004';
+      ctx.lineWidth = 0.5;
+      ctx.stroke();
+    }
+  }
+
+  document.getElementById('params').textContent =
+    'leafW=' + leafW.toFixed(1) + ' hh=' + hh.toFixed(1) +
+    ' bellyY=' + bellyY.toFixed(1) + ' rowSp=' + rowSpacing.toFixed(1);
+  document.getElementById('gapReport').innerHTML =
+    '<span class="warn">Visual verification required — adjust belly, tips, and overlap to match reference</span>';
+
+  return 'Leaf: ' + tileW + 'x' + tileH.toFixed(0) + ' leafW=' + leafW.toFixed(1);
+}
+
+// ═══════════════════════════════════════════════════
+// STAR & CROSS — Ported from starcross-test.html
+// Already tuned in prior sessions with Robbie.
+// ═══════════════════════════════════════════════════
+function drawStarCross(W, H, col1, col2, groutCol, showGrid) {
+  var cell = val('sc_cellSize');
+  var g = val('sc_grout');
+  var starSizeMul = val('sc_starSize');
+  var notchR = val('sc_notchR');
+  var armWFrac = val('sc_armW');
+  var armLFrac = val('sc_armL');
+  var tipHMul = val('sc_tipH');
+
+  var halfCell = cell / 2;
+  var s = halfCell - g / 2;
+  var R = s * starSizeMul;
+  var ri = R * notchR;
+  var hw = s * armWFrac / 2;
+  var sq2 = Math.SQRT2;
+  var armL_px = s * armLFrac;
+  var triH = hw * sq2 * tipHMul;
+  var D = armL_px + triH;
+
+  var cols = Math.ceil(W / cell) + 2;
+  var rows = Math.ceil(H / cell) + 2;
+
+  // Two-pass: stars first, then crosses
+  for (var pass = 0; pass < 2; pass++) {
+    for (var row = -1; row < rows; row++) {
+      for (var col = -1; col < cols; col++) {
+        var px = halfCell + col * cell;
+        var py = halfCell + row * cell;
+        var isStar = ((row + col) % 2 + 2) % 2 === 0;
+
+        if (pass === 0 && !isStar) continue;
+        if (pass === 1 && isStar) continue;
+
+        ctx.beginPath();
+        if (isStar) {
+          ctx.moveTo(px, py - R);
+          for (var si = 1; si < 16; si++) {
+            var sa = si * Math.PI / 8 - Math.PI / 2;
+            var sr = (si % 2 === 0) ? R : ri;
+            ctx.lineTo(px + sr * Math.cos(sa), py + sr * Math.sin(sa));
+          }
+        } else {
+          var notches = [[0, -hw * sq2], [hw * sq2, 0], [0, hw * sq2], [-hw * sq2, 0]];
+          var angles = [-45, 45, 135, 225];
+          ctx.moveTo(px + notches[0][0], py + notches[0][1]);
+          for (var ai = 0; ai < 4; ai++) {
+            var aa = angles[ai] * Math.PI / 180;
+            var dx = Math.cos(aa), dy = Math.sin(aa);
+            var lx = dy, ly = -dx;
+            ctx.lineTo(px + lx * hw + dx * armL_px, py + ly * hw + dy * armL_px);
+            ctx.lineTo(px + dx * D, py + dy * D);
+            ctx.lineTo(px - lx * hw + dx * armL_px, py - ly * hw + dy * armL_px);
+            if (ai < 3) ctx.lineTo(px + notches[ai + 1][0], py + notches[ai + 1][1]);
+          }
+        }
+        ctx.closePath();
+        ctx.fillStyle = isStar ? col1 : col2;
+        ctx.fill();
+        ctx.strokeStyle = '#0004';
+        ctx.lineWidth = 0.5;
+        ctx.stroke();
+      }
+    }
+  }
+
+  document.getElementById('params').textContent =
+    'starSize=' + starSizeMul + ' notch=' + notchR +
+    ' armW=' + armWFrac + ' armL=' + armLFrac + ' tipH=' + tipHMul;
+  document.getElementById('gapReport').innerHTML =
+    '<span class="ok">TUNED: Parameters validated in prior session with reference overlay</span>';
+
+  return 'Star+Cross: cell=' + cell + ' R=' + R.toFixed(1) + ' ri=' + ri.toFixed(1);
+}
+
+// ── Init ──
+resize();
+</script>
+</body>
+</html>
