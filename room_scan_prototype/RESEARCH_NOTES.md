@@ -1,6 +1,57 @@
 # Room Scan Research Notes
 
-Last updated: 2026-03-14
+Last updated: 2026-03-28
+
+---
+
+## AI Models to Evaluate for Tile/Pattern Recognition (Mar 28 2026)
+
+These models are already proven in the StageIt retail pipeline and should be evaluated
+for LayIt tile layout, pattern recognition, and room scanning use cases.
+
+### SAM 3 (Meta, Nov 2025) — github.com/facebookresearch/sam3
+**What it does:** Concept-based segmentation — describe what you want ("tiles", "grout lines",
+"hexagonal tiles") and it finds + segments ALL instances. 30ms per image, 2x accuracy over SAM 2.
+**LayIt applications:**
+- "Segment all tiles in this photo" → instant tile counting from installed floor photos
+- Grout line detection → measure grout width, detect pattern repeat units
+- Identify individual tile shapes in complex patterns (herringbone, basketweave, etc.)
+- Vision alignment system upgrade: replace OpenCV Canny/contour with SAM 3 concept prompts
+  for more robust tile edge detection during laser projection
+- Could identify which tiles are already placed vs which are empty → progress tracking
+
+### BiRefNet (2024-2025) — github.com/ZhengPeng7/BiRefNet
+**What it does:** State-of-the-art background removal. Handles glass, reflections, complex edges
+far better than rembg's default u2net. Available as rembg model: `new_session('birefnet-general')`
+**LayIt applications:**
+- Clean background removal for user-uploaded tile photos (product label scanner)
+- Better tile icon extraction from product images for the tile library
+- Custom tile photos with transparent backgrounds for the layout renderer
+
+### Florence-2 (Microsoft) — Single model for captioning + detection + segmentation + OCR
+**LayIt applications:**
+- Unified tile label reading: extract dimensions, material, color, pattern type from box photos
+  (currently using Opus API — Florence-2 would be $0 and local)
+- Classify tile shape from a product photo without API calls
+- Read measurement labels from room photos
+
+### GroundingDINO — Zero-shot object detection by text description
+**LayIt applications:**
+- "Find the tile edges" / "find the grout lines" — zero-shot detection without training
+- Room scanning: "find the walls", "find the floor", "find the corners"
+- Could augment Apple Depth Pro pipeline for better plane detection
+
+### BRIA RMBG v2.0 — Alternative to BiRefNet, Apache-2.0 license
+Available in rembg: `new_session('bria-rmbg')`
+Similar quality to BiRefNet, good fallback option.
+
+### Priority for LayIt:
+1. **SAM 3 for tile segmentation** — biggest impact, enables photo-based progress tracking
+2. **Florence-2 for label reading** — eliminates Opus API cost for tile scanning
+3. **BiRefNet for tile image cleanup** — quick swap in existing pipeline
+4. **GroundingDINO for room scanning** — augments depth-based room measurement
+
+---
 
 ## Context
 
