@@ -1,0 +1,137 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 500" width="900" height="500">
+<style>
+  text { font-family: 'Helvetica Neue', Arial, sans-serif; }
+  .title { font-size: 22px; font-weight: bold; fill: #1a1a2e; }
+  .subtitle { font-size: 14px; fill: #0f3460; }
+  .comp-label { font-size: 11px; font-weight: bold; fill: #2c3e50; }
+  .pin-label { font-size: 9px; fill: #555; }
+  .wire-label { font-size: 9px; font-weight: bold; }
+  .note { font-size: 10px; fill: #666; font-style: italic; }
+  .ic-label { font-size: 12px; font-weight: bold; fill: #ffffff; }
+  .ic-pin { font-size: 8px; fill: #ffffff; }
+  .ref { font-size: 9px; font-weight: bold; fill: #c0392b; }
+  .value { font-size: 9px; fill: #27ae60; }
+  .section-title { font-size: 16px; font-weight: bold; fill: #0f3460; }
+  .warning { font-size: 10px; font-weight: bold; fill: #e74c3c; }
+  .info { font-size: 10px; fill: #2980b9; }
+</style>
+<rect width="900" height="500" fill="#fefefe" rx="8"/>
+<text x="450" y="35" text-anchor="middle" class="title">Power Section - Detailed Wiring</text>
+<text x="450" y="58" text-anchor="middle" class="subtitle">USB-C PD 12V input through protection, regulation to 5V and 3.3V rails</text>
+<rect x="30" y="120" width="60" height="54" fill="#ecf0f1" stroke="#2c3e50" stroke-width="2" rx="3"/>
+<text x="60" y="114" text-anchor="middle" class="comp-label">USB-C PD
+Trigger</text>
+<text x="60" y="102" text-anchor="middle" class="ref">J1</text>
+<circle cx="102" cy="136" r="4" fill="#2c3e50"/>
+<line x1="90" y1="136" x2="102" y2="136" stroke="#2c3e50" stroke-width="2"/>
+<text x="84" y="139" text-anchor="end" class="pin-label">+12V IN</text>
+<circle cx="102" cy="158" r="4" fill="#2c3e50"/>
+<line x1="90" y1="158" x2="102" y2="158" stroke="#2c3e50" stroke-width="2"/>
+<text x="84" y="161" text-anchor="end" class="pin-label">GND</text>
+<text x="30" y="105" class="info">USB-C PD in</text>
+<rect x="140" y="116" width="60" height="30" fill="#fadbd8" stroke="#2c3e50" stroke-width="1.5" rx="3"/>
+<text x="170" y="135" text-anchor="middle" class="comp-label">SS34</text>
+<text x="170" y="106" text-anchor="middle" class="ref">D1</text>
+<text x="170" y="160" text-anchor="middle" class="warning">SILVER STRIPE THIS END --&gt;</text>
+<line x1="102" y1="136" x2="140" y2="136" stroke="#e74c3c" stroke-width="2.5" stroke-linecap="round"/>
+<line x1="200" y1="136" x2="240" y2="136" stroke="#e74c3c" stroke-width="2.5" stroke-linecap="round"/>
+<rect x="240" y="124" width="60" height="24" fill="#ffe4b5" stroke="#2c3e50" stroke-width="1.5" rx="3"/>
+<text x="270" y="140" text-anchor="middle" class="comp-label">PTC 3A</text>
+<text x="270" y="114" text-anchor="middle" class="ref">F1</text>
+<line x1="300" y1="136" x2="360" y2="136" stroke="#e74c3c" stroke-width="2.5" stroke-linecap="round"/>
+<line x1="340" y1="165" x2="340" y2="177" stroke="#2c3e50" stroke-width="2"/>
+<line x1="330" y1="177" x2="350" y2="177" stroke="#2c3e50" stroke-width="2.5"/>
+<line x1="330" y1="183" x2="350" y2="183" stroke="#2c3e50" stroke-width="2.5"/>
+<line x1="340" y1="183" x2="340" y2="195" stroke="#2c3e50" stroke-width="2"/>
+<circle cx="340" cy="165" r="3" fill="#2c3e50"/>
+<circle cx="340" cy="195" r="3" fill="#2c3e50"/>
+<text x="352" y="174" class="warning" style="font-size:12px">+</text>
+<text x="356" y="172" class="ref">C1</text>
+<text x="356" y="188" class="value">470uF</text>
+<text x="370" y="178" class="warning">+ LEG IN + HOLE!</text>
+<rect x="360" y="126" width="100" height="22" fill="#e74c3c" rx="4"/>
+<text x="410" y="141" text-anchor="middle" style="fill:white; font-weight:bold; font-size:12px">+12V RAIL</text>
+<line x1="102" y1="158" x2="460" y2="158" stroke="#2c3e50" stroke-width="2.5" stroke-linecap="round"/>
+<line x1="460" y1="158" x2="460" y2="420" stroke="#2c3e50" stroke-width="2.5" stroke-linecap="round"/>
+<rect x="360" y="410" width="100" height="22" fill="#2c3e50" rx="4"/>
+<text x="410" y="425" text-anchor="middle" style="fill:white; font-weight:bold; font-size:12px">GND RAIL</text>
+<rect x="520" y="180" width="70" height="40" fill="#555" stroke="#2c3e50" stroke-width="2" rx="3"/>
+<rect x="525" y="172" width="60" height="10" fill="#777" stroke="#2c3e50" stroke-width="1" rx="2"/>
+<text x="555" y="204" text-anchor="middle" class="ic-label" style="font-size:10px">AMS1117-5.0</text>
+<text x="555" y="166" text-anchor="middle" class="ref">U1</text>
+<line x1="505" y1="193" x2="520" y2="193" stroke="#2c3e50" stroke-width="2"/>
+<circle cx="505" cy="193" r="3" fill="#2c3e50"/>
+<text x="502" y="190" text-anchor="end" class="pin-label">12V IN</text>
+<line x1="555" y1="220" x2="555" y2="235" stroke="#2c3e50" stroke-width="2"/>
+<circle cx="555" cy="235" r="3" fill="#2c3e50"/>
+<text x="565" y="235" class="pin-label">GND</text>
+<line x1="590" y1="193" x2="605" y2="193" stroke="#2c3e50" stroke-width="2"/>
+<circle cx="605" cy="193" r="3" fill="#2c3e50"/>
+<text x="608" y="190" class="pin-label">5V OUT</text>
+<line x1="460" y1="136" x2="460" y2="193" stroke="#e74c3c" stroke-width="2.5" stroke-linecap="round"/>
+<line x1="460" y1="193" x2="505" y2="193" stroke="#e74c3c" stroke-width="2.5" stroke-linecap="round"/>
+<line x1="555" y1="235" x2="555" y2="420" stroke="#2c3e50" stroke-width="2.5" stroke-linecap="round"/>
+<line x1="605" y1="193" x2="680" y2="193" stroke="#aaaaaa" stroke-width="2.5" stroke-linecap="round"/>
+<line x1="640" y1="215" x2="640" y2="227" stroke="#2c3e50" stroke-width="2"/>
+<line x1="630" y1="227" x2="650" y2="227" stroke="#2c3e50" stroke-width="2.5"/>
+<line x1="630" y1="233" x2="650" y2="233" stroke="#2c3e50" stroke-width="2.5"/>
+<line x1="640" y1="233" x2="640" y2="245" stroke="#2c3e50" stroke-width="2"/>
+<circle cx="640" cy="215" r="3" fill="#2c3e50"/>
+<circle cx="640" cy="245" r="3" fill="#2c3e50"/>
+<text x="656" y="222" class="ref">C3</text>
+<text x="656" y="238" class="value">22uF</text>
+<line x1="670" y1="215" x2="670" y2="227" stroke="#2c3e50" stroke-width="2"/>
+<line x1="660" y1="227" x2="680" y2="227" stroke="#2c3e50" stroke-width="2.5"/>
+<line x1="660" y1="233" x2="680" y2="233" stroke="#2c3e50" stroke-width="2.5"/>
+<line x1="670" y1="233" x2="670" y2="245" stroke="#2c3e50" stroke-width="2"/>
+<circle cx="670" cy="215" r="3" fill="#2c3e50"/>
+<circle cx="670" cy="245" r="3" fill="#2c3e50"/>
+<text x="686" y="222" class="ref">C4</text>
+<text x="686" y="238" class="value">100nF</text>
+<line x1="640" y1="245" x2="640" y2="420" stroke="#2c3e50" stroke-width="2.5" stroke-linecap="round"/>
+<line x1="670" y1="245" x2="670" y2="420" stroke="#2c3e50" stroke-width="2.5" stroke-linecap="round"/>
+<rect x="680" y="183" width="80" height="22" fill="#aaaaaa" rx="4"/>
+<text x="720" y="198" text-anchor="middle" style="fill:white; font-weight:bold; font-size:12px">+5V RAIL</text>
+<rect x="520" y="300" width="70" height="40" fill="#555" stroke="#2c3e50" stroke-width="2" rx="3"/>
+<rect x="525" y="292" width="60" height="10" fill="#777" stroke="#2c3e50" stroke-width="1" rx="2"/>
+<text x="555" y="324" text-anchor="middle" class="ic-label" style="font-size:10px">AMS1117-3.3</text>
+<text x="555" y="286" text-anchor="middle" class="ref">U2</text>
+<line x1="505" y1="313" x2="520" y2="313" stroke="#2c3e50" stroke-width="2"/>
+<circle cx="505" cy="313" r="3" fill="#2c3e50"/>
+<text x="502" y="310" text-anchor="end" class="pin-label">5V IN</text>
+<line x1="555" y1="340" x2="555" y2="355" stroke="#2c3e50" stroke-width="2"/>
+<circle cx="555" cy="355" r="3" fill="#2c3e50"/>
+<text x="565" y="355" class="pin-label">GND</text>
+<line x1="590" y1="313" x2="605" y2="313" stroke="#2c3e50" stroke-width="2"/>
+<circle cx="605" cy="313" r="3" fill="#2c3e50"/>
+<text x="608" y="310" class="pin-label">3.3V OUT</text>
+<line x1="680" y1="193" x2="680" y2="313" stroke="#aaaaaa" stroke-width="2.5" stroke-linecap="round"/>
+<line x1="680" y1="313" x2="605" y2="313" stroke="#aaaaaa" stroke-width="2.5" stroke-linecap="round"/>
+<line x1="505" y1="313" x2="460" y2="313" stroke="#aaaaaa" stroke-width="2.5" stroke-linecap="round"/>
+<line x1="460" y1="193" x2="460" y2="313" stroke="#aaaaaa" stroke-width="2.5" stroke-linecap="round"/>
+<line x1="555" y1="355" x2="555" y2="420" stroke="#2c3e50" stroke-width="2.5" stroke-linecap="round"/>
+<line x1="605" y1="313" x2="760" y2="313" stroke="#f1c40f" stroke-width="2.5" stroke-linecap="round"/>
+<line x1="720" y1="335" x2="720" y2="347" stroke="#2c3e50" stroke-width="2"/>
+<line x1="710" y1="347" x2="730" y2="347" stroke="#2c3e50" stroke-width="2.5"/>
+<line x1="710" y1="353" x2="730" y2="353" stroke="#2c3e50" stroke-width="2.5"/>
+<line x1="720" y1="353" x2="720" y2="365" stroke="#2c3e50" stroke-width="2"/>
+<circle cx="720" cy="335" r="3" fill="#2c3e50"/>
+<circle cx="720" cy="365" r="3" fill="#2c3e50"/>
+<text x="736" y="342" class="ref">C5</text>
+<text x="736" y="358" class="value">22uF</text>
+<line x1="750" y1="335" x2="750" y2="347" stroke="#2c3e50" stroke-width="2"/>
+<line x1="740" y1="347" x2="760" y2="347" stroke="#2c3e50" stroke-width="2.5"/>
+<line x1="740" y1="353" x2="760" y2="353" stroke="#2c3e50" stroke-width="2.5"/>
+<line x1="750" y1="353" x2="750" y2="365" stroke="#2c3e50" stroke-width="2"/>
+<circle cx="750" cy="335" r="3" fill="#2c3e50"/>
+<circle cx="750" cy="365" r="3" fill="#2c3e50"/>
+<text x="766" y="342" class="ref">C6</text>
+<text x="766" y="358" class="value">100nF</text>
+<line x1="720" y1="365" x2="720" y2="420" stroke="#2c3e50" stroke-width="2.5" stroke-linecap="round"/>
+<line x1="750" y1="365" x2="750" y2="420" stroke="#2c3e50" stroke-width="2.5" stroke-linecap="round"/>
+<rect x="760" y="303" width="90" height="22" fill="#f1c40f" rx="4"/>
+<text x="805" y="318" text-anchor="middle" style="fill:white; font-weight:bold; font-size:12px">+3.3V RAIL</text>
+<text x="520" y="470" class="note">5V feeds into 3.3V regulator (cascade design) to reduce heat</text>
+<line x1="460" y1="420" x2="780" y2="420" stroke="#2c3e50" stroke-width="2.5" stroke-linecap="round"/>
+</svg>

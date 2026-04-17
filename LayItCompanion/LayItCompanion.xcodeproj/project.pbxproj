@@ -1,0 +1,316 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		AAA00001 /* LayItCompanionApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBB00001 /* LayItCompanionApp.swift */; };
+		AAA00002 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBB00002 /* ContentView.swift */; };
+		AAA00003 /* RoomScanView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBB00003 /* RoomScanView.swift */; };
+		AAA00004 /* RoomResultView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBB00004 /* RoomResultView.swift */; };
+		AAA00006 /* AppState.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBB00006 /* AppState.swift */; };
+		AAA00007 /* ScannedRoom.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBB00007 /* ScannedRoom.swift */; };
+		AAA00008 /* RoomScanManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBB00008 /* RoomScanManager.swift */; };
+		AAA00009 /* FirebaseSyncService.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBB00009 /* FirebaseSyncService.swift */; };
+		AAA00010 /* WebAppView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBB00011 /* WebAppView.swift */; };
+		AAA00011 /* WebApp in Resources */ = {isa = PBXBuildFile; fileRef = BBB00012 /* WebApp */; };
+		AAA00012 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = BBB00013 /* Assets.xcassets */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		BBB00001 /* LayItCompanionApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LayItCompanionApp.swift; sourceTree = "<group>"; };
+		BBB00002 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		BBB00003 /* RoomScanView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoomScanView.swift; sourceTree = "<group>"; };
+		BBB00004 /* RoomResultView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoomResultView.swift; sourceTree = "<group>"; };
+		BBB00006 /* AppState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppState.swift; sourceTree = "<group>"; };
+		BBB00007 /* ScannedRoom.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScannedRoom.swift; sourceTree = "<group>"; };
+		BBB00008 /* RoomScanManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoomScanManager.swift; sourceTree = "<group>"; };
+		BBB00009 /* FirebaseSyncService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirebaseSyncService.swift; sourceTree = "<group>"; };
+		BBB00010 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		BBB00011 /* WebAppView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebAppView.swift; sourceTree = "<group>"; };
+		BBB00012 /* WebApp */ = {isa = PBXFileReference; lastKnownFileType = folder; path = WebApp; sourceTree = "<group>"; };
+		BBB00013 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		CCC00001 /* LayItCompanion.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = LayItCompanion.app; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		DDD00001 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		EEE00001 = {
+			isa = PBXGroup;
+			children = (
+				EEE00002 /* LayItCompanion */,
+				EEE00006 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		EEE00002 /* LayItCompanion */ = {
+			isa = PBXGroup;
+			children = (
+				BBB00001 /* LayItCompanionApp.swift */,
+				BBB00010 /* Info.plist */,
+				BBB00013 /* Assets.xcassets */,
+				EEE00003 /* Views */,
+				EEE00004 /* Models */,
+				EEE00005 /* Services */,
+				EEE00007 /* Resources */,
+			);
+			path = LayItCompanion;
+			sourceTree = "<group>";
+		};
+		EEE00003 /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				BBB00002 /* ContentView.swift */,
+				BBB00003 /* RoomScanView.swift */,
+				BBB00004 /* RoomResultView.swift */,
+				BBB00011 /* WebAppView.swift */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		EEE00004 /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				BBB00006 /* AppState.swift */,
+				BBB00007 /* ScannedRoom.swift */,
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		EEE00005 /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				BBB00008 /* RoomScanManager.swift */,
+				BBB00009 /* FirebaseSyncService.swift */,
+			);
+			path = Services;
+			sourceTree = "<group>";
+		};
+		EEE00006 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				CCC00001 /* LayItCompanion.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		EEE00007 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				BBB00012 /* WebApp */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		FFF00001 /* LayItCompanion */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = GGG00003 /* Build configuration list for PBXNativeTarget "LayItCompanion" */;
+			buildPhases = (
+				FFF00002 /* Sources */,
+				DDD00001 /* Frameworks */,
+				FFF00003 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = LayItCompanion;
+			productName = LayItCompanion;
+			productReference = CCC00001 /* LayItCompanion.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		HHH00001 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1540;
+				LastUpgradeCheck = 1540;
+				TargetAttributes = {
+					FFF00001 = {
+						CreatedOnToolsVersion = 15.4;
+					};
+				};
+			};
+			buildConfigurationList = GGG00001 /* Build configuration list for PBXProject "LayItCompanion" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = EEE00001;
+			productRefGroup = EEE00006 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				FFF00001 /* LayItCompanion */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		FFF00003 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				AAA00011 /* WebApp in Resources */,
+				AAA00012 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		FFF00002 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				AAA00001 /* LayItCompanionApp.swift in Sources */,
+				AAA00002 /* ContentView.swift in Sources */,
+				AAA00003 /* RoomScanView.swift in Sources */,
+				AAA00004 /* RoomResultView.swift in Sources */,
+				AAA00006 /* AppState.swift in Sources */,
+				AAA00007 /* ScannedRoom.swift in Sources */,
+				AAA00008 /* RoomScanManager.swift in Sources */,
+				AAA00009 /* FirebaseSyncService.swift in Sources */,
+				AAA00010 /* WebAppView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		GGG00004 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		GGG00005 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		GGG00006 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = DBYUK7F39N;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = LayItCompanion/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "Paint Calc";
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.simco.paintcalc;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		GGG00007 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = DBYUK7F39N;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = LayItCompanion/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "Paint Calc";
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.simco.paintcalc;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		GGG00001 /* Build configuration list for PBXProject "LayItCompanion" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				GGG00004 /* Debug */,
+				GGG00005 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		GGG00003 /* Build configuration list for PBXNativeTarget "LayItCompanion" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				GGG00006 /* Debug */,
+				GGG00007 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = HHH00001 /* Project object */;
+}

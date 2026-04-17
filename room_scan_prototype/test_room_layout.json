@@ -1,0 +1,109 @@
+{
+  "layit_layout": {
+    "wall": {
+      "tW": 74.09,
+      "lH": 90.88,
+      "rV": 0,
+      "bV": 0
+    },
+    "polygon": [
+      {
+        "x": 0,
+        "y": 0
+      },
+      {
+        "x": 74.09,
+        "y": 0
+      },
+      {
+        "x": 74.09,
+        "y": 90.88
+      },
+      {
+        "x": 0,
+        "y": 90.88
+      }
+    ],
+    "voids": [
+      {
+        "l": "Alcove",
+        "x": 0,
+        "y": 0,
+        "w": 36.2,
+        "h": 31.3
+      },
+      {
+        "l": "Cabinet",
+        "x": 0,
+        "y": 0,
+        "w": 105.4,
+        "h": 92.3
+      }
+    ]
+  },
+  "scan_metadata": {
+    "image": "test_room.jpg",
+    "ai_width_inches": 74.1,
+    "ai_height_inches": 90.9,
+    "final_width_inches": 74.09,
+    "final_height_inches": 90.88,
+    "width_source": "ai",
+    "height_source": "ai",
+    "wall_depth_m": 5.315,
+    "dimension_confidence": "low"
+  },
+  "detected_features": [
+    {
+      "l": "Alcove",
+      "x": 0,
+      "y": 0,
+      "w": 36.2,
+      "h": 31.3,
+      "_confidence": "medium",
+      "_requires_grout_alignment": true,
+      "_recess_depth_inches": 5.6,
+      "_auto_detected": true
+    },
+    {
+      "l": "Cabinet",
+      "x": 0,
+      "y": 0,
+      "w": 105.4,
+      "h": 92.3,
+      "_confidence": "medium",
+      "_requires_grout_alignment": false,
+      "_recess_depth_inches": -1.0,
+      "_auto_detected": true
+    }
+  ],
+  "constraints": [
+    {
+      "type": "fixed",
+      "feature": "alcove_or_recess",
+      "width_inches": 36.2,
+      "height_inches": 31.3,
+      "recess_depth_inches": 5.6,
+      "position_x_from_center_inches": -26.2,
+      "position_y_from_center_inches": 43.9,
+      "confidence": "medium",
+      "requires_grout_alignment": true,
+      "auto_detected": true
+    },
+    {
+      "type": "fixed",
+      "feature": "countertop_or_cabinet",
+      "width_inches": 105.4,
+      "height_inches": 92.3,
+      "recess_depth_inches": -1.0,
+      "position_x_from_center_inches": 4.3,
+      "position_y_from_center_inches": 13.4,
+      "confidence": "medium",
+      "requires_grout_alignment": false,
+      "auto_detected": true
+    }
+  ],
+  "instructions": {
+    "how_to_use": "Copy the \"layit_layout\" object into the LayIt PWA. Set C.wall = layit_layout.wall, C.polygon = layit_layout.polygon, C.voids = layit_layout.voids, then call calculateSegments() and draw().",
+    "manual_override": "If any measurements are off, edit wall.tW (width) and wall.lH (height) in inches. For voids, adjust x (from left) and y (from bottom) positions."
+  }
+}

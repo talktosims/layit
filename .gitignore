@@ -1,0 +1,26 @@
+# Dependencies
+node_modules/
+sales/node_modules/
+tools/tile-scraper/node_modules/
+
+# Python
+venv/
+__pycache__/
+*.pyc
+room_scan_prototype/venv/
+room_scan_prototype/ml-depth-pro/
+
+# macOS
+.DS_Store
+*.DS_Store
+
+# IDE
+.vscode/
+.idea/
+
+# Build artifacts
+build/enclosure/*.mov
+
+# Environment / secrets
+.env
+*.env

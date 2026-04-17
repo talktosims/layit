@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Star & Cross Tuner</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: #1a1a1a; color: #eee; font-family: 'SF Mono', monospace; font-size: 13px; }
+.layout { display: flex; height: 100vh; }
+.sidebar { width: 280px; padding: 12px; overflow-y: auto; background: #222; border-right: 1px solid #444; flex-shrink: 0; }
+.main { flex: 1; display: flex; flex-direction: column; }
+canvas { flex: 1; }
+h2 { font-size: 15px; margin-bottom: 8px; color: #7fdbca; }
+h3 { font-size: 11px; margin: 10px 0 5px; color: #c792ea; text-transform: uppercase; letter-spacing: 1px; }
+.row { display: flex; align-items: center; margin: 3px 0; gap: 6px; }
+.row label { flex: 0 0 90px; color: #999; font-size: 12px; }
+.row input[type=range] { flex: 1; }
+.row .val { flex: 0 0 40px; text-align: right; color: #ffcb6b; font-size: 11px; }
+.info { padding: 6px 12px; background: #2a2a2a; border-top: 1px solid #444; font-size: 11px; color: #888; }
+.hint { color: #555; font-size: 10px; margin: 2px 0; }
+</style>
+</head>
+<body>
+<div class="layout">
+  <div class="sidebar">
+    <h2>Star & Cross Tuner</h2>
+    <div class="hint">8-pointed star + tilted cross, checkerboard</div>
+
+    <h3>Star</h3>
+    <div class="row"><label>Star Size</label><input type="range" id="starSize" min="0.80" max="1.80" step="0.01" value="1.35"><span class="val" id="starSizeV">1.35</span></div>
+    <div class="row"><label>Notch Ratio</label><input type="range" id="notchR" min="0.60" max="0.90" step="0.01" value="0.76"><span class="val" id="notchRV">0.76</span></div>
+
+    <h3>Cross</h3>
+    <div class="row"><label>Arm Width</label><input type="range" id="armW" min="0.20" max="1.20" step="0.01" value="0.91"><span class="val" id="armWV">0.91</span></div>
+    <div class="row"><label>Arm Length</label><input type="range" id="armL" min="0.30" max="1.80" step="0.01" value="1.34"><span class="val" id="armLV">1.34</span></div>
+    <div class="row"><label>Tip Height</label><input type="range" id="tipH" min="0.50" max="2.00" step="0.01" value="0.95"><span class="val" id="tipHV">0.95</span></div>
+
+    <h3>Grid</h3>
+    <div class="row"><label>Cell Size</label><input type="range" id="cellSize" min="60" max="300" step="2" value="140"><span class="val" id="cellSizeV">140</span></div>
+    <div class="row"><label>Grout</label><input type="range" id="grout" min="0" max="8" step="0.5" value="2"><span class="val" id="groutV">2</span></div>
+
+    <h3>Colors</h3>
+    <div class="row"><label>Star</label><input type="color" id="starColor" value="#5a8a9a"></div>
+    <div class="row"><label>Cross</label><input type="color" id="crossColor" value="#d4c4a0"></div>
+    <div class="row"><label>Grout</label><input type="color" id="groutColor" value="#888880"></div>
+
+    <h3>Overlay</h3>
+    <div class="hint">Drop image anywhere. Drag to move, scroll to scale.</div>
+    <div class="row"><label>Opacity</label><input type="range" id="opacity" min="0" max="100" step="5" value="0"><span class="val" id="opacityV">0</span></div>
+
+    <h3 id="params" style="color:#ffcb6b; font-size:10px; word-break:break-all;"></h3>
+  </div>
+  <div class="main">
+    <canvas id="c"></canvas>
+    <div class="info" id="status"></div>
+  </div>
+</div>
+<script>
+var canvas = document.getElementById('c');
+var ctx = canvas.getContext('2d');
+var refImg = null, refX = 0, refY = 0, refScale = 1.0;
+var isDrag = false, dsx, dsy, drx, dry;
+
+document.addEventListener('dragover', function(e){e.preventDefault();});
+document.addEventListener('drop', function(e){
+  e.preventDefault();
+  if(e.dataTransfer&&e.dataTransfer.files[0]){
+    var img=new Image();
+    img.onload=function(){refImg=img;refX=(canvas.clientWidth-img.width)/2;refY=(canvas.clientHeight-img.height)/2;
+      document.getElementById('opacity').value=50;document.getElementById('opacityV').textContent='50';draw();};
+    img.src=URL.createObjectURL(e.dataTransfer.files[0]);
+  }
+});
+canvas.addEventListener('mousedown',function(e){if(!refImg)return;isDrag=true;dsx=e.clientX;dsy=e.clientY;drx=refX;dry=refY;});
+window.addEventListener('mousemove',function(e){if(!isDrag)return;refX=drx+(e.clientX-dsx);refY=dry+(e.clientY-dsy);draw();});
+window.addEventListener('mouseup',function(){isDrag=false;});
+canvas.addEventListener('wheel',function(e){if(!refImg)return;e.preventDefault();refScale+=e.deltaY>0?-0.03:0.03;refScale=Math.max(0.1,Math.min(5,refScale));draw();},{passive:false});
+
+function resize(){canvas.width=canvas.clientWidth*devicePixelRatio;canvas.height=canvas.clientHeight*devicePixelRatio;ctx.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0);draw();}
+window.addEventListener('resize',resize);
+
+['starSize','notchR','armW','armL','tipH','cellSize','grout','opacity'].forEach(function(id){
+  document.getElementById(id).addEventListener('input',function(){document.getElementById(id+'V').textContent=this.value;draw();});
+});
+['starColor','crossColor','groutColor'].forEach(function(id){document.getElementById(id).addEventListener('input',draw);});
+
+function draw(){
+  var W=canvas.clientWidth, H=canvas.clientHeight;
+  var cell=parseFloat(document.getElementById('cellSize').value);
+  var g=parseFloat(document.getElementById('grout').value);
+  var starSizeMul=parseFloat(document.getElementById('starSize').value);
+  var notchR=parseFloat(document.getElementById('notchR').value);
+  var armWFrac=parseFloat(document.getElementById('armW').value);
+  var armLFrac=parseFloat(document.getElementById('armL').value);
+  var tipHMul=parseFloat(document.getElementById('tipH').value);
+  var opacity=parseInt(document.getElementById('opacity').value)/100;
+
+  var halfCell=cell/2;
+  var s=halfCell-g/2;
+  var R=s*starSizeMul;
+  var ri=R*notchR;
+  var hw=s*armWFrac/2;
+  var sq2=1.4142;
+  var armL_px=s*armLFrac;
+  var triH=hw*sq2*tipHMul;
+  var D=armL_px+triH;
+
+  ctx.fillStyle=document.getElementById('groutColor').value;
+  ctx.fillRect(0,0,W,H);
+
+  if(refImg&&opacity>0){ctx.save();ctx.globalAlpha=opacity*0.5;ctx.drawImage(refImg,refX,refY,refImg.width*refScale,refImg.height*refScale);ctx.restore();}
+
+  var cols=Math.ceil(W/cell)+2, rows=Math.ceil(H/cell)+2;
+
+  for(var row=-1;row<rows;row++){
+    for(var col=-1;col<cols;col++){
+      var px=halfCell+col*cell, py=halfCell+row*cell;
+      var isStar=((row+col)%2+2)%2===0;
+
+      if(isStar){
+        ctx.beginPath();
+        ctx.moveTo(px,py-R);
+        for(var i=1;i<16;i++){
+          var a=i*Math.PI/8-Math.PI/2;
+          var r=(i%2===0)?R:ri;
+          ctx.lineTo(px+r*Math.cos(a),py+r*Math.sin(a));
+        }
+        ctx.closePath();
+        ctx.fillStyle=document.getElementById('starColor').value;
+        ctx.fill();
+        ctx.strokeStyle='#444';ctx.lineWidth=0.5;ctx.stroke();
+      } else {
+        var notches=[[0,-hw*sq2],[hw*sq2,0],[0,hw*sq2],[-hw*sq2,0]];
+        var angles=[-45,45,135,225];
+        ctx.beginPath();
+        ctx.moveTo(px+notches[0][0],py+notches[0][1]);
+        for(var ai=0;ai<4;ai++){
+          var aa=angles[ai]*Math.PI/180;
+          var dx=Math.cos(aa),dy=Math.sin(aa);
+          var lx=dy,ly=-dx;
+          ctx.lineTo(px+lx*hw+dx*armL_px,py+ly*hw+dy*armL_px);
+          ctx.lineTo(px+dx*D,py+dy*D);
+          ctx.lineTo(px-lx*hw+dx*armL_px,py-ly*hw+dy*armL_px);
+          if(ai<3)ctx.lineTo(px+notches[ai+1][0],py+notches[ai+1][1]);
+        }
+        ctx.closePath();
+        ctx.fillStyle=document.getElementById('crossColor').value;
+        ctx.fill();
+        ctx.strokeStyle='#444';ctx.lineWidth=0.5;ctx.stroke();
+      }
+    }
+  }
+
+  if(refImg&&opacity>0){ctx.save();ctx.globalAlpha=opacity*0.5;ctx.drawImage(refImg,refX,refY,refImg.width*refScale,refImg.height*refScale);ctx.restore();}
+
+  document.getElementById('params').textContent='starSize='+starSizeMul+' notch='+notchR+' armW='+armWFrac+' armL='+armLFrac+' tipH='+tipHMul;
+  document.getElementById('status').textContent='Cell='+cell+' R='+R.toFixed(1)+' ri='+ri.toFixed(1)+' hw='+hw.toFixed(1)+' armL='+armL_px.toFixed(1)+' D='+D.toFixed(1);
+}
+resize();
+</script>
+</body>
+</html>

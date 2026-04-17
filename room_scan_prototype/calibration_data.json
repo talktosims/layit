@@ -1,0 +1,322 @@
+{
+  "runs": [
+    {
+      "image": "bathroom_test2.jpg",
+      "timestamp": "2026-03-14T20:52:05.498973",
+      "camera_offset_m": 0.3,
+      "method": "ransac",
+      "errors": {
+        "length": {
+          "estimated_ft": 14.17,
+          "actual_ft": 14.25,
+          "abs_error_ft": -0.08,
+          "abs_error_inches": -1.0,
+          "pct_error": -0.6
+        },
+        "width": {
+          "estimated_ft": 14.87,
+          "actual_ft": 9.0,
+          "abs_error_ft": 5.87,
+          "abs_error_inches": 70.4,
+          "pct_error": 65.2
+        },
+        "height": {
+          "estimated_ft": 8.31,
+          "actual_ft": 8.25,
+          "abs_error_ft": 0.06,
+          "abs_error_inches": 0.7,
+          "pct_error": 0.7
+        }
+      },
+      "raw_measurements": {
+        "room_length_raw_m": 4.018,
+        "room_length_raw_ft": 13.18,
+        "room_length_corrected_m": 4.318,
+        "room_length_corrected_ft": 14.17,
+        "camera_offset_m": 0.3,
+        "room_width_m": 4.533,
+        "room_width_ft": 14.87,
+        "room_height_m": 2.534,
+        "room_height_ft": 8.31,
+        "depth_range_m": "0.89 - 6.23",
+        "floor_area_sqft": 210.7
+      }
+    },
+    {
+      "image": "dining_test2.jpg",
+      "timestamp": "2026-03-15T09:00:06.512176",
+      "camera_offset_m": 0.0,
+      "method": "ransac",
+      "errors": {
+        "width": {
+          "estimated_ft": 8.98,
+          "actual_ft": 9.0,
+          "abs_error_ft": -0.02,
+          "abs_error_inches": -0.2,
+          "pct_error": -0.2
+        },
+        "height": {
+          "estimated_ft": 6.04,
+          "actual_ft": 8.25,
+          "abs_error_ft": -2.21,
+          "abs_error_inches": -26.5,
+          "pct_error": -26.8
+        }
+      },
+      "raw_measurements": {
+        "room_length_raw_m": 2.959,
+        "room_length_raw_ft": 9.71,
+        "room_length_corrected_m": 2.959,
+        "room_length_corrected_ft": 9.71,
+        "camera_offset_m": 0.0,
+        "width_out_of_square": {
+          "min_ft": 8.9,
+          "max_ft": 9.02,
+          "delta_inches": 1.4,
+          "is_square": false
+        },
+        "room_width_m": 2.737,
+        "room_width_ft": 8.98,
+        "room_height_m": 1.84,
+        "room_height_ft": 6.04,
+        "depth_range_m": "0.88 - 3.30",
+        "floor_area_sqft": 87.2
+      }
+    },
+    {
+      "image": "shower_niche_wall.jpg",
+      "timestamp": "2026-03-15T09:00:39.742851",
+      "camera_offset_m": 0.0,
+      "method": "ransac",
+      "errors": {
+        "width": {
+          "estimated_ft": 4.74,
+          "actual_ft": 4.83,
+          "abs_error_ft": -0.093,
+          "abs_error_inches": -1.1,
+          "pct_error": -1.9
+        },
+        "height": {
+          "estimated_ft": 5.15,
+          "actual_ft": 5.83,
+          "abs_error_ft": -0.683,
+          "abs_error_inches": -8.2,
+          "pct_error": -11.7
+        }
+      },
+      "raw_measurements": {
+        "room_length_raw_m": 1.719,
+        "room_length_raw_ft": 5.64,
+        "room_length_corrected_m": 1.719,
+        "room_length_corrected_ft": 5.64,
+        "camera_offset_m": 0.0,
+        "width_out_of_square": {
+          "min_ft": 4.57,
+          "max_ft": 4.76,
+          "delta_inches": 2.2,
+          "is_square": false
+        },
+        "room_width_m": 1.445,
+        "room_width_ft": 4.74,
+        "room_height_m": 1.569,
+        "room_height_ft": 5.15,
+        "depth_range_m": "0.92 - 1.89",
+        "floor_area_sqft": 26.7
+      }
+    },
+    {
+      "image": "test_room.jpg",
+      "timestamp": "2026-03-15T10:00:36.788015",
+      "camera_offset_m": 0.0,
+      "method": "ransac",
+      "errors": {
+        "width": {
+          "estimated_ft": 7.76,
+          "actual_ft": 7.17,
+          "abs_error_ft": 0.593,
+          "abs_error_inches": 7.1,
+          "pct_error": 8.3
+        }
+      },
+      "raw_measurements": {
+        "room_length_raw_m": 5.287,
+        "room_length_raw_ft": 17.35,
+        "room_length_corrected_m": 5.287,
+        "room_length_corrected_ft": 17.35,
+        "camera_offset_m": 0.0,
+        "room_width_m": 2.364,
+        "room_width_ft": 7.76,
+        "room_height_m": 1.758,
+        "room_height_ft": 5.77,
+        "depth_range_m": "1.23 - 5.79",
+        "floor_area_sqft": 134.6
+      }
+    },
+    {
+      "image": "test_room.jpg",
+      "timestamp": "2026-03-15T10:02:24.851904",
+      "camera_offset_m": 0.0,
+      "method": "ransac",
+      "errors": {
+        "width": {
+          "estimated_ft": 7.76,
+          "actual_ft": 7.17,
+          "abs_error_ft": 0.593,
+          "abs_error_inches": 7.1,
+          "pct_error": 8.3
+        },
+        "height": {
+          "estimated_ft": 1.28,
+          "actual_ft": 7.31,
+          "abs_error_ft": -6.027,
+          "abs_error_inches": -72.3,
+          "pct_error": -82.5
+        }
+      },
+      "raw_measurements": {
+        "room_length_raw_m": 5.35,
+        "room_length_raw_ft": 17.55,
+        "room_length_corrected_m": 5.35,
+        "room_length_corrected_ft": 17.55,
+        "camera_offset_m": 0.0,
+        "room_width_m": 2.364,
+        "room_width_ft": 7.76,
+        "room_height_m": 0.391,
+        "room_height_ft": 1.28,
+        "depth_range_m": "1.23 - 5.79",
+        "floor_area_sqft": 136.2
+      }
+    },
+    {
+      "image": "test_room2.jpg",
+      "timestamp": "2026-03-15T10:26:48.917664",
+      "camera_offset_m": 0.0,
+      "method": "ransac",
+      "errors": {
+        "length": {
+          "estimated_ft": 5.9,
+          "actual_ft": 6.37,
+          "abs_error_ft": -0.47,
+          "abs_error_inches": -5.6,
+          "pct_error": -7.4
+        },
+        "width": {
+          "estimated_ft": 6.1,
+          "actual_ft": 6.276,
+          "abs_error_ft": -0.176,
+          "abs_error_inches": -2.1,
+          "pct_error": -2.8
+        },
+        "height": {
+          "estimated_ft": 5.12,
+          "actual_ft": 5.84,
+          "abs_error_ft": -0.718,
+          "abs_error_inches": -8.6,
+          "pct_error": -12.3
+        }
+      },
+      "raw_measurements": {
+        "room_length_raw_m": 1.798,
+        "room_length_raw_ft": 5.9,
+        "room_length_corrected_m": 1.798,
+        "room_length_corrected_ft": 5.9,
+        "camera_offset_m": 0.0,
+        "room_width_m": 1.859,
+        "room_width_ft": 6.1,
+        "room_height_m": 1.561,
+        "room_height_ft": 5.12,
+        "height_method": "ceiling_plane_floor_edge",
+        "depth_range_m": "0.79 - 2.51",
+        "floor_area_sqft": 36.0
+      }
+    },
+    {
+      "image": "test_room3.jpg",
+      "timestamp": "2026-03-15T10:58:29.357765",
+      "camera_offset_m": 0.0,
+      "method": "ransac",
+      "errors": {
+        "height": {
+          "estimated_ft": 6.48,
+          "actual_ft": 8.23,
+          "abs_error_ft": -1.754,
+          "abs_error_inches": -21.0,
+          "pct_error": -21.3
+        }
+      },
+      "raw_measurements": {
+        "room_length_raw_m": 2.206,
+        "room_length_raw_ft": 7.24,
+        "room_length_corrected_m": 2.206,
+        "room_length_corrected_ft": 7.24,
+        "camera_offset_m": 0.0,
+        "room_width_m": 2.174,
+        "room_width_ft": 7.13,
+        "room_height_m": 1.974,
+        "room_height_ft": 6.48,
+        "height_method": "wall_extent_fallback",
+        "depth_range_m": "1.23 - 9.84",
+        "floor_area_sqft": 51.6
+      }
+    },
+    {
+      "image": "test_room4.jpg",
+      "timestamp": "2026-03-15T11:01:48.136383",
+      "camera_offset_m": 0.0,
+      "method": "ransac",
+      "errors": {
+        "width": {
+          "estimated_ft": 6.86,
+          "actual_ft": 6.88,
+          "abs_error_ft": -0.015,
+          "abs_error_inches": -0.2,
+          "pct_error": -0.2
+        },
+        "height": {
+          "estimated_ft": 5.46,
+          "actual_ft": 8.23,
+          "abs_error_ft": -2.774,
+          "abs_error_inches": -33.3,
+          "pct_error": -33.7
+        }
+      },
+      "raw_measurements": {
+        "room_length_raw_m": 2.377,
+        "room_length_raw_ft": 7.8,
+        "room_length_corrected_m": 2.377,
+        "room_length_corrected_ft": 7.8,
+        "camera_offset_m": 0.0,
+        "room_width_m": 2.09,
+        "room_width_ft": 6.86,
+        "room_height_m": 1.665,
+        "room_height_ft": 5.46,
+        "height_method": "floor_ceiling_planes",
+        "depth_range_m": "1.16 - 2.97",
+        "floor_area_sqft": 53.5
+      }
+    }
+  ],
+  "correction_factors": {
+    "length": {
+      "factor": 1.0427,
+      "mean": 1.0427,
+      "std": 0.037,
+      "n_samples": 2,
+      "n_rejected": 0
+    },
+    "width": {
+      "factor": 1.0026,
+      "mean": 0.9835,
+      "std": 0.0431,
+      "n_samples": 6,
+      "n_rejected": 1
+    },
+    "height": {
+      "factor": 1.1406,
+      "mean": 1.1803,
+      "std": 0.1277,
+      "n_samples": 5,
+      "n_rejected": 2
+    }
+  }
+}

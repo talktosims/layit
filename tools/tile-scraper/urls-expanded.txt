@@ -1,0 +1,188 @@
+# LayIt Tile Scraper — Expanded URL List
+# ~40 popular Home Depot tile product URLs
+# Run with: node parse-urls.js urls-expanded.txt
+
+# ═══════════════════════════════════════════════════════════════
+# 1" HEX MOSAIC
+# ═══════════════════════════════════════════════════════════════
+
+# Merola 1" Hex Matte White
+https://www.homedepot.com/p/Merola-Tile-Metro-1-in-Hex-Matte-White-10-1-4-in-x-11-3-4-in-Porcelain-Mosaic-Tile-8-56-sq-ft-Case-FXLMHW/205765498
+
+# Merola 1" Hex Matte Black
+https://www.homedepot.com/p/Merola-Tile-Metro-1-in-Hex-Matte-Black-10-1-4-in-x-11-3-4-in-Porcelain-Mosaic-Tile-8-56-sq-ft-Case-FXLMHB/205765502
+
+# Merola 1" Hex Glossy Gray
+https://www.homedepot.com/p/Merola-Tile-Metro-1-in-Hex-Glossy-Gray-10-1-4-in-x-11-3-4-in-Porcelain-Mosaic-Tile-8-56-sq-ft-Case-FXLM1HGG/310356732
+
+# ═══════════════════════════════════════════════════════════════
+# 2" HEX MOSAIC
+# ═══════════════════════════════════════════════════════════════
+
+# Merola 2" Hex Matte White
+https://www.homedepot.com/p/Merola-Tile-Metro-2-in-Hex-Matte-White-11-1-8-in-x-12-5-8-in-Porcelain-Mosaic-Tile-10-0-sq-ft-Case-FXLM2HMW/203684368
+
+# Merola 2" Hex Matte Black
+https://www.homedepot.com/p/Merola-Tile-Metro-2-in-Hex-Matte-Black-11-1-8-in-x-12-5-8-in-Porcelain-Mosaic-Tile-10-0-sq-ft-Case-FXLM2HMB/203684352
+
+# Merola 2" Hex Glossy Gray
+https://www.homedepot.com/p/Merola-Tile-Metro-2-in-Hex-Glossy-Gray-11-1-8-in-x-12-5-8-in-Porcelain-Mosaic-Tile-10-0-sq-ft-Case-FXLM2HGG/310356819
+
+# Merola 2" Hex Matte Blue
+https://www.homedepot.com/p/Merola-Tile-Metro-2-in-Hex-Matte-Blue-11-1-8-in-x-12-5-8-in-Porcelain-Mosaic-Tile-10-0-sq-ft-Case-FXLM2HMB2/310356845
+
+# MSI White Hexagon 11x11
+https://www.homedepot.com/p/MSI-White-Hexagon-11-in-x-11-in-x-6mm-Glazed-Porcelain-Mesh-Mounted-Mosaic-Tile-0-83-sq-ft-PT-WHThex/206638553
+
+# Merola 2" Hex Glossy White
+https://www.homedepot.com/p/Merola-Tile-Metro-2-in-Hex-Glossy-White-11-1-8-in-x-12-5-8-in-Porcelain-Mosaic-Tile-10-0-sq-ft-Case-FXLM2HGW/203684361
+
+# ═══════════════════════════════════════════════════════════════
+# 3x6 SUBWAY
+# ═══════════════════════════════════════════════════════════════
+
+# Daltile Restore Bright White 3x6 Subway
+https://www.homedepot.com/p/Daltile-Restore-Bright-White-3-in-x-6-in-Ceramic-Subway-Tile-12-5-sq-ft-Case-RE15361P2/312227515
+
+# Daltile Restore Matte Gray 3x6 Subway
+https://www.homedepot.com/p/Daltile-Restore-Matte-Gray-3-in-x-6-in-Ceramic-Subway-Tile-12-5-sq-ft-Case-RE153612HD1P2/316271943
+
+# MSI Ice White 3x6 Glossy Subway
+https://www.homedepot.com/p/MSI-Ice-White-3-in-x-6-in-Glossy-Ceramic-Subway-Tile-1-sq-ft-Case-NPTICEWHITE3X6/310176594
+
+# Merola Tile Park Slope Glossy White 3x6 Subway
+https://www.homedepot.com/p/Merola-Tile-Park-Slope-Glossy-White-3-in-x-6-in-Ceramic-Subway-Tile-17-sq-ft-Case-WR39PSGW/315887425
+
+# Daltile Finesse Bright White 3x6 Subway
+https://www.homedepot.com/p/Daltile-Finesse-Bright-White-3-in-x-6-in-Ceramic-Subway-Wall-Tile-12-5-sq-ft-Case-FE0136HD1P2/311497783
+
+# Marazzi Luxecraft White 3x6 Subway
+https://www.homedepot.com/p/Marazzi-LuxeCraft-White-3-in-x-6-in-Glazed-Ceramic-Subway-Wall-Tile-12-5-sq-ft-Case-LC1636HD1P2/311497921
+
+# Daltile Restore Matte Black 3x6 Subway
+https://www.homedepot.com/p/Daltile-Restore-Matte-Black-3-in-x-6-in-Ceramic-Subway-Tile-12-5-sq-ft-Case-RE18361P2/316271950
+
+# ═══════════════════════════════════════════════════════════════
+# 4x8 SUBWAY
+# ═══════════════════════════════════════════════════════════════
+
+# Daltile Restore Bright White 4x8 Subway
+https://www.homedepot.com/p/Daltile-Restore-Bright-White-4-in-x-8-in-Ceramic-Subway-Tile-10-64-sq-ft-Case-RE15481P2/312227530
+
+# ═══════════════════════════════════════════════════════════════
+# PENNY ROUND MOSAIC
+# ═══════════════════════════════════════════════════════════════
+
+# Daltile Restore Bright White Penny Round
+https://www.homedepot.com/p/Daltile-Restore-Bright-White-Penny-Round-11-in-x-10-in-x-6-35mm-Glazed-Ceramic-Mosaic-Tile-0-76-sq-ft-piece-RE15PNYRDMS1P/312227498
+
+# Merola Tile Penny Round Matte Black 12x12
+https://www.homedepot.com/p/Merola-Tile-Penny-Round-Matte-Black-12-1-4-in-x-12-in-Porcelain-Mosaic-Tile-10-2-sq-ft-Case-FKOMPR33/303658936
+
+# MSI White Penny Round 11x12
+https://www.homedepot.com/p/MSI-White-Penny-Round-11-3-in-x-12-2-in-x-6mm-Glazed-Porcelain-Mesh-Mounted-Mosaic-Tile-14-36-sq-ft-Case-PT-WHTPNY/315490277
+
+# ═══════════════════════════════════════════════════════════════
+# 12x12 SQUARE
+# ═══════════════════════════════════════════════════════════════
+
+# Marazzi VitaElegante Bianco 12x12
+https://www.homedepot.com/p/Marazzi-VitaElegante-Bianco-12-in-x-12-in-Porcelain-Floor-and-Wall-Tile-14-55-sq-ft-Case-ULR9/206782082
+
+# Daltile Restore Bright White 12x12
+https://www.homedepot.com/p/Daltile-Restore-Bright-White-12-in-x-12-in-Glazed-Ceramic-Floor-and-Wall-Tile-11-sq-ft-Case-RE1512121P2/312191478
+
+# Daltile Restore Matte Gray 12x12
+https://www.homedepot.com/p/Daltile-Restore-Matte-Gray-12-in-x-12-in-Glazed-Ceramic-Floor-and-Wall-Tile-11-sq-ft-Case-RE1512121P2G/316271955
+
+# ═══════════════════════════════════════════════════════════════
+# 12x24 RECTANGLE
+# ═══════════════════════════════════════════════════════════════
+
+# Marazzi Calacatta 12x24
+https://www.homedepot.com/p/Marazzi-Developed-by-Nature-Calacatta-12-in-x-24-in-Glazed-Porcelain-Floor-and-Wall-Tile-15-6-sq-ft-Case-DN111224HD1P6/206148920
+
+# Daltile Restore Bright White 12x24
+https://www.homedepot.com/p/Daltile-Restore-Bright-White-12-in-x-24-in-Glazed-Ceramic-Floor-and-Wall-Tile-11-sq-ft-Case-RE1512241P2/316271801
+
+# MSI Carrara 12x24 Polished Porcelain
+https://www.homedepot.com/p/MSI-Carrara-12-in-x-24-in-Polished-Porcelain-Floor-and-Wall-Tile-16-sq-ft-Case-NCAR1224P/308744413
+
+# ═══════════════════════════════════════════════════════════════
+# 2x2 SQUARE MOSAIC
+# ═══════════════════════════════════════════════════════════════
+
+# Merola Tile Metro Quad Matte White 2x2 Mosaic
+https://www.homedepot.com/p/Merola-Tile-Metro-Quad-Matte-White-2-in-x-2-in-11-1-8-in-x-11-1-8-in-Porcelain-Mosaic-Tile-9-8-sq-ft-Case-FXLMSQMW/310356908
+
+# ═══════════════════════════════════════════════════════════════
+# FISHSCALE / FAN SHAPE MOSAIC
+# ═══════════════════════════════════════════════════════════════
+
+# Merola Tile Cosmo Fish Scale Glossy White
+https://www.homedepot.com/p/Merola-Tile-Cosmo-Fish-Scale-Glossy-White-8-3-4-in-x-10-1-2-in-Porcelain-Mosaic-Tile-7-0-sq-ft-Case-FSHSCGWH/310356985
+
+# Apollo Tile Fan Shape Matte White
+https://www.homedepot.com/p/Apollo-Tile-Fan-Shape-Matte-White-9-in-x-10-in-Porcelain-Mosaic-Tile-7-5-sq-ft-Case-APLFNWH/315502211
+
+# ═══════════════════════════════════════════════════════════════
+# HERRINGBONE MOSAIC
+# ═══════════════════════════════════════════════════════════════
+
+# Daltile Restore Bright White 1x3 Herringbone Mosaic
+https://www.homedepot.com/p/Daltile-Restore-Bright-White-1-in-x-3-in-11-in-x-13-in-Ceramic-Herringbone-Mosaic-Tile-0-81-sq-ft-RE15HBMS/316271889
+
+# MSI Whisper White Herringbone 1x3 Mosaic
+https://www.homedepot.com/p/MSI-Whisper-White-Herringbone-1-in-x-3-in-11-in-x-12-1-4-in-Glazed-Porcelain-Mosaic-Tile-0-94-sq-ft-PT-WWHBNE/315490300
+
+# ═══════════════════════════════════════════════════════════════
+# LARGE FORMAT 24x24
+# ═══════════════════════════════════════════════════════════════
+
+# MSI Aria Ice 24x24 Polished Porcelain
+https://www.homedepot.com/p/MSI-Aria-Ice-24-in-x-24-in-Polished-Porcelain-Floor-and-Wall-Tile-16-sq-ft-Case-NARICE2424P/308744430
+
+# Marazzi Haven Point White 24x24
+https://www.homedepot.com/p/Marazzi-Haven-Point-White-24-in-x-24-in-Polished-Porcelain-Floor-and-Wall-Tile-15-5-sq-ft-Case-HP012424HD1P6/311492210
+
+# ═══════════════════════════════════════════════════════════════
+# 4x12 SUBWAY
+# ═══════════════════════════════════════════════════════════════
+
+# Merola Tile Park Slope Glossy White 4x12 Subway
+https://www.homedepot.com/p/Merola-Tile-Park-Slope-Glossy-White-4-in-x-12-in-Ceramic-Subway-Tile-10-8-sq-ft-Case-WR39PSGW412/315887440
+
+# ═══════════════════════════════════════════════════════════════
+# 6x6 SQUARE
+# ═══════════════════════════════════════════════════════════════
+
+# Daltile Restore Bright White 6x6
+https://www.homedepot.com/p/Daltile-Restore-Bright-White-6-in-x-6-in-Glazed-Ceramic-Wall-Tile-12-5-sq-ft-Case-RE150661P2/312227501
+
+# ═══════════════════════════════════════════════════════════════
+# 3x12 SUBWAY
+# ═══════════════════════════════════════════════════════════════
+
+# Ivy Hill Tile Birmingham Matte White 3x12 Subway
+https://www.homedepot.com/p/Ivy-Hill-Tile-Birmingham-Matte-White-3-in-x-12-in-Ceramic-Subway-Wall-Tile-5-72-sq-ft-Case-EXT3RD100957/314789562
+
+# ═══════════════════════════════════════════════════════════════
+# 3x3 SQUARE (small format)
+# ═══════════════════════════════════════════════════════════════
+
+# Daltile Restore Bright White 3x3 Square
+https://www.homedepot.com/p/Daltile-Restore-Bright-White-3-in-x-3-in-Glazed-Ceramic-Wall-Tile-12-5-sq-ft-Case-RE150331P2/316271822
+
+# ═══════════════════════════════════════════════════════════════
+# MSI Gray Hexagon
+# ═══════════════════════════════════════════════════════════════
+
+# MSI Gray Hexagon 2" 11x12
+https://www.homedepot.com/p/MSI-Gray-Hexagon-11-in-x-12-in-x-6mm-Glazed-Porcelain-Mesh-Mounted-Mosaic-Tile-14-36-sq-ft-Case-PT-GRAhex/310176601
+
+# ═══════════════════════════════════════════════════════════════
+# 4x16 SUBWAY
+# ═══════════════════════════════════════════════════════════════
+
+# Marazzi LuxeCraft White 4x16 Subway
+https://www.homedepot.com/p/Marazzi-LuxeCraft-White-4-in-x-16-in-Glazed-Ceramic-Subway-Wall-Tile-11-08-sq-ft-Case-LC1416HD1P2/311497945
