@@ -1,7 +1,7 @@
 # LayIt API Proxy Setup (5 minutes)
 
 ## Why
-The API key is currently hardcoded in WebAppView.swift. Anyone who decompiles the app can steal it. This proxy keeps the key on Cloudflare's servers.
+LayIt's release build does not embed an AI API key. The app calls a Cloudflare Worker proxy, and the proxy keeps the Anthropic key on Cloudflare's servers.
 
 ## Steps
 
@@ -21,26 +21,16 @@ Your proxy URL is now: `https://layit-api.YOUR-SUBDOMAIN.workers.dev`
 
 ## Update the app
 
-In `index.html`, change the two fetch calls from:
+Set `LayItAIProxyURL` in `LayIt-iOS/Info.plist` to your Worker URL:
+
 ```
-fetch('https://api.anthropic.com/v1/messages', {
-    headers: {
-        'x-api-key': _AI_API_KEY,
-        'anthropic-dangerous-direct-browser-access': 'true'
-    ...
+<key>LayItAIProxyURL</key>
+<string>https://layit-api.YOUR-SUBDOMAIN.workers.dev</string>
 ```
 
-To:
-```
-fetch('https://layit-api.YOUR-SUBDOMAIN.workers.dev', {
-    headers: {
-        'Content-Type': 'application/json'
-    ...
-```
+No API key is sent by the app. No `anthropic-dangerous-direct-browser-access` header is used. The proxy handles Anthropic auth server-side.
 
-No API key in the request. No `anthropic-dangerous-direct-browser-access` header. The proxy handles auth server-side.
-
-Then remove the API key from `WebAppView.swift` entirely.
+Before spending on marketing, add Cloudflare rate limiting or another abuse-control layer for this Worker because the endpoint is public.
 
 ## Cost
 Cloudflare Workers free tier: 100,000 requests/day. More than enough.

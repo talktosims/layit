@@ -77,7 +77,7 @@ Also copy sw.js to Resources/WebApp/ if changed.
 ## AI Systems
 - **Tile label scanner**: Claude Opus 4.6 via API. Reads box stickers, extracts specs. Handles metric, bilingual, mosaic sheets.
 - **Spatial calibration pipeline**: When user takes workspace photo + enters manual measurements, Opus estimates dimensions in background. Both AI estimate and ground truth saved to Firebase `simco_spatial_calibration`. Accuracy metrics computed. Past calibration data injected into future prompts for self-improvement. Shared with StageIt (Patent 2 network effect).
-- **API key**: Hardcoded in WebAppView.swift — MUST move to server proxy before App Store launch.
+- **API key**: No AI key should be embedded in the app. Release builds inject `LayItAIProxyURL`; AI calls must go through the Cloudflare Worker proxy.
 - **NEXT: Evaluate SAM 3, Florence-2, BiRefNet, GroundingDINO** for tile segmentation, label reading, image cleanup, and room scanning. Full research notes in `room_scan_prototype/RESEARCH_NOTES.md`. These models are already proven in StageIt — port them to LayIt. SAM 3 (concept-based segmentation) is the highest priority: "segment all tiles" from a floor photo enables progress tracking and pattern recognition.
 
 ## Firebase

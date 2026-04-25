@@ -64,11 +64,11 @@
 - Works on any device with a browser — iPhone, Android, iPad, laptop
 - **Pitch it:** "Your phone is the remote. The app is free forever."
 
-### 9. Cloud Sync
-- Save projects to the cloud and pick up where you left off on any device
-- Start a layout on your phone, continue on your tablet
-- Passphrase-based sync — no account needed, no login, just a simple passphrase
-- **Pitch it:** "Start on your phone, finish on your iPad. Your project follows you."
+### 9. Cloud Sync (Planned)
+- Planned future feature for saving projects to the cloud and picking up where you left off on any device
+- Keep v1 App Store copy focused on local save/export until sync is fully wired
+- Passphrase-based sync remains the intended direction: no account needed, just a simple passphrase
+- **Pitch it later:** "Start on your phone, finish on your tablet. Your project follows you."
 
 ### 10. Active Cooling (All-Day Operation)
 - 30mm exhaust fan + passive vent slots on all faces

@@ -184,7 +184,7 @@ Three provisional patent applications protect the complete LayIt system:
 | Tier | Price | What You Get |
 |------|-------|-------------|
 | **Free** | $0 | Full layout engine, 234 presets, first AI scan free, project save/load, free sharing |
-| **Pro** | $4.99/mo or $39.99/yr | Unlimited AI scanning, cut tracking with measurements, branded client reports, barcode scanner, cloud sync, company branding |
+| **Pro** | $4.99/mo or $39.99/yr | Unlimited AI scanning, cut tracking with measurements, branded client reports, barcode scanner, price comparison, company branding |
 
 ### Laser Hardware
 

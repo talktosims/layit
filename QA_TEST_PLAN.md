@@ -71,8 +71,8 @@ Run through these tests on a physical iPhone before App Store submission.
 - [ ] Share with Friend → native share sheet
 - [ ] Client Report → 3-page preview with outline layout
 - [ ] Company Branding → hidden until Pro
-- [ ] Cloud Sync → hidden until Pro
-- [ ] Pro enabled → sections appear with New! badges
+- [ ] Cloud Sync shows as planned/waitlist, not active sync
+- [ ] Pro enabled → paid sections appear without claiming Cloud Sync is live
 
 ## 8. Client Report (Pro)
 - [ ] Shows 3 pages in dark background viewer

@@ -30,7 +30,6 @@ See exactly how many boxes you need. Compare prices across stores with one tap. 
 • Professional client reports (3-page printable PDF)
 • Price comparison across retailers
 • Company branding for shared reports
-• Cloud sync across devices
 
 **BUILT FOR THE JOB SITE**
 • Works offline with 45+ built-in tile presets
@@ -68,7 +67,7 @@ Free (with In-App Purchases)
 ## Privacy Policy
 
 **LayIt Privacy Policy**
-Last updated: March 19, 2026
+Last updated: April 24, 2026
 
 LayIt ("the App") is developed by LayIt LLC.
 
@@ -76,7 +75,7 @@ LayIt ("the App") is developed by LayIt LLC.
 - Tile box photos: Processed by AI to extract tile specifications. Photos are sent to our AI service (Anthropic Claude API) for analysis and are not stored on our servers after processing.
 - Workspace photos: Stored locally on your device only. Used for client reports and future AI room measurement features.
 - Project data: Tile configurations, room dimensions, and project settings are stored locally on your device using browser localStorage.
-- Cloud Sync data (Pro): If you enable Cloud Sync, project data is stored in Firebase Realtime Database using an anonymous identifier. No personal information is collected.
+- Cloud Sync: Not active in this release. If enabled in a future update, project data may be stored using an anonymous identifier.
 - Crowdsourced tile data: If you submit a tile that's not in our database, the tile specifications and box label photo are stored to improve our database for all users. No personal information is attached.
 
 **Data We Do NOT Collect**
@@ -87,12 +86,12 @@ LayIt ("the App") is developed by LayIt LLC.
 
 **Third-Party Services**
 - Anthropic Claude API: Used for AI tile label reading. Subject to Anthropic's privacy policy.
-- Firebase (Google): Used for optional cloud sync and tile database. Subject to Google's privacy policy.
+- Firebase (Google): Used for tile database, feedback/waitlist, and future optional cloud sync. Subject to Google's privacy policy.
 - Apple StoreKit: Used for subscription management. Subject to Apple's privacy policy.
 
 **Data Retention**
 - Local data persists until you delete the app or clear app data.
-- Cloud Sync data can be deleted by disabling Cloud Sync.
+- Cloud Sync is not active in this release. Future cloud sync data deletion controls will be documented before that feature launches.
 - Crowdsourced tile submissions are retained indefinitely to improve the database.
 
 **Children's Privacy**
@@ -106,7 +105,7 @@ For privacy questions: layitapp@gmail.com
 ## Terms of Service
 
 **LayIt Terms of Service**
-Last updated: March 19, 2026
+Last updated: April 24, 2026
 
 By using LayIt, you agree to these terms.
 
