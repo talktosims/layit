@@ -75,3 +75,20 @@ The codebase is close enough to start App Store Connect setup and TestFlight. Do
 - [x] App Store first is the recommended v1 route for trust, install friction, and iOS discovery
 - [ ] Add a web funnel/PWA after App Store launch for SEO, demos, email capture, and lower-fee direct subscriptions
 - [ ] Consider a lifetime purchase after subscription conversion is measured
+
+## Post-Launch Hardening (do AFTER first version is live)
+
+These were deliberately deferred on launch day (Apr 25, 2026) to ship faster. Both should be done within 1–4 weeks of launch.
+
+### Move app to Simco LLC organization Apple Developer account
+- [ ] Request a free D-U-N-S number for Simco LLC at https://developer.apple.com/enroll/duns-lookup (1 business day)
+- [ ] Enroll Simco LLC as an Apple Developer Program organization ($99/yr, separate from individual account). Apple verifies via D-U-N-S, takes 2–7 days.
+- [ ] In App Store Connect, request **app transfer** of `com.layit.app` from the individual account ("Robbie sims") to the Simco LLC team. Apple supports this without resubmission.
+- [ ] After transfer, update privacy/terms wording on https://layit.pages.dev to drop the "Robbie Sims" attribution and say "Simco LLC" cleanly.
+- **Why:** liability shield (app reviews, refund disputes, lawsuits all hit the LLC, not Robbie personally), cleaner tax flow (W-9 on EIN, not SSN), more professional seller name on the App Store ("Simco LLC" vs "Robbie sims") for B2B buyers (Floor & Decor, contractors), app becomes a transferable LLC asset.
+
+### Enable EU launch with private address
+- [ ] Set up a P.O. Box or registered agent in Minneapolis (USPS PO Box ~$100/yr; commercial registered agent ~$100–200/yr but accepts non-mail like service of process). Use the Simco LLC registered business address if it's already public on MN Secretary of State filings — that satisfies DSA without exposing the home address further than it already is.
+- [ ] In App Store Connect → Business → "Complete Compliance Requirements," declare **trader** status and supply the P.O. Box or business address (NOT home address).
+- [ ] In the LayIt app's Pricing and Availability, re-enable all 27 EU member states.
+- **Why:** EU DSA requires public display of trader name + address on EU listing pages for any IAP/paid app. Home address (4307 Oliver Ave N) was kept private at launch by excluding EU territories. EU has ~450M iOS users — meaningful TAM once safe to enable.
