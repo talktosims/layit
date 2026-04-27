@@ -13980,10 +13980,19 @@ const demoCursor = {
             if (signal && signal.aborted) { reject('aborted'); return; }
             const startX = parseFloat(this.el.style.left) || window.innerWidth / 2;
             const startY = parseFloat(this.el.style.top) || window.innerHeight / 2;
-            const startTime = performance.now();
+            let startTime = performance.now();
+            let lastTickAt = startTime;
             const self = this;
             function tick(now) {
                 if (signal && signal.aborted) { reject('aborted'); return; }
+                // While paused: freeze in place and slide startTime forward so progress doesn't jump on resume
+                if (typeof _demoPaused !== 'undefined' && _demoPaused) {
+                    startTime += (now - lastTickAt);
+                    lastTickAt = now;
+                    requestAnimationFrame(tick);
+                    return;
+                }
+                lastTickAt = now;
                 const t = Math.min((now - startTime) / duration, 1);
                 const ease = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
                 self.el.style.left = (startX + (x - startX) * ease) + 'px';
@@ -14071,30 +14080,40 @@ function setCaption(text) {
 }
 
 // --- Run waypoints ---
+// Pause-aware delay: tracks wall-clock progress and stalls advancement while _demoPaused is true.
+function pausableDelay(ms, signal, onFire) {
+    let elapsed = 0;
+    let lastTick = performance.now();
+    const interval = setInterval(() => {
+        if (signal && signal.aborted) { clearInterval(interval); return; }
+        const now = performance.now();
+        if (!_demoPaused) elapsed += (now - lastTick);
+        lastTick = now;
+        if (elapsed >= ms) { clearInterval(interval); onFire(); }
+    }, 50);
+    if (signal) signal.addEventListener('abort', () => clearInterval(interval), { once: true });
+    return interval;
+}
+
 function runWaypoints(step, signal) {
     return new Promise((resolve, reject) => {
         if (!step.waypoints || step.waypoints.length === 0) { resolve(); return; }
         const total = step.delay;
-        let completed = 0;
         step.waypoints.forEach(wp => {
             const t = wp.at * total;
-            setTimeout(() => {
+            pausableDelay(t, signal, () => {
                 if (signal && signal.aborted) return;
                 demoCursor.glideToElement(wp.selector, wp.label, signal).then(() => {
                     if (signal && signal.aborted) return;
                     demoCursor.click();
                 }).catch(() => {});
-                completed++;
-                if (completed >= step.waypoints.length && !signal.aborted) {
-                    // resolved by delay timer, not here
-                }
-            }, t);
+            });
         });
-        setTimeout(() => {
+        pausableDelay(total, signal, () => {
             if (signal && signal.aborted) { reject('aborted'); return; }
             demoCursor.setLabel('');
             resolve();
-        }, total);
+        });
     });
 }
 
@@ -14167,8 +14186,10 @@ async function startDemoMode() {
 
     // Lock body scroll during demo
     document.body.style.overflow = 'hidden';
-    // Show blocker + playback
+    // Show blocker + playback, install capture-phase event eater, start music bed
     document.getElementById('demo-input-blocker').style.display = 'block';
+    installDemoEventBlocker();
+    startDemoMusic();
     showPlayback();
 
     const signal = _demoAbort.signal;
@@ -14198,6 +14219,8 @@ function stopDemoMode() {
     hideSpotlight();
     hidePlayback();
     stopDemoAudio();
+    stopDemoMusic();
+    removeDemoEventBlocker();
     document.getElementById('demo-input-blocker').style.display = 'none';
     document.body.style.overflow = '';
     showTab('diagram');
@@ -14209,6 +14232,8 @@ function toggleDemoPause() {
     if (btn) btn.innerHTML = _demoPaused ? '&#9654; Resume' : '&#9208; Pause';
     if (_demoPaused && _demoCurrentAudio) _demoCurrentAudio.pause();
     else if (!_demoPaused && _demoCurrentAudio) _demoCurrentAudio.play();
+    if (_demoPaused && _demoMusicAudio) _demoMusicAudio.pause();
+    else if (!_demoPaused && _demoMusicAudio) _demoMusicAudio.play().catch(function(){});
     if (_demoPaused) window.speechSynthesis.pause();
     else window.speechSynthesis.resume();
 }
@@ -14217,6 +14242,45 @@ function toggleDemoPause() {
 
 var _demoCurrentAudio = null;
 var _demoSpeechResolve = null;
+var _demoMusicAudio = null;
+
+function startDemoMusic() {
+    try {
+        if (_demoMusicAudio) { try { _demoMusicAudio.pause(); } catch(e){} }
+        var a = new Audio('demo-audio/music-bed.mp3');
+        a.loop = true;
+        a.volume = 0.20;
+        _demoMusicAudio = a;
+        a.play().catch(function(){ /* autoplay blocked — fine, narration still plays */ });
+    } catch(e) {}
+}
+function stopDemoMusic() {
+    if (_demoMusicAudio) { try { _demoMusicAudio.pause(); _demoMusicAudio.src = ''; } catch(e){} _demoMusicAudio = null; }
+}
+
+// Capture-phase event blocker — eats all user input while demo runs,
+// EXCEPT for the demo playback bar (Pause/Skip buttons) and demo cursor.
+function _demoEventBlocker(e) {
+    if (!_demoActive) return;
+    var el = e.target;
+    while (el) {
+        if (el.id === 'demo-playback' || el.id === 'demo-cursor' || el.id === 'demo-input-blocker') return;
+        el = el.parentElement;
+    }
+    e.stopPropagation();
+    if (e.cancelable) e.preventDefault();
+}
+var _demoBlockedEvents = ['mousedown','mouseup','mousemove','click','dblclick','wheel','contextmenu','touchstart','touchmove','touchend','pointerdown','pointermove','pointerup','keydown'];
+function installDemoEventBlocker() {
+    _demoBlockedEvents.forEach(function(ev){
+        document.addEventListener(ev, _demoEventBlocker, { capture: true, passive: false });
+    });
+}
+function removeDemoEventBlocker() {
+    _demoBlockedEvents.forEach(function(ev){
+        document.removeEventListener(ev, _demoEventBlocker, { capture: true });
+    });
+}
 
 // Pre-recorded MP3 files — generated once via ElevenLabs, zero API calls at runtime
 var DEMO_AUDIO_FILES = {
@@ -14247,6 +14311,7 @@ function playAudioUrl(url, signal) {
         if (signal && signal.aborted) { resolve(); return; }
         stopDemoAudio();
         var audio = new Audio(url);
+        audio.volume = 0.9;
         _demoCurrentAudio = audio;
         _demoSpeechResolve = resolve;
         audio.onended = function() { _demoCurrentAudio = null; _demoSpeechResolve = null; resolve(); };
