@@ -13847,6 +13847,63 @@ if (!localStorage.getItem('layit_onboarded')) {
 
 // ==================== DEMO WALKTHROUGH ====================
 
+// 5-step App Preview marketing script (~26s total — for App Store video, not the in-app onboarding)
+const DEMO_SCRIPT_MARKETING = [
+  {
+    tab: 'diagram',
+    target: '.info-bar',
+    narration: 'No more wasting time on your layout. And no more having to measure your cuts.',
+    delay: 4500,
+    waypoints: [
+      { at: 0.25, selector: '#fullCount', label: 'Full Tiles' },
+      { at: 0.55, selector: '#cutCount', label: 'Cut Tiles' },
+      { at: 0.85, selector: '#wastePercentWrap', label: 'Waste %' },
+    ],
+  },
+  {
+    tab: 'diagram',
+    target: '#optimizeBtn',
+    narration: 'Tap Optimize. LayIt finds the position that wastes the fewest tiles.',
+    delay: 5000,
+    waypoints: [
+      { at: 0.5, selector: '#optimizeBtn', label: 'Optimize' },
+    ],
+  },
+  {
+    tab: 'tile',
+    target: null,
+    narration: 'Snap the box label. AI reads the size, shape, and pieces per box, and uploads it to your layout - instantly.',
+    delay: 7000,
+    waypoints: [
+      { at: 0.4, selector: '#scanBadge', label: 'AI Tile Scanner' },
+    ],
+  },
+  {
+    tab: 'calc',
+    target: null,
+    narration: 'Know exactly what to buy. Full tiles, cuts, breakage buffer.',
+    delay: 4500,
+    waypoints: [
+      { at: 0.3, selector: '#calcTotalCount', label: 'Total Tiles' },
+      { at: 0.7, selector: '#boxCountDisplay', label: 'Box Count' },
+    ],
+  },
+  {
+    tab: 'diagram',
+    target: '.info-bar',
+    narration: 'Plan it. Cut it. Lay it.',
+    delay: 3500,
+    waypoints: [],
+  },
+];
+var MARKETING_AUDIO_FILES = {
+  0: 'demo-audio/marketing-step01.mp3',
+  1: 'demo-audio/marketing-step02.mp3',
+  2: 'demo-audio/marketing-step03.mp3',
+  3: 'demo-audio/marketing-step04.mp3',
+  4: 'demo-audio/marketing-step05.mp3',
+};
+
 const DEMO_SCRIPT = [
   {
     tab: 'diagram',
@@ -14069,7 +14126,7 @@ function hidePlayback() {
 function renderDots() {
     const container = document.querySelector('#demo-playback .demo-dots');
     container.innerHTML = '';
-    DEMO_SCRIPT.forEach((_, i) => {
+    _activeDemoScript.forEach((_, i) => {
         const dot = document.createElement('span');
         dot.className = 'demo-dot' + (i === _demoStepIndex ? ' active' : '') + (i < _demoStepIndex ? ' done' : '');
         container.appendChild(dot);
@@ -14119,9 +14176,9 @@ function runWaypoints(step, signal) {
 
 // --- Play a single step ---
 async function playDemoStep(index) {
-    if (index >= DEMO_SCRIPT.length) return;
+    if (index >= _activeDemoScript.length) return;
     _demoStepIndex = index;
-    const step = DEMO_SCRIPT[index];
+    const step = _activeDemoScript[index];
     const signal = _demoAbort ? _demoAbort.signal : null;
 
     // Navigate to tab and scroll to top
@@ -14174,8 +14231,10 @@ function demoWaitWhilePaused(signal) {
 }
 
 // --- Main entry ---
-async function startDemoMode() {
+async function startDemoMode(mode) {
     if (_demoActive) return;
+    _activeDemoScript = (mode === 'marketing') ? DEMO_SCRIPT_MARKETING : DEMO_SCRIPT;
+    _activeDemoAudio = (mode === 'marketing') ? MARKETING_AUDIO_FILES : DEMO_AUDIO_FILES;
     _demoActive = true;
     _demoPaused = false;
     _demoStepIndex = 0;
@@ -14195,10 +14254,10 @@ async function startDemoMode() {
     const signal = _demoAbort.signal;
 
     try {
-        for (let i = 0; i < DEMO_SCRIPT.length; i++) {
+        for (let i = 0; i < _activeDemoScript.length; i++) {
             await demoWaitWhilePaused(signal);
             await playDemoStep(i);
-            if (i < DEMO_SCRIPT.length - 1) {
+            if (i < _activeDemoScript.length - 1) {
                 await demoWait(500, signal);
             }
         }
@@ -14243,6 +14302,10 @@ function toggleDemoPause() {
 var _demoCurrentAudio = null;
 var _demoSpeechResolve = null;
 var _demoMusicAudio = null;
+// Active script + audio map — switched by startDemoMode(mode)
+var _activeDemoScript = (typeof DEMO_SCRIPT !== 'undefined') ? DEMO_SCRIPT : [];
+var _activeDemoAudio = null;
+function startMarketingDemo() { return startDemoMode('marketing'); }
 
 function startDemoMusic() {
     try {
@@ -14298,7 +14361,7 @@ var DEMO_AUDIO_FILES = {
 
 async function speakDemo(text, signal) {
     // Play pre-recorded MP3 for current step
-    var audioFile = DEMO_AUDIO_FILES[_demoStepIndex];
+    var audioFile = _activeDemoAudio[_demoStepIndex];
     if (audioFile) {
         return playAudioUrl(audioFile, signal);
     }
