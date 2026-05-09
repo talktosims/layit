@@ -1,0 +1,303 @@
+{
+  "schema_version": 1,
+  "product_id": "layit-laser-rev2-bench",
+  "evidence_levels": {
+    "vendor_step_verified": "Manufacturer CAD/STEP/DXF imported and GLB bounds verified.",
+    "datasheet_parametric": "Built from manufacturer mechanical drawings, then GLB bounds verified.",
+    "measured_parametric": "Built from calipers and orthographic photos of the exact part.",
+    "estimated_package_model": "Generic package model exists but has not been traced to a source drawing.",
+    "photo_only_placeholder": "Only visual/photo or listing evidence; not build-accurate.",
+    "logical_placeholder": "Electrical/logical role only; no reliable physical geometry."
+  },
+  "records": {
+    "12V_IN": {
+      "target_accuracy": "measured_parametric",
+      "current_accuracy": "logical_placeholder",
+      "source_refs": [
+        "measurement_needed:actual_12v_source_or_pd_trigger"
+      ],
+      "model_goal": "Represent only the real part used in the bench build, or mark it off-board if it remains external.",
+      "web_status": "real_part_or_offboard_decision_needed",
+      "trusted_web_sources": [
+        "decision_needed:external_12v_supply_or_pd_trigger_board"
+      ],
+      "web_notes": "If kept off-board, it should be modeled as an external supply/cable rather than a board-mounted block. If using a PD trigger board, use its exact listing or photos."
+    },
+    "U1": {
+      "target_accuracy": "measured_parametric",
+      "current_accuracy": "photo_only_placeholder",
+      "source_refs": [
+        "official_ic:https://www.monolithicpower.com/en/mp1584.html",
+        "measurement_needed:actual_amazon_MP1584_module"
+      ],
+      "model_goal": "Model the purchased MP1584 buck module board, including pads, trim pot, inductor, and tallest parts. The official MP1584 IC CAD is not enough.",
+      "web_status": "web_assisted_module_confirm_needed",
+      "trusted_web_sources": [
+        "official_ic:https://www.monolithicpower.com/en/mp1584.html"
+      ],
+      "web_notes": "The MP1584 IC has official CAD; the Amazon buck module board usually does not. Need exact module listing or photos with scale before solder endpoints are trusted."
+    },
+    "GALVO_PSU": {
+      "target_accuracy": "measured_parametric",
+      "current_accuracy": "photo_only_placeholder",
+      "source_refs": [
+        "photo:IMG_9447",
+        "photo:IMG_9450",
+        "photo:IMG_9451",
+        "photo:IMG_9452",
+        "photo:IMG_9453",
+        "photo:IMG_9454"
+      ],
+      "model_goal": "Measure the exact KPDS0-12A kit supply board, connector centers, mounting holes, and live-voltage keepout.",
+      "web_status": "real_part_required",
+      "trusted_web_sources": [
+        "photo:IMG_9447",
+        "photo:IMG_9450",
+        "photo:IMG_9451",
+        "photo:IMG_9452",
+        "photo:IMG_9453",
+        "photo:IMG_9454"
+      ],
+      "web_notes": "Kit PSU appears KPDS0-12A/KPD50-R8. Web data is weak; use the photos and real board for connector coordinates and keepout."
+    },
+    "U3": {
+      "target_accuracy": "measured_parametric",
+      "current_accuracy": "photo_only_placeholder",
+      "source_refs": [
+        "official_reference:https://docs.espressif.com/projects/esp-dev-kits/en/latest/esp32s3/esp32-s3-devkitc-1/user_guide_v1.1.html",
+        "measurement_needed:ordered_Hosyond_ESP32-S3_board"
+      ],
+      "model_goal": "Confirm whether the ordered Hosyond board matches Espressif ESP32-S3-DevKitC-1 dimensions. If it matches, use official DXF/PDF; otherwise model the board from calipers.",
+      "web_status": "web_assisted_clone_confirm_needed",
+      "trusted_web_sources": [
+        "official_reference:https://docs.espressif.com/projects/esp-dev-kits/en/latest/esp32s3/esp32-s3-devkitc-1/user_guide_v1.1.html"
+      ],
+      "web_notes": "Official Espressif DevKitC-1 docs provide dimensions/DXF/header tables, but the purchased Hosyond clone must be checked against that outline."
+    },
+    "U4": {
+      "target_accuracy": "datasheet_parametric",
+      "current_accuracy": "estimated_package_model",
+      "source_refs": [
+        "official_product:https://www.microchip.com/en-us/product/mcp4822"
+      ],
+      "model_goal": "Use the exact purchased MCP4822 package. If PDIP-8, one verified DIP-8 part model can serve MCP4822 and TL072.",
+      "web_status": "web_solvable_package",
+      "trusted_web_sources": [
+        "official_product:https://www.microchip.com/en-us/product/mcp4822",
+        "authorized_part:https://www.digikey.com/en/products/detail/microchip-technology/MCP4822-E-P/951465"
+      ],
+      "web_notes": "If the purchased part is MCP4822-E/P, the package can be modeled from manufacturer package drawings/CAD without user caliper work."
+    },
+    "C10": {
+      "target_accuracy": "datasheet_parametric",
+      "current_accuracy": "estimated_package_model",
+      "source_refs": [
+        "package_standard:0805"
+      ],
+      "model_goal": "Verify the capacitor package actually purchased. 100 nF could be through-hole or SMD depending on kit/source.",
+      "web_status": "web_solvable_if_exact_package",
+      "trusted_web_sources": [
+        "package_standard:0805"
+      ],
+      "web_notes": "Only web-solvable if the actual part is 0805. If using through-hole ceramic caps on perfboard, model those instead."
+    },
+    "U5": {
+      "target_accuracy": "datasheet_parametric",
+      "current_accuracy": "estimated_package_model",
+      "source_refs": [
+        "official_product:https://www.ti.com/product/TL072"
+      ],
+      "model_goal": "Use the exact purchased TL072 package. If PDIP-8, share the verified DIP-8 geometry.",
+      "web_status": "web_solvable_package",
+      "trusted_web_sources": [
+        "official_product:https://www.ti.com/product/TL072",
+        "authorized_part:https://www.digikey.com/en/products/detail/texas-instruments/TL072CP/277421"
+      ],
+      "web_notes": "If the purchased part is TL072CP, the package can be modeled from TI package drawings without user caliper work."
+    },
+    "VREF": {
+      "target_accuracy": "measured_parametric",
+      "current_accuracy": "logical_placeholder",
+      "source_refs": [
+        "measurement_needed:actual_reference_part_to_buy_or_build"
+      ],
+      "model_goal": "Do not finalize until the 2.048 V reference implementation is chosen.",
+      "web_status": "part_not_selected",
+      "trusted_web_sources": [
+        "part_needed:2.048V_reference_solution"
+      ],
+      "web_notes": "Can be web-solved after choosing a specific reference IC/module. Until then it is logical only."
+    },
+    "R_XY": {
+      "target_accuracy": "datasheet_parametric",
+      "current_accuracy": "logical_placeholder",
+      "source_refs": [
+        "measurement_needed:actual_resistor_format"
+      ],
+      "model_goal": "Replace the logical resistor-network block with individual parts and real solder endpoints.",
+      "web_status": "layout_not_final",
+      "trusted_web_sources": [
+        "topology_needed:individual resistor values and packages"
+      ],
+      "web_notes": "Needs split into individual resistors before geometry can be exact."
+    },
+    "C_ANALOG": {
+      "target_accuracy": "datasheet_parametric",
+      "current_accuracy": "estimated_package_model",
+      "source_refs": [
+        "package_standard:0805"
+      ],
+      "model_goal": "Verify actual capacitor package and place each decoupling/filter capacitor separately.",
+      "web_status": "web_solvable_if_exact_package",
+      "trusted_web_sources": [
+        "package_standard:0805"
+      ],
+      "web_notes": "Only web-solvable if the actual capacitors are SMD 0805. Bench perfboard may use through-hole parts."
+    },
+    "GALVO_DRV": {
+      "target_accuracy": "measured_parametric",
+      "current_accuracy": "photo_only_placeholder",
+      "source_refs": [
+        "photo_needed:top_bottom_and_connector_labels"
+      ],
+      "model_goal": "Measure the exact galvo driver board and enter every power/signal connector pin by label before wiring guidance.",
+      "web_status": "real_part_required",
+      "trusted_web_sources": [
+        "photo_needed:top_bottom_connector_labels"
+      ],
+      "web_notes": "Galvo driver board dimensions/pin labels are kit-specific and should not be inferred from generic 20K scanner listings."
+    },
+    "GALVOS": {
+      "target_accuracy": "measured_parametric",
+      "current_accuracy": "photo_only_placeholder",
+      "source_refs": [
+        "photo_needed:galvo_block_and_connector"
+      ],
+      "model_goal": "Model galvo block, scanner mirror clearance, connector/cable exit, and mounting orientation.",
+      "web_status": "real_part_required",
+      "trusted_web_sources": [
+        "photo_needed:galvo_block_and_connector",
+        "listing_needed:exact_galvo_set"
+      ],
+      "web_notes": "Scanner block dimensions, mirror clearance, and connector/cable exit depend on the exact kit."
+    },
+    "TEST_LASER": {
+      "target_accuracy": "measured_parametric",
+      "current_accuracy": "photo_only_placeholder",
+      "source_refs": [
+        "part_needed:low_power_test_laser"
+      ],
+      "model_goal": "Model the actual low-power test laser only after purchase/selection.",
+      "web_status": "part_not_selected",
+      "trusted_web_sources": [
+        "part_needed:low_power_test_laser"
+      ],
+      "web_notes": "Choose a specific low-power test laser before modeling."
+    },
+    "BEAM_STOP": {
+      "target_accuracy": "measured_parametric",
+      "current_accuracy": "logical_placeholder",
+      "source_refs": [
+        "measurement_needed:actual_beam_stop_material"
+      ],
+      "model_goal": "Represent the real beam stop used on the bench, including height and safe beam area.",
+      "web_status": "real_part_required",
+      "trusted_web_sources": [
+        "material_needed:actual_beam_stop"
+      ],
+      "web_notes": "This is a safety fixture; geometry should match the actual bench stop."
+    },
+    "Q1": {
+      "target_accuracy": "datasheet_parametric",
+      "current_accuracy": "estimated_package_model",
+      "source_refs": [
+        "package_standard:TO-92"
+      ],
+      "model_goal": "Verify the 2N7000 package, lead order, and flat-face orientation.",
+      "web_status": "web_solvable_if_exact_package",
+      "trusted_web_sources": [
+        "package_standard:TO-92",
+        "part_number:2N7000"
+      ],
+      "web_notes": "TO-92 body can be modeled from package drawings once the purchased package and lead order are confirmed."
+    },
+    "R9/R10/R16": {
+      "target_accuracy": "datasheet_parametric",
+      "current_accuracy": "logical_placeholder",
+      "source_refs": [
+        "measurement_needed:actual_resistor_format"
+      ],
+      "model_goal": "Split into R9, R10, and R16 as separate measured parts with real endpoints.",
+      "web_status": "layout_not_final",
+      "trusted_web_sources": [
+        "topology_needed:individual resistor values and packages"
+      ],
+      "web_notes": "Needs split into individual R9/R10/R16 parts before geometry can be exact."
+    },
+    "SW3": {
+      "target_accuracy": "datasheet_parametric",
+      "current_accuracy": "estimated_package_model",
+      "source_refs": [
+        "package_candidate:Omron_D2F-01L"
+      ],
+      "model_goal": "Confirm purchased switch exactly matches Omron D2F-01L before trusting this model.",
+      "web_status": "web_solvable_if_exact_part",
+      "trusted_web_sources": [
+        "part_number:Omron D2F-01L"
+      ],
+      "web_notes": "If the actual switch is Omron D2F-01L, datasheet/CAD dimensions can drive the model. Generic Amazon lever switches are not interchangeable."
+    },
+    "KEY": {
+      "target_accuracy": "measured_parametric",
+      "current_accuracy": "photo_only_placeholder",
+      "source_refs": [
+        "measurement_needed:actual_key_switch"
+      ],
+      "model_goal": "Model the actual key switch body, nut/washer, panel clearance, and terminal lugs.",
+      "web_status": "real_part_required",
+      "trusted_web_sources": [
+        "measurement_needed:actual_key_switch"
+      ],
+      "web_notes": "Key switches vary heavily; model the actual purchased switch or choose a known part number."
+    },
+    "LASER": {
+      "target_accuracy": "measured_parametric",
+      "current_accuracy": "photo_only_placeholder",
+      "source_refs": [
+        "measurement_needed:actual_200mW_laser_module"
+      ],
+      "model_goal": "Model body diameter/length, driver board if separate, wire exit, beam axis, and mounting clearance.",
+      "web_status": "web_assisted_dimension_confirm_needed",
+      "trusted_web_sources": [
+        "vendor_product:https://www.laserlands.net/diode-laser-module/500nm-green-laser-module/520nm-laser-module/4060-530d-200-12v-ttl.html"
+      ],
+      "web_notes": "Vendor page locks electrical/optical identity. Mechanical body dimensions still need vendor drawing or product-specific confirmation before beam-axis model is trusted."
+    },
+    "CAM": {
+      "target_accuracy": "measured_parametric",
+      "current_accuracy": "photo_only_placeholder",
+      "source_refs": [
+        "pinout_unknown:block_until_camera_part_confirmed"
+      ],
+      "model_goal": "Do not finalize camera pin endpoints until the exact module and FPC pinout are verified.",
+      "web_status": "web_assisted_module_confirm_needed",
+      "trusted_web_sources": [
+        "module_family:OV5640 24-pin DVP"
+      ],
+      "web_notes": "OV5640 module body and FPC pinout vary by seller. Need exact product page before connector model/pinout is trusted."
+    },
+    "IMU": {
+      "target_accuracy": "measured_parametric",
+      "current_accuracy": "photo_only_placeholder",
+      "source_refs": [
+        "measurement_needed:actual_IMU_breakout"
+      ],
+      "model_goal": "Model exact breakout dimensions and header/pad locations after part selection.",
+      "web_status": "web_assisted_module_confirm_needed",
+      "trusted_web_sources": [
+        "module_family:MPU6050 GY-521"
+      ],
+      "web_notes": "GY-521 clones are common but board layouts vary; a named listing or photo with scale is needed for exact headers/mounting holes."
+    }
+  }
+}

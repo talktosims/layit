@@ -1,0 +1,6 @@
+ref,part_name,manufacturer_or_listing,exact_part_number,evidence_level,length_mm,width_mm,height_mm,board_thickness_mm,origin_definition,pin_or_connector_id,pin_x_mm,pin_y_mm,pin_z_mm,pin_pitch_mm,mount_hole_1_x_mm,mount_hole_1_y_mm,mount_hole_1_dia_mm,mount_hole_2_x_mm,mount_hole_2_y_mm,mount_hole_2_dia_mm,photo_top,photo_bottom,photo_side_1,photo_side_2,source_url,notes
+U3,ESP32-S3 dev board,,,photo_only_placeholder,,,,,board_center_top_surface,,,,,,,,,,,,,,,"Confirm whether Hosyond board matches Espressif DevKitC-1 dimensions before using official DXF."
+U1,MP1584 buck module,,,photo_only_placeholder,,,,,board_center_top_surface,VIN_PLUS,,,,,,,,,,,,,,,"Measure the actual module, not just the MP1584 IC."
+GALVO_PSU,galvo kit split supply,KPDS0-12A?,,measured_parametric,,,,,board_center_top_surface,OUT_PLUS,,,,,,,,,,,,,,,"Photos indicate + G - output headers; measure board and connector centers."
+GALVO_DRV,galvo driver board,,,photo_only_placeholder,,,,,board_center_top_surface,,,,,,,,,,,,,,,"Do not finalize pin endpoints until connector labels are photographed."
+LASER,200mW laser module,,,photo_only_placeholder,,,,,body_center,,,,,,,,,,,,,,,"Measure module diameter/body length and wire exit."
