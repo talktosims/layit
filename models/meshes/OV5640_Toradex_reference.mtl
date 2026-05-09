@@ -1,0 +1,630 @@
+newmtl Solid_0
+Kd 0.6 0.6 0.6
+Ka 0.0 0.0 0.0
+Ks 0.1 0.1 0.1
+Ns 50
+
+newmtl Solid_1
+Kd 0.6 0.6 0.6
+Ka 0.0 0.0 0.0
+Ks 0.1 0.1 0.1
+Ns 50
+
+newmtl Solid_2
+Kd 0.6 0.6 0.6
+Ka 0.0 0.0 0.0
+Ks 0.1 0.1 0.1
+Ns 50
+
+newmtl Solid_3
+Kd 0.6 0.6 0.6
+Ka 0.0 0.0 0.0
+Ks 0.1 0.1 0.1
+Ns 50
+
+newmtl Solid_4
+Kd 0.6 0.6 0.6
+Ka 0.0 0.0 0.0
+Ks 0.1 0.1 0.1
+Ns 50
+
+newmtl Solid_5
+Kd 0.6 0.6 0.6
+Ka 0.0 0.0 0.0
+Ks 0.1 0.1 0.1
+Ns 50
+
+newmtl Solid_6
+Kd 0.6 0.6 0.6
+Ka 0.0 0.0 0.0
+Ks 0.1 0.1 0.1
+Ns 50
+
+newmtl Solid_7
+Kd 0.6 0.6 0.6
+Ka 0.0 0.0 0.0
+Ks 0.1 0.1 0.1
+Ns 50
+
+newmtl Solid_8
+Kd 0.6 0.6 0.6
+Ka 0.0 0.0 0.0
+Ks 0.1 0.1 0.1
+Ns 50
+
+newmtl Solid_9
+Kd 0.6 0.6 0.6
+Ka 0.0 0.0 0.0
+Ks 0.1 0.1 0.1
+Ns 50
+
+newmtl Solid_10
+Kd 0.6 0.6 0.6
+Ka 0.0 0.0 0.0
+Ks 0.1 0.1 0.1
+Ns 50
+
+newmtl Solid_11
+Kd 0.6 0.6 0.6
+Ka 0.0 0.0 0.0
+Ks 0.1 0.1 0.1
+Ns 50
+
+newmtl Solid_12
+Kd 0.6 0.6 0.6
+Ka 0.0 0.0 0.0
+Ks 0.1 0.1 0.1
+Ns 50
+
+newmtl Solid_13
+Kd 0.6 0.6 0.6
+Ka 0.0 0.0 0.0
+Ks 0.1 0.1 0.1
+Ns 50
+
+newmtl Solid_14
+Kd 0.6 0.6 0.6
+Ka 0.0 0.0 0.0
+Ks 0.1 0.1 0.1
+Ns 50
+
+newmtl Solid_15
+Kd 0.6 0.6 0.6
+Ka 0.0 0.0 0.0
+Ks 0.1 0.1 0.1
+Ns 50
+
+newmtl Solid_16
+Kd 0.6 0.6 0.6
+Ka 0.0 0.0 0.0
+Ks 0.1 0.1 0.1
+Ns 50
+
+newmtl Solid_17
+Kd 0.6 0.6 0.6
+Ka 0.0 0.0 0.0
+Ks 0.1 0.1 0.1
+Ns 50
+
+newmtl Solid_18
+Kd 0.6 0.6 0.6
+Ka 0.0 0.0 0.0
+Ks 0.1 0.1 0.1
+Ns 50
+
+newmtl Solid_19
+Kd 0.6 0.6 0.6
+Ka 0.0 0.0 0.0
+Ks 0.1 0.1 0.1
+Ns 50
+
+newmtl Solid_20
+Kd 0.6 0.6 0.6
+Ka 0.0 0.0 0.0
+Ks 0.1 0.1 0.1
+Ns 50
+
+newmtl Solid_21
+Kd 0.6 0.6 0.6
+Ka 0.0 0.0 0.0
+Ks 0.1 0.1 0.1
+Ns 50
+
+newmtl Solid_22
+Kd 0.6 0.6 0.6
+Ka 0.0 0.0 0.0
+Ks 0.1 0.1 0.1
+Ns 50
+
+newmtl Solid_23
+Kd 0.6 0.6 0.6
+Ka 0.0 0.0 0.0
+Ks 0.1 0.1 0.1
+Ns 50
+
+newmtl Solid_24
+Kd 0.6 0.6 0.6
+Ka 0.0 0.0 0.0
+Ks 0.1 0.1 0.1
+Ns 50
+
+newmtl Solid_25
+Kd 0.6 0.6 0.6
+Ka 0.0 0.0 0.0
+Ks 0.1 0.1 0.1
+Ns 50
+
+newmtl Solid_26
+Kd 0.6 0.6 0.6
+Ka 0.0 0.0 0.0
+Ks 0.1 0.1 0.1
+Ns 50
+
+newmtl Solid_27
+Kd 0.6 0.6 0.6
+Ka 0.0 0.0 0.0
+Ks 0.1 0.1 0.1
+Ns 50
+
+newmtl Solid_28
+Kd 0.6 0.6 0.6
+Ka 0.0 0.0 0.0
+Ks 0.1 0.1 0.1
+Ns 50
+
+newmtl Solid_29
+Kd 0.6 0.6 0.6
+Ka 0.0 0.0 0.0
+Ks 0.1 0.1 0.1
+Ns 50
+
+newmtl Solid_30
+Kd 0.6 0.6 0.6
+Ka 0.0 0.0 0.0
+Ks 0.1 0.1 0.1
+Ns 50
+
+newmtl Solid_31
+Kd 0.6 0.6 0.6
+Ka 0.0 0.0 0.0
+Ks 0.1 0.1 0.1
+Ns 50
+
+newmtl Solid_32
+Kd 0.6 0.6 0.6
+Ka 0.0 0.0 0.0
+Ks 0.1 0.1 0.1
+Ns 50
+
+newmtl Solid_33
+Kd 0.6 0.6 0.6
+Ka 0.0 0.0 0.0
+Ks 0.1 0.1 0.1
+Ns 50
+
+newmtl Solid_34
+Kd 0.6 0.6 0.6
+Ka 0.0 0.0 0.0
+Ks 0.1 0.1 0.1
+Ns 50
+
+newmtl Solid_35
+Kd 0.6 0.6 0.6
+Ka 0.0 0.0 0.0
+Ks 0.1 0.1 0.1
+Ns 50
+
+newmtl Solid_36
+Kd 0.6 0.6 0.6
+Ka 0.0 0.0 0.0
+Ks 0.1 0.1 0.1
+Ns 50
+
+newmtl Solid_37
+Kd 0.6 0.6 0.6
+Ka 0.0 0.0 0.0
+Ks 0.1 0.1 0.1
+Ns 50
+
+newmtl Solid_38
+Kd 0.6 0.6 0.6
+Ka 0.0 0.0 0.0
+Ks 0.1 0.1 0.1
+Ns 50
+
+newmtl Solid_39
+Kd 0.6 0.6 0.6
+Ka 0.0 0.0 0.0
+Ks 0.1 0.1 0.1
+Ns 50
+
+newmtl Solid_40
+Kd 0.6 0.6 0.6
+Ka 0.0 0.0 0.0
+Ks 0.1 0.1 0.1
+Ns 50
+
+newmtl Solid_41
+Kd 0.6 0.6 0.6
+Ka 0.0 0.0 0.0
+Ks 0.1 0.1 0.1
+Ns 50
+
+newmtl Solid_42
+Kd 0.6 0.6 0.6
+Ka 0.0 0.0 0.0
+Ks 0.1 0.1 0.1
+Ns 50
+
+newmtl Solid_43
+Kd 0.6 0.6 0.6
+Ka 0.0 0.0 0.0
+Ks 0.1 0.1 0.1
+Ns 50
+
+newmtl Solid_44
+Kd 0.6 0.6 0.6
+Ka 0.0 0.0 0.0
+Ks 0.1 0.1 0.1
+Ns 50
+
+newmtl Solid_45
+Kd 0.6 0.6 0.6
+Ka 0.0 0.0 0.0
+Ks 0.1 0.1 0.1
+Ns 50
+
+newmtl Solid_46
+Kd 0.6 0.6 0.6
+Ka 0.0 0.0 0.0
+Ks 0.1 0.1 0.1
+Ns 50
+
+newmtl Solid_47
+Kd 0.6 0.6 0.6
+Ka 0.0 0.0 0.0
+Ks 0.1 0.1 0.1
+Ns 50
+
+newmtl Solid_48
+Kd 0.6 0.6 0.6
+Ka 0.0 0.0 0.0
+Ks 0.1 0.1 0.1
+Ns 50
+
+newmtl Solid_49
+Kd 0.6 0.6 0.6
+Ka 0.0 0.0 0.0
+Ks 0.1 0.1 0.1
+Ns 50
+
+newmtl Solid_50
+Kd 0.6 0.6 0.6
+Ka 0.0 0.0 0.0
+Ks 0.1 0.1 0.1
+Ns 50
+
+newmtl Solid_51
+Kd 0.6 0.6 0.6
+Ka 0.0 0.0 0.0
+Ks 0.1 0.1 0.1
+Ns 50
+
+newmtl Solid_52
+Kd 0.6 0.6 0.6
+Ka 0.0 0.0 0.0
+Ks 0.1 0.1 0.1
+Ns 50
+
+newmtl Solid_53
+Kd 0.6 0.6 0.6
+Ka 0.0 0.0 0.0
+Ks 0.1 0.1 0.1
+Ns 50
+
+newmtl Solid_54
+Kd 0.6 0.6 0.6
+Ka 0.0 0.0 0.0
+Ks 0.1 0.1 0.1
+Ns 50
+
+newmtl Solid_55
+Kd 0.6 0.6 0.6
+Ka 0.0 0.0 0.0
+Ks 0.1 0.1 0.1
+Ns 50
+
+newmtl Solid_56
+Kd 0.6 0.6 0.6
+Ka 0.0 0.0 0.0
+Ks 0.1 0.1 0.1
+Ns 50
+
+newmtl Solid_57
+Kd 0.6 0.6 0.6
+Ka 0.0 0.0 0.0
+Ks 0.1 0.1 0.1
+Ns 50
+
+newmtl Solid_58
+Kd 0.6 0.6 0.6
+Ka 0.0 0.0 0.0
+Ks 0.1 0.1 0.1
+Ns 50
+
+newmtl Solid_59
+Kd 0.6 0.6 0.6
+Ka 0.0 0.0 0.0
+Ks 0.1 0.1 0.1
+Ns 50
+
+newmtl Solid_60
+Kd 0.6 0.6 0.6
+Ka 0.0 0.0 0.0
+Ks 0.1 0.1 0.1
+Ns 50
+
+newmtl Solid_61
+Kd 0.6 0.6 0.6
+Ka 0.0 0.0 0.0
+Ks 0.1 0.1 0.1
+Ns 50
+
+newmtl Solid_62
+Kd 0.6 0.6 0.6
+Ka 0.0 0.0 0.0
+Ks 0.1 0.1 0.1
+Ns 50
+
+newmtl Solid_63
+Kd 0.6 0.6 0.6
+Ka 0.0 0.0 0.0
+Ks 0.1 0.1 0.1
+Ns 50
+
+newmtl Solid_64
+Kd 0.6 0.6 0.6
+Ka 0.0 0.0 0.0
+Ks 0.1 0.1 0.1
+Ns 50
+
+newmtl Solid_65
+Kd 0.6 0.6 0.6
+Ka 0.0 0.0 0.0
+Ks 0.1 0.1 0.1
+Ns 50
+
+newmtl Solid_66
+Kd 0.6 0.6 0.6
+Ka 0.0 0.0 0.0
+Ks 0.1 0.1 0.1
+Ns 50
+
+newmtl Solid_67
+Kd 0.6 0.6 0.6
+Ka 0.0 0.0 0.0
+Ks 0.1 0.1 0.1
+Ns 50
+
+newmtl Solid_68
+Kd 0.6 0.6 0.6
+Ka 0.0 0.0 0.0
+Ks 0.1 0.1 0.1
+Ns 50
+
+newmtl Solid_69
+Kd 0.6 0.6 0.6
+Ka 0.0 0.0 0.0
+Ks 0.1 0.1 0.1
+Ns 50
+
+newmtl Solid_70
+Kd 0.6 0.6 0.6
+Ka 0.0 0.0 0.0
+Ks 0.1 0.1 0.1
+Ns 50
+
+newmtl Solid_71
+Kd 0.6 0.6 0.6
+Ka 0.0 0.0 0.0
+Ks 0.1 0.1 0.1
+Ns 50
+
+newmtl Solid_72
+Kd 0.6 0.6 0.6
+Ka 0.0 0.0 0.0
+Ks 0.1 0.1 0.1
+Ns 50
+
+newmtl Solid_73
+Kd 0.6 0.6 0.6
+Ka 0.0 0.0 0.0
+Ks 0.1 0.1 0.1
+Ns 50
+
+newmtl Solid_74
+Kd 0.6 0.6 0.6
+Ka 0.0 0.0 0.0
+Ks 0.1 0.1 0.1
+Ns 50
+
+newmtl Solid_75
+Kd 0.6 0.6 0.6
+Ka 0.0 0.0 0.0
+Ks 0.1 0.1 0.1
+Ns 50
+
+newmtl Solid_76
+Kd 0.6 0.6 0.6
+Ka 0.0 0.0 0.0
+Ks 0.1 0.1 0.1
+Ns 50
+
+newmtl Solid_77
+Kd 0.6 0.6 0.6
+Ka 0.0 0.0 0.0
+Ks 0.1 0.1 0.1
+Ns 50
+
+newmtl Solid_78
+Kd 0.6 0.6 0.6
+Ka 0.0 0.0 0.0
+Ks 0.1 0.1 0.1
+Ns 50
+
+newmtl Solid_79
+Kd 0.6 0.6 0.6
+Ka 0.0 0.0 0.0
+Ks 0.1 0.1 0.1
+Ns 50
+
+newmtl Solid_80
+Kd 0.6 0.6 0.6
+Ka 0.0 0.0 0.0
+Ks 0.1 0.1 0.1
+Ns 50
+
+newmtl Solid_81
+Kd 0.6 0.6 0.6
+Ka 0.0 0.0 0.0
+Ks 0.1 0.1 0.1
+Ns 50
+
+newmtl Solid_82
+Kd 0.6 0.6 0.6
+Ka 0.0 0.0 0.0
+Ks 0.1 0.1 0.1
+Ns 50
+
+newmtl Solid_83
+Kd 0.6 0.6 0.6
+Ka 0.0 0.0 0.0
+Ks 0.1 0.1 0.1
+Ns 50
+
+newmtl Solid_84
+Kd 0.6 0.6 0.6
+Ka 0.0 0.0 0.0
+Ks 0.1 0.1 0.1
+Ns 50
+
+newmtl Solid_85
+Kd 0.6 0.6 0.6
+Ka 0.0 0.0 0.0
+Ks 0.1 0.1 0.1
+Ns 50
+
+newmtl Solid_86
+Kd 0.6 0.6 0.6
+Ka 0.0 0.0 0.0
+Ks 0.1 0.1 0.1
+Ns 50
+
+newmtl Solid_87
+Kd 0.6 0.6 0.6
+Ka 0.0 0.0 0.0
+Ks 0.1 0.1 0.1
+Ns 50
+
+newmtl Solid_88
+Kd 0.6 0.6 0.6
+Ka 0.0 0.0 0.0
+Ks 0.1 0.1 0.1
+Ns 50
+
+newmtl Solid_89
+Kd 0.6 0.6 0.6
+Ka 0.0 0.0 0.0
+Ks 0.1 0.1 0.1
+Ns 50
+
+newmtl Solid_90
+Kd 0.6 0.6 0.6
+Ka 0.0 0.0 0.0
+Ks 0.1 0.1 0.1
+Ns 50
+
+newmtl Solid_91
+Kd 0.6 0.6 0.6
+Ka 0.0 0.0 0.0
+Ks 0.1 0.1 0.1
+Ns 50
+
+newmtl Solid_92
+Kd 0.6 0.6 0.6
+Ka 0.0 0.0 0.0
+Ks 0.1 0.1 0.1
+Ns 50
+
+newmtl Solid_93
+Kd 0.6 0.6 0.6
+Ka 0.0 0.0 0.0
+Ks 0.1 0.1 0.1
+Ns 50
+
+newmtl Solid_94
+Kd 0.6 0.6 0.6
+Ka 0.0 0.0 0.0
+Ks 0.1 0.1 0.1
+Ns 50
+
+newmtl Solid_95
+Kd 0.6 0.6 0.6
+Ka 0.0 0.0 0.0
+Ks 0.1 0.1 0.1
+Ns 50
+
+newmtl Solid_96
+Kd 0.6 0.6 0.6
+Ka 0.0 0.0 0.0
+Ks 0.1 0.1 0.1
+Ns 50
+
+newmtl Solid_97
+Kd 0.6 0.6 0.6
+Ka 0.0 0.0 0.0
+Ks 0.1 0.1 0.1
+Ns 50
+
+newmtl Solid_98
+Kd 0.6 0.6 0.6
+Ka 0.0 0.0 0.0
+Ks 0.1 0.1 0.1
+Ns 50
+
+newmtl Solid_99
+Kd 0.6 0.6 0.6
+Ka 0.0 0.0 0.0
+Ks 0.1 0.1 0.1
+Ns 50
+
+newmtl Solid_100
+Kd 0.6 0.6 0.6
+Ka 0.0 0.0 0.0
+Ks 0.1 0.1 0.1
+Ns 50
+
+newmtl Solid_101
+Kd 0.6 0.6 0.6
+Ka 0.0 0.0 0.0
+Ks 0.1 0.1 0.1
+Ns 50
+
+newmtl Solid_102
+Kd 0.6 0.6 0.6
+Ka 0.0 0.0 0.0
+Ks 0.1 0.1 0.1
+Ns 50
+
+newmtl Solid_103
+Kd 0.6 0.6 0.6
+Ka 0.0 0.0 0.0
+Ks 0.1 0.1 0.1
+Ns 50
+
+newmtl Solid_104
+Kd 0.6 0.6 0.6
+Ka 0.0 0.0 0.0
+Ks 0.1 0.1 0.1
+Ns 50
+
