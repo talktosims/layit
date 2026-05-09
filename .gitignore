@@ -18,6 +18,9 @@ room_scan_prototype/ml-depth-pro/
 .vscode/
 .idea/
 
+# Claude Code session artifacts
+.claude/
+
 # Build artifacts
 build/enclosure/*.mov
 
