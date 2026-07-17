@@ -6,6 +6,8 @@
 	<string>LayIt</string>
 	<key>CFBundleName</key>
 	<string>LayIt</string>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<key>LayItAIProxyURL</key>
 	<string>https://layit-api.robbie-96f.workers.dev</string>
 	<key>NSCameraUsageDescription</key>
