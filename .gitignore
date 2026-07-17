@@ -17,6 +17,8 @@ room_scan_prototype/ml-depth-pro/
 # IDE
 .vscode/
 .idea/
+**/xcuserdata/
+*.xcuserstate
 
 # Build artifacts
 build/enclosure/*.mov

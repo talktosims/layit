@@ -1,0 +1,62 @@
+{
+  "identifier" : "layit-storekit-config",
+  "type" : "Configuration",
+  "version" : 3,
+  "subscriptionGroups" : [
+    {
+      "id" : "21400001",
+      "localizations" : [
+        {
+          "description" : "Access all LayIt Pro features",
+          "displayName" : "LayIt Pro",
+          "locale" : "en_US"
+        }
+      ],
+      "name" : "LayIt Pro",
+      "subscriptions" : [
+        {
+          "adHocOffers" : [],
+          "codeOffers" : [],
+          "displayPrice" : "4.99",
+          "familyShareable" : false,
+          "groupNumber" : 1,
+          "internalID" : "21500001",
+          "introductoryOffer" : null,
+          "localizations" : [
+            {
+              "description" : "Full access to all Pro features, billed monthly",
+              "displayName" : "LayIt Pro Monthly",
+              "locale" : "en_US"
+            }
+          ],
+          "productID" : "layit.pro.monthly",
+          "recurringSubscriptionPeriod" : "P1M",
+          "referenceName" : "LayIt Pro Monthly",
+          "subscriptionGroupID" : "21400001",
+          "type" : "RecurringSubscription"
+        },
+        {
+          "adHocOffers" : [],
+          "codeOffers" : [],
+          "displayPrice" : "39.99",
+          "familyShareable" : false,
+          "groupNumber" : 1,
+          "internalID" : "21500002",
+          "introductoryOffer" : null,
+          "localizations" : [
+            {
+              "description" : "Full access to all Pro features, billed annually",
+              "displayName" : "LayIt Pro Annual",
+              "locale" : "en_US"
+            }
+          ],
+          "productID" : "layit.pro.annual",
+          "recurringSubscriptionPeriod" : "P1Y",
+          "referenceName" : "LayIt Pro Annual",
+          "subscriptionGroupID" : "21400001",
+          "type" : "RecurringSubscription"
+        }
+      ]
+    }
+  ]
+}

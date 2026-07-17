@@ -72,7 +72,11 @@ class BarcodeScannerController: UIViewController, AVCapturePhotoCaptureDelegate 
 
         if session.canAddOutput(photoOutput) {
             session.addOutput(photoOutput)
-            photoOutput.isHighResolutionCaptureEnabled = true
+            if let maxDimensions = device.activeFormat.supportedMaxPhotoDimensions.max(by: {
+                Int64($0.width) * Int64($0.height) < Int64($1.width) * Int64($1.height)
+            }) {
+                photoOutput.maxPhotoDimensions = maxDimensions
+            }
         }
 
         let preview = AVCaptureVideoPreviewLayer(session: session)
@@ -241,7 +245,7 @@ class BarcodeScannerController: UIViewController, AVCapturePhotoCaptureDelegate 
             let handler = VNImageRequestHandler(cgImage: cgImage, options: [:])
             do {
                 try handler.perform([request])
-                let observations = request.results as? [VNBarcodeObservation] ?? []
+                let observations = request.results ?? []
                 let value = observations.compactMap { $0.payloadStringValue?.trimmingCharacters(in: .whitespacesAndNewlines) }
                     .first(where: { !$0.isEmpty })
                 DispatchQueue.main.async {
@@ -361,7 +365,11 @@ final class LabelScannerController: UIViewController, AVCapturePhotoCaptureDeleg
 
         if session.canAddOutput(photoOutput) {
             session.addOutput(photoOutput)
-            photoOutput.isHighResolutionCaptureEnabled = true
+            if let maxDimensions = device.activeFormat.supportedMaxPhotoDimensions.max(by: {
+                Int64($0.width) * Int64($0.height) < Int64($1.width) * Int64($1.height)
+            }) {
+                photoOutput.maxPhotoDimensions = maxDimensions
+            }
         }
 
         let preview = AVCaptureVideoPreviewLayer(session: session)
@@ -591,7 +599,7 @@ final class LabelScannerController: UIViewController, AVCapturePhotoCaptureDeleg
             do {
                 try handler.perform([textRequest, barcodeRequest])
 
-                let textObservations = textRequest.results as? [VNRecognizedTextObservation] ?? []
+                let textObservations = textRequest.results ?? []
                 let sortedObservations = textObservations.sorted {
                     let yDiff = abs($0.boundingBox.maxY - $1.boundingBox.maxY)
                     if yDiff > 0.03 {
@@ -603,7 +611,7 @@ final class LabelScannerController: UIViewController, AVCapturePhotoCaptureDeleg
                     .filter { !$0.isEmpty }
                 let text = lines.joined(separator: "\n")
 
-                let barcodeObservations = barcodeRequest.results as? [VNBarcodeObservation] ?? []
+                let barcodeObservations = barcodeRequest.results ?? []
                 let barcode = barcodeObservations
                     .compactMap { $0.payloadStringValue?.trimmingCharacters(in: .whitespacesAndNewlines) }
                     .first(where: { !$0.isEmpty })

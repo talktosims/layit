@@ -1,0 +1,8 @@
+{
+  "scripts": {
+    "test": "node tests/release-smoke.mjs"
+  },
+  "dependencies": {
+    "playwright": "^1.59.1"
+  }
+}

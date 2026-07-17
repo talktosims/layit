@@ -100,10 +100,20 @@
         .tab-icon {
             font-size:18px;
             line-height:1;
+            font-family:"Apple Color Emoji", "Segoe UI Emoji", sans-serif;
             display:flex;
             align-items:center;
             justify-content:center;
             height:22px;
+        }
+        .tab-svg {
+            width:20px;
+            height:20px;
+            fill:none;
+            stroke:currentColor;
+            stroke-width:1.8;
+            stroke-linecap:round;
+            stroke-linejoin:round;
         }
         .tab-label {
             font-size:9px;
@@ -877,6 +887,7 @@
         }
         .onboarding-overlay.visible .onboarding-card { transform:translateY(0) scale(1); opacity:1; }
         .onboarding-icon { font-size:48px; margin-bottom:16px; display:block; line-height:1.2; }
+        .onboarding-icon, .onboarding-btn-next span { font-family:"Apple Color Emoji", "Segoe UI Emoji", sans-serif; }
         .onboarding-logo { width:64px; height:64px; margin:0 auto 16px; display:block; }
         .onboarding-title {
             font-size:var(--text-2xl); font-weight:800; color:var(--text-primary);
@@ -916,7 +927,7 @@
         }
         .onboarding-btn-upgrade:active { transform:scale(0.97); }
         .onboarding-btn-skip {
-            background:none; border:none; color:var(--text-tertiary);
+            background:none; border:none; color:var(--text-secondary);
             font-size:var(--text-sm); cursor:pointer; padding:4px 8px; transition:color 0.2s ease;
         }
         .onboarding-btn-skip:active { color:var(--text-secondary); }
@@ -1218,9 +1229,6 @@
         /* ==================== END DEMO WALKTHROUGH CSS ==================== */
 
     </style>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 </head>
 <body>
     <!-- Onboarding Wizard Overlay -->
@@ -1255,11 +1263,11 @@
                 <div class="wizard-step-body">
                     <div class="wizard-method-cards" id="wizSurfaceCards">
                         <div class="wiz-method-card selected" onclick="wizSelectSurface('wall', this)">
-                            <h4>🧱 A Wall</h4>
+                            <h4>A Wall</h4>
                             <p>Backsplash, shower wall, accent wall, fireplace surround</p>
                         </div>
                         <div class="wiz-method-card" onclick="wizSelectSurface('floor', this)">
-                            <h4>🏠 A Floor</h4>
+                            <h4>A Floor</h4>
                             <p>Bathroom floor, kitchen floor, entryway, patio</p>
                         </div>
                     </div>
@@ -1415,7 +1423,7 @@
     <div class="detail-overlay" id="detailOverlay">
         <div class="detail-header">📐 Tile Cut Detail</div>
         <div class="detail-canvas-container" id="detailCanvasContainer">
-            <canvas id="detailCanvas" width="600" height="600"></canvas>
+            <canvas id="detailCanvas" width="600" height="600" role="img" aria-label="Selected tile cut detail diagram"></canvas>
         </div>
         <div class="hint" style="padding:5px;">Pinch to zoom • Drag to pan</div>
         <div class="detail-footer">
@@ -1576,54 +1584,57 @@
     <div class="modal-overlay" id="proUpgradeModal">
         <div style="background:linear-gradient(165deg, #0f172a 0%, #1e1b4b 40%, #312e81 100%);border:1px solid rgba(139,92,246,0.4);border-radius:var(--radius-lg);padding:32px 24px 24px;max-width:360px;width:calc(100% - 40px);text-align:center;box-shadow:0 25px 60px rgba(0,0,0,0.7), 0 0 80px rgba(139,92,246,0.15), inset 0 1px 0 rgba(255,255,255,0.05);animation:upgradeCardIn 0.4s var(--ease-spring);">
             <!-- Glowing star -->
-            <div style="font-size:48px;margin-bottom:4px;text-shadow:0 0 30px rgba(255,215,0,0.5);animation:upgradePulse 2s ease-in-out infinite;">⭐</div>
+            <div style="margin:0 auto 4px;width:48px;height:48px;filter:drop-shadow(0 0 14px rgba(255,215,0,0.45));animation:upgradePulse 2s ease-in-out infinite;">
+                <svg viewBox="0 0 24 24" width="48" height="48" aria-hidden="true"><path d="M12 2.8l2.75 5.57 6.15.9-4.45 4.33 1.05 6.12L12 16.82l-5.5 2.9 1.05-6.12L3.1 9.27l6.15-.9z" fill="#ffd700" stroke="#ffaa00" stroke-width="0.8" stroke-linejoin="round"/></svg>
+            </div>
             <div style="font-size:24px;font-weight:800;background:linear-gradient(135deg,#ffd700,#ffaa00,#ffd700);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:4px;">LayIt Pro</div>
-            <div style="font-size:12px;color:rgba(139,92,246,0.9);font-weight:600;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:16px;">Unlock Your Full Potential</div>
-            <div id="proFeatureContext" style="font-size:13px;color:var(--text-secondary);margin-bottom:16px;text-align:center;display:none;padding:10px;background:rgba(139,92,246,0.1);border-radius:var(--radius-sm);border:1px solid rgba(139,92,246,0.2);"></div>
+            <div style="font-size:12px;color:#c4b5fd;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:16px;">Unlock Your Full Potential</div>
+            <div id="proFeatureContext" style="font-size:13px;color:#e5e7eb;margin-bottom:16px;text-align:center;display:none;padding:10px;background:rgba(139,92,246,0.1);border-radius:var(--radius-sm);border:1px solid rgba(139,92,246,0.35);"></div>
             <!-- Features grid -->
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:18px;text-align:left;">
-                <div style="padding:10px;background:rgba(255,255,255,0.04);border-radius:10px;border:1px solid rgba(255,255,255,0.06);"><span style="font-size:20px;display:block;margin-bottom:4px;">📸</span><span style="font-size:11px;font-weight:600;color:var(--text-primary);">Unlimited AI Scans</span></div>
-                <div style="padding:10px;background:rgba(255,255,255,0.04);border-radius:10px;border:1px solid rgba(255,255,255,0.06);"><span style="font-size:20px;display:block;margin-bottom:4px;">✂️</span><span style="font-size:11px;font-weight:600;color:var(--text-primary);">Cut Tracking</span></div>
-                <div style="padding:10px;background:rgba(255,255,255,0.04);border-radius:10px;border:1px solid rgba(255,255,255,0.06);"><span style="font-size:20px;display:block;margin-bottom:4px;">📋</span><span style="font-size:11px;font-weight:600;color:var(--text-primary);">Client Reports</span></div>
-                <div style="padding:10px;background:rgba(255,255,255,0.04);border-radius:10px;border:1px solid rgba(255,255,255,0.06);"><span style="font-size:20px;display:block;margin-bottom:4px;">🏢</span><span style="font-size:11px;font-weight:600;color:var(--text-primary);">Company Branding</span></div>
+                <div style="padding:10px;background:rgba(255,255,255,0.06);border-radius:10px;border:1px solid rgba(255,255,255,0.12);"><svg viewBox="0 0 24 24" width="21" height="21" aria-hidden="true" style="display:block;margin-bottom:5px;fill:none;stroke:#c4b5fd;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;"><path d="M4 7h3l1.5-2h7L17 7h3v12H4zM12 10a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7z"/></svg><span style="font-size:11px;font-weight:600;color:#f8fafc;">Unlimited AI Scans</span></div>
+                <div style="padding:10px;background:rgba(255,255,255,0.06);border-radius:10px;border:1px solid rgba(255,255,255,0.12);"><svg viewBox="0 0 24 24" width="21" height="21" aria-hidden="true" style="display:block;margin-bottom:5px;fill:none;stroke:#c4b5fd;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;"><circle cx="6" cy="7" r="3"/><circle cx="6" cy="17" r="3"/><path d="M8.7 8.3L20 3M8.7 15.7L20 21M10 12h10"/></svg><span style="font-size:11px;font-weight:600;color:#f8fafc;">Cut Tracking</span></div>
+                <div style="padding:10px;background:rgba(255,255,255,0.06);border-radius:10px;border:1px solid rgba(255,255,255,0.12);"><svg viewBox="0 0 24 24" width="21" height="21" aria-hidden="true" style="display:block;margin-bottom:5px;fill:none;stroke:#c4b5fd;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;"><path d="M7 3h8l4 4v14H7zM15 3v5h4M10 12h6M10 16h6"/></svg><span style="font-size:11px;font-weight:600;color:#f8fafc;">Client Reports</span></div>
+                <div style="padding:10px;background:rgba(255,255,255,0.06);border-radius:10px;border:1px solid rgba(255,255,255,0.12);"><svg viewBox="0 0 24 24" width="21" height="21" aria-hidden="true" style="display:block;margin-bottom:5px;fill:none;stroke:#c4b5fd;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;"><path d="M4 21V8l8-5 8 5v13M8 21v-4h8v4M8 10h.01M12 10h.01M16 10h.01M8 14h.01M12 14h.01M16 14h.01"/></svg><span style="font-size:11px;font-weight:600;color:#f8fafc;">Company Branding</span></div>
             </div>
             <!-- Savings callout -->
             <div style="margin-bottom:18px;padding:12px;background:linear-gradient(135deg,rgba(34,197,94,0.12),rgba(34,197,94,0.04));border:1px solid rgba(34,197,94,0.3);border-radius:10px;">
-                <div style="font-size:20px;font-weight:800;color:var(--success);">Save $47+ per project</div>
-                <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">Better prices, fewer overbuy mistakes, zero wasted trips</div>
+                <div style="font-size:18px;font-weight:800;color:var(--success);">Plan confidently on every project</div>
+                <div style="font-size:11px;color:#d1d5db;margin-top:2px;">Unlimited scans, cut tracking, reports, and company branding</div>
             </div>
             <!-- Buttons -->
             <div id="proSubscribeButtons">
-                <button onclick="handleProPurchase('annual')" style="width:100%;padding:16px;border:none;border-radius:12px;font-size:17px;font-weight:800;cursor:pointer;background:linear-gradient(135deg,#ffd700 0%,#ffaa00 100%);color:#1a1a2e;box-shadow:0 4px 20px rgba(255,215,0,0.4);margin-bottom:8px;position:relative;overflow:hidden;">
-                    $39.99/year <span style="font-size:12px;font-weight:600;opacity:0.8;">Save 33%</span>
+                <button id="proAnnualButton" onclick="handleProPurchase('annual')" style="width:100%;padding:16px;border:none;border-radius:12px;font-size:17px;font-weight:800;cursor:pointer;background:linear-gradient(135deg,#ffd700 0%,#ffaa00 100%);color:#1a1a2e;box-shadow:0 4px 20px rgba(255,215,0,0.4);margin-bottom:8px;position:relative;overflow:hidden;">
+                    <span id="proAnnualPrice">$39.99/year</span> <span style="font-size:12px;font-weight:600;opacity:0.8;">Save 33%</span>
                     <div style="position:absolute;top:0;right:0;background:var(--success);color:#fff;font-size:9px;font-weight:700;padding:3px 8px;border-radius:0 12px 0 8px;">BEST VALUE</div>
                 </button>
-                <button onclick="handleProPurchase('monthly')" style="width:100%;padding:14px;border:2px solid rgba(255,255,255,0.15);border-radius:12px;font-size:15px;font-weight:600;cursor:pointer;background:rgba(255,255,255,0.06);color:var(--text-primary);">$4.99/month</button>
-                <button onclick="restoreProPurchases()" style="width:100%;margin-top:6px;padding:8px;border:none;background:none;color:var(--text-tertiary);font-size:12px;cursor:pointer;">Restore Purchases</button>
+                <button id="proMonthlyButton" onclick="handleProPurchase('monthly')" style="width:100%;padding:14px;border:2px solid rgba(255,255,255,0.15);border-radius:12px;font-size:15px;font-weight:600;cursor:pointer;background:rgba(255,255,255,0.06);color:var(--text-primary);"><span id="proMonthlyPrice">$4.99/month</span></button>
+                <button onclick="restoreProPurchases()" style="width:100%;margin-top:6px;padding:8px;border:none;background:none;color:#e5e7eb;font-size:12px;cursor:pointer;text-decoration:underline;text-underline-offset:2px;">Restore Purchases</button>
+                <p style="font-size:10px;line-height:1.45;color:#d1d5db;margin:8px 4px 0;">LayIt Pro is an auto-renewable subscription. Choose a 1-month or 1-year plan. Payment is charged to your Apple Account and renews automatically unless canceled at least 24 hours before the end of the current period.</p>
+                <p style="font-size:11px;margin:7px 0 0;"><a href="https://layit.pages.dev/terms" onclick="openLayItLegalLink('https://layit.pages.dev/terms');return false;" style="color:#ddd6fe;text-decoration:underline;text-underline-offset:2px;">Terms of Use (EULA)</a><span style="color:#d1d5db;"> &nbsp;•&nbsp; </span><a href="https://layit.pages.dev/privacy" onclick="openLayItLegalLink('https://layit.pages.dev/privacy');return false;" style="color:#ddd6fe;text-decoration:underline;text-underline-offset:2px;">Privacy Policy</a></p>
             </div>
             <div id="proWebFallback" style="display:none;text-align:center;padding:12px 0;">
                 <p style="color:var(--text-muted);font-size:13px;">Download the LayIt app from the App Store to subscribe.</p>
             </div>
-            <button onclick="closeUpgradeModal()" style="width:100%;margin-top:4px;padding:10px;border:none;background:none;color:var(--text-tertiary);font-size:13px;cursor:pointer;">Maybe Later</button>
+            <button onclick="closeUpgradeModal()" style="width:100%;margin-top:4px;padding:10px;border:none;background:none;color:#e5e7eb;font-size:13px;cursor:pointer;">Maybe Later</button>
         </div>
     </div>
 
     <div class="tabs" id="tabBar">
-        <button class="tab active" data-tab="diagram"><span class="tab-icon">📐</span><span class="tab-label">Layout</span></button>
-        <button class="tab" data-tab="wall"><span class="tab-icon">🧱</span><span class="tab-label">Wall</span></button>
-        <button class="tab" data-tab="tile"><span class="tab-icon">🔷</span><span class="tab-label">Tile</span></button>
-        <button class="tab" data-tab="voids"><span class="tab-icon">⬛</span><span class="tab-label">Cutouts</span></button>
-        <button class="tab" data-tab="calc"><span class="tab-icon">🔢</span><span class="tab-label">Calc</span></button>
-        <button class="tab" data-tab="projects"><span class="tab-icon">📁</span><span class="tab-label">Files</span></button>
-        <button class="tab" data-tab="proj"><span class="tab-icon"><svg class="hex-icon" viewBox="0 0 24 24" width="18" height="18"><path d="M12 2 L21.5 7.5 L21.5 16.5 L12 22 L2.5 16.5 L2.5 7.5 Z" fill="none" stroke="#4ade80" stroke-width="2.5" stroke-linejoin="round"/></svg></span><span class="tab-label">Laser</span></button>
-        <button class="tab" data-tab="settings"><span class="tab-icon">⚙️</span><span class="tab-label">Settings</span></button>
+        <button class="tab active" data-tab="diagram" aria-label="Layout"><span class="tab-icon"><svg class="tab-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v14H4zM8 5v4m4-4v3m4-3v4"/></svg></span><span class="tab-label">Layout</span></button>
+        <button class="tab" data-tab="wall" aria-label="Wall"><span class="tab-icon"><svg class="tab-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18v12H3zM3 10h18M3 14h18M8 6v4m8-4v4m-5 0v4m7 0v4M6 14v4"/></svg></span><span class="tab-label">Wall</span></button>
+        <button class="tab" data-tab="tile" aria-label="Tile"><span class="tab-icon"><svg class="tab-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l9 9-9 9-9-9z"/></svg></span><span class="tab-label">Tile</span></button>
+        <button class="tab" data-tab="voids" aria-label="Cutouts"><span class="tab-icon"><svg class="tab-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16v16H4zM9 9h6v6H9z"/></svg></span><span class="tab-label">Cutouts</span></button>
+        <button class="tab" data-tab="calc" aria-label="Calculator"><span class="tab-icon"><svg class="tab-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h12v18H6zM8.5 6h7v3h-7zM9 13h.01m3 0h.01m3 0h.01M9 17h.01m3 0h.01m3 0h.01"/></svg></span><span class="tab-label">Calc</span></button>
+        <button class="tab" data-tab="projects" aria-label="Files"><span class="tab-icon"><svg class="tab-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7h7l2 2h9v10H3z"/></svg></span><span class="tab-label">Files</span></button>
+        <button class="tab" data-tab="settings" aria-label="Settings"><span class="tab-icon"><svg class="tab-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h10m4 0h2M4 12h2m4 0h10M4 17h8m4 0h4M14 5v4M6 10v4m6 1v4"/></svg></span><span class="tab-label">Settings</span></button>
     </div>
 
     <div id="diagram" class="panel active">
         <div class="info-bar">
             <span class="full">● Full: <b id="fullCount">0</b></span> &nbsp;
             <span style="color:#FF9800">● Cuts: <b id="cutCount">0</b></span> &nbsp;
-            <span id="wastePercentWrap" style="display:none"><span style="color:var(--text-secondary)">📦 Waste: <b id="wastePercent">0%</b></span></span>
+            <span id="wastePercentWrap" style="display:none"><span style="color:var(--text-secondary)">Waste: <b id="wastePercent">0%</b></span></span>
         </div>
         <div style="display:flex;justify-content:flex-end;align-items:center;gap:6px;margin-bottom:10px;">
             <span style="font-size:11px;font-weight:600;opacity:0.7;" class="unit-label-in">in</span>
@@ -1636,16 +1647,16 @@
         </div>
         <div class="mb-3">
             <button id="lockBtn" class="btn-secondary" onclick="toggleLock()" style="display:flex;align-items:center;justify-content:center;gap:6px;">
-                <span id="lockIcon">🔓</span> <span id="lockText">Unlocked</span>
+                <span id="lockIcon" aria-hidden="true"></span><span id="lockText">Pattern Unlocked</span>
             </button>
         </div>
-        <div class="hint mb-3" id="controlsHint">📱 One finger: move pattern • Two fingers: pan & zoom<br>💻 Drag: move pattern • Shift+drag: pan • Scroll: zoom</div>
+        <div class="hint mb-3" id="controlsHint">Touch: one finger moves the pattern • two fingers pan and zoom<br>Pointer: drag to move • Shift-drag to pan • scroll to zoom</div>
         <div class="row">
-            <button class="btn-secondary" onclick="resetView()">📍 Reset View</button>
-            <button class="btn-success" onclick="runOptimize('balanced')" style="flex:1;" id="optimizeBtn">🎯 Optimize</button>
+            <button class="btn-secondary" onclick="resetView()">Reset View</button>
+            <button class="btn-success" onclick="runOptimize('balanced')" style="flex:1;" id="optimizeBtn">Optimize</button>
         </div>
-        <button id="restoreBtn" class="btn-primary" onclick="restorePattern()" style="display:none;margin-bottom:10px;background:#ff9800;">⚠️ Restore Saved Pattern Position</button>
-        <div id="canvasContainer"><canvas id="canvas"></canvas></div>
+        <button id="restoreBtn" class="btn-primary" onclick="restorePattern()" style="display:none;margin-bottom:10px;background:#ff9800;">Restore Saved Pattern Position</button>
+        <div id="canvasContainer"><canvas id="canvas" role="img" aria-label="Interactive tile layout diagram"></canvas></div>
     </div>
 
     <div id="wall" class="panel">
@@ -1658,7 +1669,7 @@
                 <div id="workspacePhotoPrompt">
                     <span style="font-size:24px;">📸</span>
                     <div style="font-size:13px;font-weight:600;color:var(--text-primary);margin-top:4px;">Take Photo of Workspace</div>
-                    <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">Used in client reports &amp; helps train AI measurement</div>
+                    <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">Used in client reports. Stays on this device unless you export or share it.</div>
                 </div>
             </div>
             <input type="file" id="workspacePhotoInput" accept="image/*" capture="environment" style="display:none" onchange="handleWorkspacePhoto(event)">
@@ -1691,7 +1702,7 @@
             
             <!-- Drawing Canvas -->
             <div id="perimeterCanvasContainer" style="background:var(--bg-recessed);border-radius:var(--radius-md);overflow:hidden;margin-bottom:15px;position:relative;border:1px solid var(--border-default);">
-                <canvas id="perimeterCanvas" width="400" height="300" style="width:100%;touch-action:none;"></canvas>
+                <canvas id="perimeterCanvas" width="400" height="300" role="img" aria-label="Interactive wall or floor perimeter drawing" style="width:100%;touch-action:none;"></canvas>
                 <div id="perimeterHint" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;color:var(--text-tertiary);font-size:12px;pointer-events:none;">
                     Tap to add corners<br>Tap first point to close shape
                 </div>
@@ -2095,7 +2106,8 @@
                 <div class="pro-status-value" id="proStatusValue" onclick="devProTap()">Free</div>
             </div>
             <button class="btn-pro" id="proUpgradeBtn" onclick="showUpgradeModal()" style="margin-top:12px;">Upgrade to Pro</button>
-            <button class="btn-secondary" id="proManageBtn" onclick="deactivateProDev()" style="margin-top:12px;display:none;width:100%;">Revert to Free (Dev)</button>
+            <button class="btn-secondary" id="proManageBtn" onclick="manageProSubscription()" style="margin-top:12px;display:none;width:100%;">Manage Subscription</button>
+            <div style="text-align:center;font-size:12px;margin-top:10px;"><a href="https://layit.pages.dev/privacy" onclick="openLayItLegalLink('https://layit.pages.dev/privacy');return false;" style="color:var(--text-secondary);text-decoration:underline;">Privacy Policy</a><span style="color:var(--text-muted);"> &nbsp;•&nbsp; </span><a href="https://layit.pages.dev/terms" onclick="openLayItLegalLink('https://layit.pages.dev/terms');return false;" style="color:var(--text-secondary);text-decoration:underline;">Terms of Use</a></div>
         </div>
         <div class="section">
             <h3>📖 Feature Guide</h3>
@@ -2290,6 +2302,36 @@ function restoreProPurchases() {
         closeUpgradeModal();
         showToast('Purchase restoration is available in the LayIt iOS app.', 3000);
     }
+}
+
+function manageProSubscription() {
+    if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.manageSubscriptions) {
+        window.webkit.messageHandlers.manageSubscriptions.postMessage('manage');
+    } else {
+        openLayItLegalLink('https://apps.apple.com/account/subscriptions');
+    }
+}
+
+function openLayItLegalLink(url) {
+    if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.openURL) {
+        window.webkit.messageHandlers.openURL.postMessage(url);
+    } else {
+        window.open(url, '_blank', 'noopener');
+    }
+}
+
+function setSubscriptionProducts(products) {
+    if (!Array.isArray(products)) return;
+    products.forEach(function(product) {
+        var text = product.displayPrice + '/' + product.periodLabel;
+        if (product.id === 'layit.pro.monthly') {
+            var monthly = document.getElementById('proMonthlyPrice');
+            if (monthly) monthly.textContent = text;
+        } else if (product.id === 'layit.pro.annual') {
+            var annual = document.getElementById('proAnnualPrice');
+            if (annual) annual.textContent = text;
+        }
+    });
 }
 
 function initCloudSync() {
@@ -2588,9 +2630,7 @@ function updateLayoutFromPerimeter() {
     // Apply and navigate
     applyPerimeter(false);
 
-    // ── Calibration: pair workspace photo with manual measurements ──
-    // This trains the AI to eventually read rooms from photos alone (Patent 2)
-    submitCalibrationPair();
+    // Workspace photos remain local unless the user explicitly exports or shares a report.
 }
 
 // Submit workspace photo + manual measurements as a calibration training pair
@@ -5823,14 +5863,14 @@ document.addEventListener('wheel', function(e) {
 
 // ==================== TAB INFO POPUPS ====================
 var TAB_INFO = {
-    diagram: { icon: '📐', title: 'Layout View', desc: 'Your complete tile layout, rendered in real-time. Pinch to zoom, drag to pan. Tap Optimize to find the best placement with minimal cuts and waste.' },
-    wall:    { icon: '📏', title: 'Wall Measurements', desc: 'Enter your wall or floor dimensions in inches. Draw custom perimeters or use Quick Rectangle for simple rooms.' },
-    tile:    { icon: '🔲', title: 'Tile Setup', desc: 'Choose from preset tiles or enter custom dimensions. Supports hex, square, subway, herringbone, and mosaic sheet patterns with precise tessellation.' },
-    voids:   { icon: '⬛', title: 'Cutouts', desc: 'Add windows, outlets, niches, or obstacles. Position from wall edges to the center, set the size, and your layout tiles around them automatically.' },
-    calc:    { icon: '🔢', title: 'Tile Calculator', desc: 'See exactly how many tiles you need. Estimate costs, generate a material shopping list, and account for waste so you never come up short.' },
-    projects:{ icon: '📁', title: 'Files & Sharing', desc: 'Save and load projects, export backups, and share layouts with friends or clients. Pro users get branded client reports.' },
+    diagram: { icon: '', title: 'Layout View', desc: 'Your complete tile layout, rendered in real-time. Pinch to zoom, drag to pan. Tap Optimize to find the best placement with minimal cuts and waste.' },
+    wall:    { icon: '', title: 'Wall Measurements', desc: 'Enter your wall or floor dimensions in inches. Draw custom perimeters or use Quick Rectangle for simple rooms.' },
+    tile:    { icon: '', title: 'Tile Setup', desc: 'Choose from preset tiles or enter custom dimensions. Supports hex, square, subway, herringbone, and mosaic sheet patterns with precise tessellation.' },
+    voids:   { icon: '', title: 'Cutouts', desc: 'Add windows, outlets, niches, or obstacles. Position from wall edges to the center, set the size, and your layout tiles around them automatically.' },
+    calc:    { icon: '', title: 'Tile Calculator', desc: 'See exactly how many tiles you need. Estimate costs, generate a material shopping list, and account for waste so you never come up short.' },
+    projects:{ icon: '', title: 'Files & Sharing', desc: 'Save and load projects, export backups, and share layouts with friends or clients. Pro users get branded client reports.' },
     proj:    { icon: '⬡', title: 'LayIt Laser', desc: 'Coming soon — a WiFi laser projector that beams your tile pattern onto walls and floors at 1:1 scale. Join the waitlist to be first in line.' },
-    settings:{ icon: '⚙️', title: 'Settings', desc: 'Manage your subscription, explore the feature guide, send feedback, or restart the tutorial walkthrough.' }
+    settings:{ icon: '', title: 'Settings', desc: 'Manage your subscription, explore the feature guide, send feedback, or restart the tutorial walkthrough.' }
 };
 
 function getVisitedTabs() {
@@ -8176,9 +8216,9 @@ function doLock() {
     var hint = document.getElementById('controlsHint');
     
     btn.className = 'btn-success';
-    icon.textContent = '🔒';
-    text.textContent = 'Locked';
-    hint.textContent = '🔒 Pattern locked - pan & zoom freely without moving tiles';
+    icon.textContent = '';
+    text.textContent = 'Pattern Locked';
+    hint.textContent = 'Pattern locked — pan and zoom without moving tiles';
     hint.style.color = '#4CAF50';
     // Hide restore button when locked (pattern is safe)
     document.getElementById('restoreBtn').style.display = 'none';
@@ -8192,9 +8232,9 @@ function doUnlock() {
     var hint = document.getElementById('controlsHint');
     
     btn.className = 'btn-secondary';
-    icon.textContent = '🔓';
-    text.textContent = 'Unlocked';
-    hint.textContent = '📱 One finger: pattern • Two fingers: pan & zoom | 💻 Drag: pattern • Shift+drag: pan • Scroll: zoom';
+    icon.textContent = '';
+    text.textContent = 'Pattern Unlocked';
+    hint.textContent = 'Touch: one finger moves the pattern • two fingers pan and zoom | Pointer: drag to move • Shift-drag to pan • scroll to zoom';
     hint.style.color = '#666';
 }
 
@@ -8298,12 +8338,12 @@ function draw() {
         var centerX = cv.width / 4;
         var centerY = cv.height / 4;
         if (!perimeterReady) {
-            cx.fillText('📐 Measure your room first', centerX, centerY - 12);
+            cx.fillText('Measure your room first', centerX, centerY - 12);
             cx.font = '13px sans-serif';
             cx.fillStyle = '#aaaaaa';
             cx.fillText('Draw or enter your room dimensions on the Wall tab', centerX, centerY + 14);
         } else {
-            cx.fillText('🔲 Select your tile', centerX, centerY - 12);
+            cx.fillText('Select your tile', centerX, centerY - 12);
             cx.font = '13px sans-serif';
             cx.fillStyle = '#aaaaaa';
             cx.fillText('Scan a tile box or choose a preset on the Tile tab', centerX, centerY + 14);
@@ -10991,7 +11031,7 @@ function runOptimizeNow(mode) {
     // Show loading state
     var btn = document.getElementById('optimizeBtn');
     var originalText = btn.innerHTML;
-    btn.innerHTML = '⏳ Optimizing...';
+    btn.textContent = 'Optimizing...';
     btn.disabled = true;
 
     // Run optimization after a brief delay to show the loading state
@@ -11410,16 +11450,16 @@ function loadProject(id) {
     
     if (patternLocked) {
         lockBtn.className = 'btn-success';
-        lockIcon.textContent = '🔒';
-        lockText.textContent = 'Locked';
-        hint.textContent = '🔒 Pattern locked - pan & zoom freely without moving tiles';
+        lockIcon.textContent = '';
+        lockText.textContent = 'Pattern Locked';
+        hint.textContent = 'Pattern locked — pan and zoom without moving tiles';
         hint.style.color = '#4CAF50';
         restoreBtn.style.display = 'none';
     } else {
         lockBtn.className = 'btn-secondary';
-        lockIcon.textContent = '🔓';
-        lockText.textContent = 'Unlocked';
-        hint.textContent = '📱 One finger: pattern • Two fingers: pan & zoom | 💻 Drag: pattern • Shift+drag: pan • Scroll: zoom';
+        lockIcon.textContent = '';
+        lockText.textContent = 'Pattern Unlocked';
+        hint.textContent = 'Touch: one finger moves the pattern • two fingers pan and zoom | Pointer: drag to move • Shift-drag to pan • scroll to zoom';
         hint.style.color = '#666';
         // Show restore button if there's a saved position and cut progress
         restoreBtn.style.display = (savedPatternPosition && countCutProgress() > 0) ? 'block' : 'none';
@@ -13347,31 +13387,16 @@ function exportDXFFormat(tiles, wallPts) {
 
 // ==================== AUTO-SAVE LAST SESSION ====================
 
-function getCurrentBuildResetSeed() {
-    var fallbackSeed = '2026-04-18f';
-    try {
-        var params = new URLSearchParams(window.location.search || '');
-        return params.get('buildSeed') || fallbackSeed;
-    } catch (e) {
-        return fallbackSeed;
-    }
-}
+var LAYIT_DATA_SCHEMA_VERSION = 1;
+var LAYIT_DATA_SCHEMA_KEY = 'layit_data_schema_version';
 
-var LAYIT_BUILD_RESET_SEED = getCurrentBuildResetSeed();
-var INITIAL_BOOTSTRAP_VERSION = 'bootstrap:' + LAYIT_BUILD_RESET_SEED;
-var INITIAL_BOOTSTRAP_KEY = 'layit_initial_bootstrap_version';
-
-(function ensureInitialExperienceState() {
+(function migrateSavedData() {
     try {
-        if (localStorage.getItem(INITIAL_BOOTSTRAP_KEY) === INITIAL_BOOTSTRAP_VERSION) return;
-        localStorage.removeItem('layit_onboarding_seen');
-        localStorage.removeItem('layit_onboarded');
-        localStorage.removeItem('layit_visited_tabs');
-        localStorage.removeItem('layit_autosave');
-        localStorage.removeItem('tileProjects');
-        localStorage.removeItem('layit_captured_tile_info_v1');
-        localStorage.removeItem('layit_scan_count');
-        localStorage.setItem(INITIAL_BOOTSTRAP_KEY, INITIAL_BOOTSTRAP_VERSION);
+        var currentVersion = parseInt(localStorage.getItem(LAYIT_DATA_SCHEMA_KEY) || '0', 10);
+        // Future migrations belong here and must preserve user-created projects.
+        if (currentVersion < LAYIT_DATA_SCHEMA_VERSION) {
+            localStorage.setItem(LAYIT_DATA_SCHEMA_KEY, String(LAYIT_DATA_SCHEMA_VERSION));
+        }
     } catch (e) {}
 })();
 
@@ -13398,13 +13423,6 @@ function autoRestoreState() {
         if (!saved) return false;
         
         var state = JSON.parse(saved);
-        
-        // Check if save is recent (within 7 days)
-        var age = Date.now() - state.timestamp;
-        if (age > 7 * 24 * 60 * 60 * 1000) {
-            localStorage.removeItem('layit_autosave');
-            return false;
-        }
         
         // Restore state
         if (state.C) {
@@ -13534,7 +13552,7 @@ function updateProUI() {
 initTabs();
 buildPresetDropdown();
 refreshMosaicFriendlyFields();
-initTileDb();
+// Shared Firebase features are intentionally disabled in this release.
 generateAppIcon();
 loadCompanyBranding();
 
@@ -13760,9 +13778,9 @@ function showOnboarding() {
 
     actions.innerHTML =
         '<button class="onboarding-btn-next" onclick="startWithRoom()" style="margin-bottom:10px;display:flex;align-items:center;gap:12px;justify-content:center;">' +
-        '<span style="font-size:24px;">📐</span> Measure My Room</button>' +
+        '<span aria-hidden="true"><svg class="tab-svg" viewBox="0 0 24 24"><path d="M4 5h16v14H4zM8 5v4m4-4v3m4-3v4"/></svg></span> Measure My Room</button>' +
         '<button class="onboarding-btn-next" onclick="startWithTile()" style="background:linear-gradient(135deg, #FF9800 0%, #F57C00 100%);display:flex;align-items:center;gap:12px;justify-content:center;">' +
-        '<span style="font-size:24px;">📸</span> Identify My Tile</button>' +
+        '<span aria-hidden="true"><svg class="tab-svg" viewBox="0 0 24 24"><path d="M4 7h4l1.5-2h5L16 7h4v12H4zM12 10a3 3 0 1 0 0 6 3 3 0 0 0 0-6z"/></svg></span> Identify My Tile</button>' +
         '<button class="onboarding-btn-skip" onclick="completeOnboarding()" style="margin-top:8px;">Skip — I\'ll explore on my own</button>';
 
     overlay.style.display = 'flex';
