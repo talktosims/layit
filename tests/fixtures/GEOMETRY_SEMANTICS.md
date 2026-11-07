@@ -1,6 +1,6 @@
 # LayIt layout export semantics (app geometryRevision 1.1-patent-7.2)
 
-Authoritative generator: this commit of `talktosims/layit` on branch `cursor/layit-app-audit-fixes-1c7b`.
+Authoritative generator: `talktosims/layit` commit `998142ff3ee360a8cd055e2d834be891035298d0` on branch `cursor/layit-app-audit-fixes-1c7b`.
 The running page is `index.html`. Headless Chrome produced the `.layit` files in this folder. That is not an iOS or WKWebView run.
 
 Hub commits `971473c`, `1f20960`, and `d4dac01` (PRs 1 and 2) were not readable from this environment (GitHub 404 on the private hub). The notes below use the in-repo patent, the in-repo WebSocket protocol, measurements of this app, and the parent’s description of the compiler.
