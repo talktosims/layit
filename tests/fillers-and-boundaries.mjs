@@ -285,7 +285,7 @@ await browser.close();
 
 check('arabesque body is the entered 2 in and the same-row joint is one grout minus the 2% shoulder', geo.arab.wIn > 2.0 && geo.arab.hIn > 1.95 && geo.arab.pairGap > 0.05 && geo.arab.pairGap < 0.15, JSON.stringify(geo.arab));
 check('octagon flat-to-flat is 2 in and the dot clears the cut corner by one grout', Math.abs(geo.oct.wIn - 2) < 0.05 && Math.abs(geo.oct.hIn - 2) < 0.05 && Math.abs(geo.oct.pairGap - 0.125) < 0.02 && Math.abs(geo.oct.dotClear - 0.125) < 0.02, JSON.stringify(geo.oct));
-check('triangle pair leaves one piece-grout between up and down', geo.tri.wIn > 1.9 && geo.tri.pairGap > 0.1 && geo.tri.pairGap < 0.16, JSON.stringify(geo.tri));
+check('triangle contacts split the one pair grout', geo.tri.wIn > 1.9 && geo.tri.pairGap > 0.05 && geo.tri.pairGap < 0.08, JSON.stringify(geo.tri));
 check('mosaic file is still sheet outlines at one piece-grout pitch', geo.sheetFile === 'sheet-outlines' && Math.abs(geo.sheetPitch - 12.125) < 1e-6, JSON.stringify(geo));
 check('hardware flags stay closed', geo.hw === false && geo.ready === false);
 check('camera denial is shown and does not throw', (cam.denied || '').indexOf('denied') >= 0, JSON.stringify(cam));

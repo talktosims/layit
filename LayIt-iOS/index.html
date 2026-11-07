@@ -1842,6 +1842,7 @@
                         <option value="0.25">1/4"</option>
                     </select>
                 </div>
+                <p id="mosaicPieceSummary" style="font-size:12px;line-height:1.4;color:var(--text-muted);margin:0 0 8px;"></p>
             </div>
             <div class="row" id="patternDiv" style="display:none;">
                 <div class="field"><label>Pattern</label><select id="tilePattern" onchange="updateTile()">
@@ -5254,7 +5255,7 @@ function drawMosaicSheetDetail(tile) {
             ctx.closePath();
         } else if (subShape === 'arabesque') {
             // Arabesque preview — matches main renderer's 8-curve lantern
-            var hw = (subWd - subGrd) / 2, hh = (subHd - subGrd) / 2;
+            var hw = subWd / 2, hh = subHd / 2;
             ctx.moveTo(dx, dy - hh);
             ctx.bezierCurveTo(dx + hw*0.4, dy - hh*0.95, dx + hw*0.85, dy - hh*0.7, dx + hw, dy - hh*0.25);
             ctx.bezierCurveTo(dx + hw*1.02, dy + hh*0.05, dx + hw*0.52, dy - hh*0.02, dx + hw*0.38, dy);
@@ -5295,7 +5296,7 @@ function drawMosaicSheetDetail(tile) {
             ctx.lineTo(dx - hw, dy + hh * 0.25);
             ctx.closePath();
         } else if (subShape === 'triangle') {
-            var hw = (subWd - subGrd) / 2, hh = (subHd - subGrd) / 2;
+            var hw = subWd / 2, hh = subHd / 2;
             ctx.moveTo(dx - hw, dy + hh);
             ctx.lineTo(dx + hw, dy + hh);
             ctx.lineTo(dx, dy - hh);
@@ -5319,7 +5320,7 @@ function drawMosaicSheetDetail(tile) {
             ctx.closePath();
         } else if (subShape === 'ogee') {
             // Ogee preview — anti-symmetric bezier (matches main renderer)
-            var hw = (subWd - subGrd) / 2, hh = (subHd - subGrd) / 2;
+            var hw = subWd / 2, hh = subHd / 2;
             var A = 0.55;
             ctx.moveTo(dx, dy - hh);
             ctx.bezierCurveTo(dx, dy - hh * (1-A), dx + hw, dy - hh * A, dx + hw, dy);
@@ -5328,8 +5329,9 @@ function drawMosaicSheetDetail(tile) {
             ctx.bezierCurveTo(dx - hw, dy - hh * A, dx, dy - hh * (1-A), dx, dy - hh);
             ctx.closePath();
         } else if (subShape === 'starcross') {
-            // 8-pointed star preview — 16-vertex polygon matching main renderer
-            var R = Math.min(subWd, subHd) / 2 - subGrd / 2;
+            // Same tuned star radius as the main field. The cell is the entered size.
+            var halfCell = Math.min(subWd + subGrd, subHd + subGrd) / 2;
+            var R = (halfCell - subGrd / 2) * 1.35;
             var ri = R * 0.7654;
             ctx.moveTo(dx, dy - R);
             for (var si = 1; si < 16; si++) {
@@ -6379,7 +6381,18 @@ function updateMosaicPieceSummary() {
     var sheetW = readLengthInputValue('tileW') || 0;
     var sheetH = readLengthInputValue('tileH') || 0;
     var grout = parseFloat((document.getElementById('subGr') || {}).value || (document.getElementById('grout') || {}).value || '0.0625') || 0.0625;
-    summary.textContent = styleName + ' pieces on a ' + formatLength(sheetW) + ' × ' + formatLength(sheetH) + ' sheet with ' + formatLength(grout) + ' grout.';
+    var shapeId = shapeEl ? shapeEl.value : '';
+    var limit = '';
+    if (shapeId === 'triangle') {
+        limit = ' Rows use this grout. The pair cell holds one grout between bounding boxes. Pointed edges are farther apart than that grout.';
+    } else if (shapeId === 'ogee') {
+        limit = ' This grout is the horizontal joint. Offset rows interlock and are not a second grout; they do not meet exactly.';
+    } else if (shapeId === 'arabesque') {
+        limit = ' The shoulder is the entered width. The same-row joint is this grout. Staggered rows nest together.';
+    } else if (shapeId === 'starcross') {
+        limit = ' Tuned interlock. Cardinal clearance is not the entered grout at every grout size, and the tips extend past the entered cell.';
+    }
+    summary.textContent = styleName + ' pieces on a ' + formatLength(sheetW) + ' × ' + formatLength(sheetH) + ' sheet with ' + formatLength(grout) + ' grout.' + limit;
 }
 
 function refreshMosaicFriendlyFields() {
@@ -9455,9 +9468,9 @@ function drawMosaicField(ox, oy, s, wall, voidPolys, patternOx, patternOy, projM
         stColIn = subW * 2 + subGr;
         stRowIn = subH * 1.5 + subGr;
     } else if (subShape === 'triangle') {
-        // Equilateral triangles: up + down pairs fill each grid cell
-        // Column spacing = full tile width (up triangle occupies left half,
-        // down triangle fills the right half gap)
+        // Pair cell from the original spacing: two entered bodies and one grout.
+        // That one grout is split across the two horizontal contacts, so each
+        // contact is half the entered grout. The row step still adds one full grout.
         stColIn = subW * 2 + subGr;
         stRowIn = subH + subGr;
     } else if (subShape === 'capsule') {
@@ -9469,13 +9482,12 @@ function drawMosaicField(ox, oy, s, wall, voidPolys, patternOx, patternOy, projM
         stColIn = subW * 0.85 + subGr;
         stRowIn = subH * 0.85 + subGr;
     } else if (subShape === 'ogee') {
-        // Ogee/provenzal — MATH-PROVEN interlocking via kappa bezier anti-symmetry.
-        // The identity x(t)+x(1-t)=hw requires row spacing = face half-height exactly.
-        // Proof: y_A + y_B = (y-cyA) + (cyB-y) = rowSpacing. For anti-symmetry pairs
-        // to sum to hh, we need rowSpacing = hh = (subH-subGr)/2.
-        // Grout appears as the horizontal gap (subGr) between interlocking S-curves.
+        // Ogee/provenzal — interlocking via the bezier identity below.
+        // Row spacing must equal the drawn half-height. The entered height is that
+        // full height, so the row step is subH/2 and the vertical joint is closed.
+        // The entered grout is only the horizontal gap.
         stColIn = subW + subGr;
-        stRowIn = (subH - subGr) / 2;  // = face hh, exact anti-symmetry
+        stRowIn = subH / 2;
         // Tiles in odd rows rotate 180° (handled in draw loop)
     } else if (subShape === 'starcross') {
         // Star & Cross: 8-pointed star + tilted cross alternate in checkerboard.
@@ -9869,9 +9881,10 @@ function drawMosaicField(ox, oy, s, wall, voidPolys, patternOx, patternOy, projM
             // and tiles are 180°-flipped in alternating rows.
             //
             // A controls curvature: 0.55 gives a nice ogee S-curve shape.
-            // Width stays the entered size so the horizontal joint is one subGr.
-            // Height stays rowSpacing, which this curve needs for the zero-gap vertical interlock.
-            var hw = stWpx / 2, hh = (stHpx - stGrPx) / 2;
+            // Width and height are the entered piece size. Row spacing equals hh.
+            // The horizontal joint is one subGr. Offset rows are shifted by half
+            // the column pitch, so their curves do not meet exactly.
+            var hw = stWpx / 2, hh = stHpx / 2;
             var A = 0.55;
             cx.moveTo(px, py - hh);                                         // top tip
             // Upper right: derived by 180° rotating the anti-symmetric lower-left
@@ -10244,8 +10257,8 @@ function drawMosaicField(ox, oy, s, wall, voidPolys, patternOx, patternOy, projM
             if (subShape === 'triangle') {
                 var triHw = stWpx / 2;
                 var triHh = stHpx / 2;
-                // Pair pitch is 2*subW + one subGr. The down-pointing mate sits one body plus that grout to the right.
-                var invX = px + stWpx + stGrPx;
+                // One grout in the pair cell, split onto both horizontal contacts.
+                var invX = px + stWpx + stGrPx / 2;
                 var invY = py;
                 if (invX > wallMinX && invX < wallMaxX && invY > wallMinY && invY < wallMaxY) {
                     var invInWall = inPoly([invX, invY], wall);
