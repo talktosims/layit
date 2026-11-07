@@ -30,11 +30,15 @@ Applying that old fix to a 1.1 file would double-compensate.
 - +x to the right, +y up.
 - The on-screen canvas is y-down from the top-left. Export flips y with `wallY = flipH - fromTop`.
 - Preview stroke and `tiles[].verts` are the same polygon after that flip. Checked in Chrome.
-- Stagger matches the preview: odd rows (pointy hex, brick) and odd columns (flat hex, herringbone). Patent 7.2.1 text says even. The file follows the preview so the picture and the file stay aligned. Do not flip parity in the compiler.
+- Stagger matches the preview and the 2026-11-07 cross-system contract: odd rows (pointy hex, brick) and odd columns (flat hex, herringbone). Patent 7.2.1 prose says even. `CROSS_SYSTEM_INTERFACES.md` at hub commit `1f20960` locks the odd shift. This app does not flip saved layouts to even.
 
 ## Patent 7.2 rules this file uses
 
 Square and rectangle: body is the actual tile size. Center spacing is size + grout, once. Nominal mode stores `actual = nominal - grout` and then spaces that actual size plus one grout. A nominal 12 in tile with 1/8 in grout is an 11.875 in body and a 0.125 in joint, pitch 12 in. It is not an 11.875 in body with a 0.250 in joint.
+
+The 1f20960 contract’s locked hex case is pointy 10 by 10 inches, grout 1/8 inch: width extent 10, column step 10.125, row step 7.625, shoulders at ±width/2. That file is `hex-pointy-10x10-grout-eighth.layit`. The regular-hex file is a second case, not that lock.
+
+Pointy hex vertices in the file use y-up. The patent list writes the top point as `cy - height/2` because that list is y-down. Here the top point is `centerY + height/2`. Width, shoulder x, and both steps still match `pointyHexContract`.
 
 Pointy hex, width flat-to-flat `tw`, height point-to-point `th`:
 
@@ -55,9 +59,11 @@ Herringbone uses the patent diagonal pitch of the full tile and does not add gro
 
 `hardwareCompile` is false, `simulationOnly` is true, and `laser` is `"off"`. The download does not connect to hardware.
 
-## Mosaic, left unresolved
+## Mosaic, chosen in the open
 
-Interactive preview draws the sub-tile field. This file, like projector mode, writes sheet outlines. Sheet body equals the sheet size. The gap between sheet centers is `subGr`. That split is the current product behavior. It was not changed.
+The 1f20960 contract says the screen draws sub-tiles and the old export drew a sheet, and that the app has to say which polygons are in the file. This file contains sheet outlines only. They are not the sub-tile grout pattern. The compiler clips those sheet polygons and does not invent the piece joints. The interactive preview still draws the pieces. Sheet body equals the sheet size. The gap between sheet centers is `subGr`.
+
+`hardwareCompile`, `hardwareReadyArtifact`, and purchase authority stay false and $0. The model numbers below are simulations from hub commit `1f20960`, not hardware proof.
 
 ## Projection notes that are not measurements from this app
 
@@ -76,3 +82,18 @@ The engineering review’s smooth simulated model, including 12 LSB bow, is abou
 - `herringbone-4x8-grout-eighth.layit` — 4×8 in herringbone, grout stored but not added to the patent pitch.
 
 Fish-scale outlines can exceed the protocol’s 8-vertex limit. `limits.exceedsProtocolVertexLimit` is set when that happens. Vertices are not dropped.
+
+## Saved projects
+
+This change does not rewrite project JSON and does not bump the local bootstrap seed (`2026-04-18f`), so opening the new page does not wipe existing projects. Stored width, height, grout, pattern, and `oxInches` / `oyInches` stay as saved. Stagger parity stays odd-row / odd-column. It is not flipped to the patent’s “even” wording.
+
+Reopening an old project does change the picture: the same stored 12 inch tile is drawn at 12 inches with a 0.125 inch joint, not at 11.875 inches with a 0.250 inch joint. That is the bugfix, not a second copy of the dimensions in the save file.
+
+## Fixture hashes
+
+SHA-256 of the `.layit` bytes is in `SHA256SUMS.txt` inside the review zip. Geometry code started at `998142ff3ee360a8cd055e2d834be891035298d0`. Later commits on this branch only add the safety flags and this note. Vertex formulas are unchanged.
+
+- `square-12in-grout-eighth.layit` — 48×36 in wall, actual 12×12, grout 1/8. Contract: body 12, joint 0.125, pitch 12.125.
+- `hex-pointy-10x10-grout-eighth.layit` — the 1f20960 lock. Width 10, height 10, grout 1/8. Column step 10.125, row step 7.625.
+- `hex-pointy-10in-regular.layit` — regular pointy hex, flat-to-flat 10 in, height `10 * 2 / sqrt(3)`.
+- `herringbone-4x8-grout-eighth.layit` — patent diagonal pitch, full rotated body, grout not added again.

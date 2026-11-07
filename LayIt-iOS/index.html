@@ -7878,17 +7878,39 @@ function submitProductContribution() {
 }
 
 function updateTile() {
+    var newSh = document.getElementById('tileShape').value;
+    var newOr = document.getElementById('tileOrient').value;
+    var rawPattern = parseFloat(document.getElementById('tilePattern').value);
+    var newPattern = isNaN(rawPattern) ? (C.tile.pattern || 0) : rawPattern;
+    var w = readLengthInputValue('tileW');
+    var h = readLengthInputValue('tileH');
+    var newGr = parseFloat(document.getElementById('grout').value);
+    if (isNaN(newGr)) newGr = C.tile.gr || 0.125;
+    var nom = document.getElementById('nominalMode').checked;
+    var actW = w;
+    var actH = h;
+    if (nom && w > 0 && h > 0) {
+        actW = w - newGr;
+        actH = h - newGr;
+    }
+    if (newSh === 'square') {
+        var squareSide = actW || actH;
+        actW = actH = squareSide;
+    }
+    if (!(actW > 0) || !(actH > 0)) {
+        showToast('Tile width and height must be greater than zero');
+        document.getElementById('tileShape').value = C.tile.sh;
+        setLengthInputValue('tileW', C.tile.w);
+        setLengthInputValue('tileH', C.tile.h);
+        onShape();
+        if (document.getElementById('tileOrient')) document.getElementById('tileOrient').value = C.tile.or || 'pointy';
+        return;
+    }
+
     // Warn if there's cut progress that will be lost
     var cutCount = countCutProgress();
     if (cutCount > 0) {
         // Check if tile settings actually changed
-        var newSh = document.getElementById('tileShape').value;
-        var newW = readLengthInputValue('tileW');
-        var newH = readLengthInputValue('tileH');
-        var newGr = parseFloat(document.getElementById('grout').value);
-        var nom = document.getElementById('nominalMode').checked;
-        var actW = nom ? newW - newGr : newW;
-        var actH = nom ? newH - newGr : newH;
         var changed = newSh !== C.tile.sh || Math.abs(actW - C.tile.w) > 0.001 || Math.abs(actH - C.tile.h) > 0.001;
         if (changed) {
             if (!confirm('You have ' + cutCount + ' tile(s) marked as cut/in-progress.\n\nChanging tile settings will reset all cut progress.\n\nSave your project first, or continue?')) {
@@ -7905,44 +7927,30 @@ function updateTile() {
         }
     }
 
-    C.tile.sh = document.getElementById('tileShape').value;
-    C.tile.or = document.getElementById('tileOrient').value;
-    C.tile.pattern = parseFloat(document.getElementById('tilePattern').value) || 0;
-    var w = readLengthInputValue('tileW');
-    var h = readLengthInputValue('tileH');
-    if (document.getElementById('tileShape').value === 'mosaic') {
+    C.tile.sh = newSh;
+    C.tile.or = newOr;
+    C.tile.pattern = newPattern;
+    if (newSh === 'mosaic') {
         syncMosaicGroutFields();
+        newGr = parseFloat(document.getElementById('grout').value) || newGr;
     }
-    C.tile.gr = parseFloat(document.getElementById('grout').value);
-
-    // If nominal mode, subtract grout to get actual tile size
-    var nom = document.getElementById('nominalMode').checked;
-    if (nom && w > 0 && h > 0) {
-        w = w - C.tile.gr;
-        h = h - C.tile.gr;
-    }
-
-    if (C.tile.sh === 'square') {
-        var s = w || h;
-        w = h = s;
+    C.tile.gr = newGr;
+    w = actW;
+    h = actH;
+    if (newSh === 'square') {
         if (nom) {
-            setLengthInputValue('tileW', s + C.tile.gr);
-            setLengthInputValue('tileH', s + C.tile.gr);
+            setLengthInputValue('tileW', actW + C.tile.gr);
+            setLengthInputValue('tileH', actH + C.tile.gr);
         } else {
-            setLengthInputValue('tileW', s);
-            setLengthInputValue('tileH', s);
+            setLengthInputValue('tileW', actW);
+            setLengthInputValue('tileH', actH);
         }
     }
-    // Herringbone ratio check
-    if (C.tile.sh === 'herringbone' && w > 0 && h > 0) {
+    if (newSh === 'herringbone' && w > 0 && h > 0) {
         var ratio = Math.max(w, h) / Math.min(w, h);
         if (ratio < 2) {
             showToast('⚠️ Herringbone works best with 2:1 ratio or longer (e.g., 2"×8")');
         }
-    }
-    if (w <= 0 || h <= 0) {
-        showToast('Tile width and height must be greater than zero');
-        return;
     }
     C.tile.w = w;
     C.tile.h = h;
@@ -13071,8 +13079,10 @@ function buildLayItPattern(tiles) {
         type: 'layit-laser',
         units: 'inches',
         hardwareCompile: false,
+        hardwareReadyArtifact: false,
         simulationOnly: true,
         laser: 'off',
+        purchaseUsd: 0,
         requirement: 'F1-full-layout',
         coordinateSystem: {
             origin: 'bottom-left of the wall',
@@ -13097,7 +13107,7 @@ function buildLayItPattern(tiles) {
             fullLayout: 'tiles[] lists every tile that meets the wall. It is not a single edge and it is not limited to the current 36 inch projection segment.',
             edgeTileModes: 'F8 edge and tile modes are extras. They do not replace this full-layout file.',
             cutVertices: 'verts stays the full outline so the preview stroke and the file match. isCut is true when the tile crosses the wall or a void. In-repo WebSocket protocol section 8 said cut verts were already clipped. This 1.1 file does not pre-clip; hub PR2 compiler clips the supplied vertices and must not also rebuild the shape.',
-            mosaic: 'Left as the existing product split: the interactive preview draws sub-tiles, and this file uses sheet outlines. That choice is not resolved here.'
+            mosaic: 'Open choice, not a silent grout invention: the interactive preview draws sub-tile outlines. This file contains sheet outlines only. Those polygons are not the sub-tile grout pattern. The compiler clips the polygons that are here and does not add the missing piece joints.'
         },
         projectionNotes: {
             notMeasuredHere: true,
