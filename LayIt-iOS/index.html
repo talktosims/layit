@@ -1818,9 +1818,18 @@
                     <label>Piece Style</label>
                     <select id="subShape" onchange="onSubShapeChange()">
                         <option value="square">◻ Square</option>
+                        <option value="rectangle">▬ Rectangle</option>
                         <option value="hex" selected>⬡ Hexagon</option>
                         <option value="penny">● Penny Round</option>
                         <option value="fishscale">🐟 Fish Scale</option>
+                        <option value="arabesque">Arabesque</option>
+                        <option value="picket">Picket</option>
+                        <option value="octdot">Octagon &amp; Dot</option>
+                        <option value="diamond">Diamond</option>
+                        <option value="rhombus">Tumbling Blocks</option>
+                        <option value="triangle">Triangle</option>
+                        <option value="capsule">Capsule</option>
+                        <option value="starcross">Star &amp; Cross</option>
                     </select>
                 </div>
                 <input type="hidden" id="subW" value="2">
@@ -1876,7 +1885,7 @@
                 </div>
             </div>
             <div class="field"><label>Label</label><input type="text" id="voidLabel" placeholder="Niche"></div>
-            <div id="voidPositionHint" style="font-size:11px;color:var(--text-muted);margin-bottom:6px;">📏 Position — measure to the cutout's lower-left corner</div>
+            <div id="voidPositionHint" style="font-size:11px;color:var(--text-muted);margin-bottom:6px;">📏 Position — measure from the wall edges to the center of the cutout</div>
             <div class="row"><div class="field"><label id="voidXLabel">From Left Edge (in)</label><input type="number" id="voidX"></div><div class="field"><label id="voidYLabel">From Bottom Edge (in)</label><input type="number" id="voidY"></div></div>
             <div id="voidSizeHint" style="font-size:11px;color:var(--text-muted);margin-bottom:6px;">📐 Size — width and height of the cutout opening</div>
             <div class="row"><div class="field"><label id="voidWLabel">Width (in)</label><input type="number" id="voidW" min="0"></div><div class="field"><label id="voidHLabel">Height (in)</label><input type="number" id="voidH" min="0"></div></div>
@@ -7699,8 +7708,8 @@ function handleAILabelScan(input) {
             .then(function(resp) { return resp.json(); })
             .then(function(data) {
                 if (data.error) {
-                    statusEl.innerHTML = 'AI error: ' + (data.error.message || 'Unknown error');
-                    promptEl.innerHTML = '<div style="font-size:13px;color:var(--warning);">Try again or enter manually below</div>';
+                    statusEl.textContent = 'AI error: ' + (data.error && data.error.message ? data.error.message : 'Unknown error');
+                    promptEl.textContent = 'Try again or enter manually below';
                     return;
                 }
                 var text = data.content && data.content[0] && data.content[0].text;
@@ -7766,8 +7775,8 @@ function handleAILabelScan(input) {
                 _pendingLabelPhoto = base64;
             })
             .catch(function(err) {
-                statusEl.innerHTML = 'Error: ' + err.message + '<br><span style="font-size:11px;">Enter specs manually below</span>';
-                promptEl.innerHTML = '<div style="font-size:13px;color:var(--warning);">Try again or enter manually</div>';
+                statusEl.textContent = 'Error: ' + (err && err.message ? err.message : 'request failed') + ' Enter specs manually below';
+                promptEl.textContent = 'Try again or enter manually';
             });
         };
         img.src = e.target.result;
@@ -8409,10 +8418,10 @@ function classifyTile(verts, wall, voidPolys) {
         else allIn = false;
     }
     var touchesVoid = false;
-    var fullyInVoid = voidPolys.length > 0;
+    var fullyInVoid = false;
     for (var vpi = 0; vpi < voidPolys.length; vpi++) {
         var vp = voidPolys[vpi];
-        var allVertsInThisVoid = true;
+        var allVertsInThisVoid = verts.length > 0;
         for (var j = 0; j < verts.length; j++) {
             if (inPoly(verts[j], vp)) touchesVoid = true;
             else allVertsInThisVoid = false;
@@ -8420,9 +8429,9 @@ function classifyTile(verts, wall, voidPolys) {
         for (var k = 0; k < vp.length; k++) {
             if (inPoly(vp[k], verts)) touchesVoid = true;
         }
-        if (!allVertsInThisVoid) fullyInVoid = false;
+        // Patent 7.2.5: omitted when every vertex is inside one void, not inside every void.
+        if (allVertsInThisVoid) fullyInVoid = true;
     }
-    if (!voidPolys.length) fullyInVoid = false;
     return { anyIn: anyIn, allIn: allIn, touchesVoid: touchesVoid, fullyInVoid: fullyInVoid, isCut: !allIn || touchesVoid };
 }
 
@@ -9640,9 +9649,9 @@ function drawMosaicField(ox, oy, s, wall, voidPolys, patternOx, patternOy, projM
             return [[px - hw + sk, py - hh], [px + hw + sk, py - hh],
                     [px + hw - sk, py + hh], [px - hw - sk, py + hh]];
         } else {
-            // square
-            var hw = stWpx / 2 - stGrPx / 2;
-            var hh = stHpx / 2 - stGrPx / 2;
+            // square — same full piece the stroke uses
+            var hw = stWpx / 2;
+            var hh = stHpx / 2;
             return [[px - hw, py - hh], [px + hw, py - hh], [px + hw, py + hh], [px - hw, py + hh]];
         }
     }
@@ -9651,7 +9660,8 @@ function drawMosaicField(ox, oy, s, wall, voidPolys, patternOx, patternOy, projM
     function drawSubTilePath(px, py) {
         cx.beginPath();
         if (subShape === 'hex') {
-            var hw = (stWpx - stGrPx) / 2, hh = (stHpx - stGrPx) / 2;
+            // Piece is the entered size. The grid step already adds one subGr.
+            var hw = stWpx / 2, hh = stHpx / 2;
             if (orient === 'pointy') {
                 cx.moveTo(px, py - hh);
                 cx.lineTo(px + hw, py - hh/2);
@@ -9669,8 +9679,8 @@ function drawMosaicField(ox, oy, s, wall, voidPolys, patternOx, patternOy, projM
             }
             cx.closePath();
         } else if (subShape === 'penny') {
-            var r = (stWpx - stGrPx) / 2;
-            cx.arc(px, py, r, 0, Math.PI * 2);
+            var r = stWpx / 2;
+            cx.arc(px, py, Math.max(0.5, r), 0, Math.PI * 2);
         } else if (subShape === 'fishscale') {
             // Fish scale / scallop — MATH-PROVEN circular arc tessellation
             // When stemLen = domeRadius, the tile is composed entirely of circular arcs:
@@ -9679,7 +9689,7 @@ function drawMosaicField(ox, oy, s, wall, voidPolys, patternOx, patternOy, projM
             //   3. Left side: quarter-circle (concave inward)
             // The side arcs ARE the dome circles of the neighbor tiles below,
             // guaranteeing zero-gap nesting.
-            var rw = (stWpx - stGrPx) / 2;
+            var rw = stWpx / 2;
             var stemLen = rw;  // exact: stem = dome radius
             var domeY = py;    // dome center at tile center
             var pointY = py + rw;  // bottom point
@@ -9919,9 +9929,9 @@ function drawMosaicField(ox, oy, s, wall, voidPolys, patternOx, patternOy, projM
             cx.lineTo(px - hw - sk, py + hh);    // bottom-left
             cx.closePath();
         } else {
-            // square
-            var hw = (stWpx - stGrPx) / 2;
-            var hh = (stHpx - stGrPx) / 2;
+            // square — body is the entered piece size; subGr is only the grid gap
+            var hw = stWpx / 2;
+            var hh = stHpx / 2;
             cx.rect(px - hw, py - hh, hw * 2, hh * 2);
         }
     }
@@ -10571,7 +10581,7 @@ function getCutDimensions(verts, wall, voidPolys, scale, shape, orient, col) {
 
 // Convert decimal inches to fractional string (to nearest 1/16)
 function toFractionInches(decimal) {
-    if (decimal <= 0) return '0';
+    if (!(decimal > 0)) return '0"';
     
     var whole = Math.floor(decimal);
     var remainder = decimal - whole;
@@ -10580,7 +10590,7 @@ function toFractionInches(decimal) {
     var sixteenths = Math.round(remainder * 16);
     
     if (sixteenths === 0) {
-        return whole === 0 ? '0' : whole + '"';
+        return whole + '"';
     }
     if (sixteenths === 16) {
         return (whole + 1) + '"';
@@ -11066,48 +11076,9 @@ function countTilesForOptimize() {
             tileYInches += cellOff.dy;
 
             var verts = getVerts(x, y, tw, th, row, col);
-            var allIn = true, anyIn = false;
-            
-            for (var i = 0; i < verts.length; i++) {
-                if (inPoly(verts[i], wall)) {
-                    anyIn = true;
-                } else {
-                    allIn = false;
-                }
-            }
-            
-            // Check voids
-            var touchesVoid = false;
-            var fullyInVoid = true;
-            
-            for (var vpi = 0; vpi < voidPolys.length; vpi++) {
-                var vp = voidPolys[vpi];
-                var allVertsInThisVoid = true;
-                
-                for (var i = 0; i < verts.length; i++) {
-                    if (inPoly(verts[i], vp)) {
-                        touchesVoid = true;
-                    } else {
-                        allVertsInThisVoid = false;
-                    }
-                }
-                
-                for (var i = 0; i < vp.length; i++) {
-                    if (isPointInPolygon(vp[i], verts)) {
-                        touchesVoid = true;
-                        allVertsInThisVoid = false;
-                    }
-                }
-                
-                if (!allVertsInThisVoid) {
-                    fullyInVoid = false;
-                }
-            }
-            
-            if (fullyInVoid && touchesVoid) continue;
-            if (!anyIn) continue;
-            
-            var isCut = !allIn || touchesVoid;
+            var cls = classifyTile(verts, wall, voidPolys);
+            if (cls.fullyInVoid || !cls.anyIn) continue;
+            var isCut = cls.isCut;
             
             if (isCut) {
                 cutCount++;
@@ -11490,6 +11461,7 @@ function updateProjectList() {
 function exportProject() {
     var name = document.getElementById('projName').value.trim() || 'project';
     var data = JSON.stringify({
+        schemaVersion: 1,
         name: name,
         config: C,
         cutTileStates: cutTileStates,
@@ -12174,6 +12146,9 @@ function importProject(e) {
             }
             
             // Support old format (config) and new format
+            if (data.schemaVersion && data.schemaVersion > 1) {
+                showToast('Newer project file. Loading the fields this version understands.');
+            }
             C = data.config || data;
             if (!C.wall || !C.tile) {
                 alert('This file is not a LayIt project.');

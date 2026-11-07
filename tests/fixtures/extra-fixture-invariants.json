@@ -1,0 +1,162 @@
+{
+  "written": [
+    {
+      "name": "square-voids-multi.layit",
+      "hash": "51c69676e3cec76d663dfaab5244178d9a25aae57d7becfdd4a31cc59a0c0941"
+    },
+    {
+      "name": "square-12in-entered-as-cm.layit",
+      "hash": "6c2bd142c50bcdd138c26ed63655c5bb455bd42356bfde95d08a060247c93f9c"
+    },
+    {
+      "name": "mosaic-sheet-12-square-pieces.layit",
+      "hash": "1bb5710bc887a53b1c306645673894735ef5c0147e8cd6b0ebfdf8e808b402cb"
+    }
+  ],
+  "voidAdds": [
+    {
+      "label": "Inside",
+      "added": true,
+      "stored": {
+        "l": "Inside",
+        "x": 21,
+        "y": 16,
+        "w": 6,
+        "h": 4
+      }
+    },
+    {
+      "label": "CrossLeft",
+      "added": true,
+      "stored": {
+        "l": "CrossLeft",
+        "x": -2,
+        "y": 15,
+        "w": 8,
+        "h": 6
+      }
+    },
+    {
+      "label": "OverlapInside",
+      "added": true,
+      "stored": {
+        "l": "OverlapInside",
+        "x": 22,
+        "y": 16,
+        "w": 6,
+        "h": 4
+      }
+    },
+    {
+      "label": "TouchLeftEdge",
+      "added": true,
+      "stored": {
+        "l": "TouchLeftEdge",
+        "x": 0,
+        "y": 8,
+        "w": 6,
+        "h": 4
+      }
+    },
+    {
+      "label": "ZeroWidth",
+      "added": false,
+      "stored": {
+        "l": "TouchLeftEdge",
+        "x": 0,
+        "y": 8,
+        "w": 6,
+        "h": 4
+      }
+    },
+    {
+      "label": "CoversTile",
+      "added": true,
+      "stored": {
+        "l": "CoversTile",
+        "x": 0,
+        "y": 23,
+        "w": 13,
+        "h": 14
+      }
+    }
+  ],
+  "voidSummary": [
+    {
+      "l": "Inside",
+      "x": 21,
+      "y": 16,
+      "w": 6,
+      "h": 4,
+      "tilesTouchingBBox": 2,
+      "touchingMarkedCut": 2
+    },
+    {
+      "l": "CrossLeft",
+      "x": -2,
+      "y": 15,
+      "w": 8,
+      "h": 6,
+      "tilesTouchingBBox": 1,
+      "touchingMarkedCut": 1
+    },
+    {
+      "l": "OverlapInside",
+      "x": 22,
+      "y": 16,
+      "w": 6,
+      "h": 4,
+      "tilesTouchingBBox": 2,
+      "touchingMarkedCut": 2
+    },
+    {
+      "l": "TouchLeftEdge",
+      "x": 0,
+      "y": 8,
+      "w": 6,
+      "h": 4,
+      "tilesTouchingBBox": 2,
+      "touchingMarkedCut": 2
+    },
+    {
+      "l": "CoversTile",
+      "x": 0,
+      "y": 23,
+      "w": 13,
+      "h": 14,
+      "tilesTouchingBBox": 3,
+      "touchingMarkedCut": 3
+    }
+  ],
+  "tileCount": 11,
+  "cutCount": 10,
+  "cm": {
+    "display": "30.48",
+    "inches": 12,
+    "wallW": 48,
+    "wallH": 36,
+    "body": {
+      "minX": 0.0625,
+      "maxX": 12.0625,
+      "minY": 23.9375,
+      "maxY": 35.9375,
+      "w": 12,
+      "h": 12
+    },
+    "units": "inches"
+  },
+  "mosaic": {
+    "file": "sheet-outlines",
+    "preview": "sub-tile-field",
+    "sheetW": 12,
+    "sheetH": 12,
+    "pitch": 12.125,
+    "verts": 4,
+    "piece": {
+      "bodyW": 2,
+      "gap": 0.125
+    },
+    "subW": 2,
+    "subGr": 0.125
+  }
+}

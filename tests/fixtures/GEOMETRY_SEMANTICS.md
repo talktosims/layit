@@ -97,3 +97,30 @@ SHA-256 of the `.layit` bytes is in `SHA256SUMS.txt` inside the review zip. Geom
 - `hex-pointy-10x10-grout-eighth.layit` — the 1f20960 lock. Width 10, height 10, grout 1/8. Column step 10.125, row step 7.625.
 - `hex-pointy-10in-regular.layit` — regular pointy hex, flat-to-flat 10 in, height `10 * 2 / sqrt(3)`.
 - `herringbone-4x8-grout-eighth.layit` — patent diagonal pitch, full rotated body, grout not added again.
+- `square-voids-multi.layit` — same 12 in square room, five cutouts entered through Add Cutout. SHA-256 `51c69676e3cec76d663dfaab5244178d9a25aae57d7becfdd4a31cc59a0c0941`.
+- `square-12in-entered-as-cm.layit` — the user typed 121.92 cm by 91.44 cm and a 30.48 cm tile. SHA-256 `6c2bd142c50bcdd138c26ed63655c5bb455bd42356bfde95d08a060247c93f9c`, the same bytes as `square-12in-grout-eighth.layit`.
+- `mosaic-sheet-12-square-pieces.layit` — 12 in sheets, 2 in square pieces, 1/8 in piece grout. SHA-256 `1bb5710bc887a53b1c306645673894735ef5c0147e8cd6b0ebfdf8e808b402cb`.
+
+## Voids
+
+Cutout X and Y are the center, measured from the left and bottom edges. The file stores the lower-left corner: `x = centerX - width/2`, `y = centerY - height/2`, y up. Overlapping cutouts are kept as separate rectangles. They are not rejected and not merged. A zero width is rejected and is absent from the file.
+
+`square-voids-multi.layit` was produced by Add Cutout, then `buildLayItPattern`:
+
+| Label | Center in, size | Stored lower-left |
+|---|---|---|
+| Inside | (24, 18), 6×4 | (21, 16) |
+| CrossLeft | (2, 18), 8×6 | (−2, 15), crosses the left wall |
+| OverlapInside | (25, 18), 6×4 | (22, 16), overlaps Inside |
+| TouchLeftEdge | (3, 10), 6×4 | (0, 8), left edge on the wall |
+| CoversTile | (6.5, 30), 13×14 | (0, 23) |
+
+Zero-width was refused. The file has 5 voids, 11 tiles, 10 with `isCut`. One tile is missing because every vertex is inside CoversTile. Other voids do not keep that tile in the list. Tile outlines are still the full 12 in body. The compiler clips them against each void.
+
+## Mosaic sheet file and screen pieces
+
+`mosaic-sheet-12-square-pieces.layit` has 4-vertex sheet rectangles, 12 by 12 in, center pitch 12.125 in. `tile.mosaicFile` is `sheet-outlines`. The screen, measured in the same session, drew 2 in pieces with a 0.125 in gap, which is one `subGr`, not two. The file does not contain those piece polygons.
+
+## Centimeter roundtrip
+
+121.92 cm by 91.44 cm is 48 in by 36 in. The tile field showed 30.48 cm and `readLengthInputValue` returned 12 in. The exported file is inches and matches the inch square fixture byte for byte.

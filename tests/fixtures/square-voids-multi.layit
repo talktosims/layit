@@ -1,0 +1,401 @@
+{
+  "version": "1.1",
+  "type": "layit-laser",
+  "units": "inches",
+  "hardwareCompile": false,
+  "hardwareReadyArtifact": false,
+  "simulationOnly": true,
+  "laser": "off",
+  "purchaseUsd": 0,
+  "requirement": "F1-full-layout",
+  "coordinateSystem": {
+    "origin": "bottom-left of the wall",
+    "x": "right, inches",
+    "y": "up, inches",
+    "previewStroke": "tiles[].verts is the on-screen stroke after flipping Y from top-left canvas inches",
+    "stagger": "odd rows and odd columns, matching the preview. Patent 7.2.1 text says even; this file follows the preview."
+  },
+  "compiler": {
+    "geometryRevision": "1.1-patent-7.2",
+    "clipSuppliedVertices": true,
+    "rebuildShapes": false,
+    "doNotApplyLegacyCompensation": true,
+    "legacyCompensation": "Do not expand bodies or double hex width. Older hub exports were wrong: a 12 inch square with 1/8 inch grout came out as an 11.875 inch body and a 0.250 inch joint, and a pointy hex outline was about half the patent width on a different grid. This file is already the patent size. Applying that fix again would double-compensate.",
+    "vertexMeaning": "tiles[].verts is the full unclipped tile body in inches, the same polygon as the preview stroke. The compiler clips these vertices to the wall. The app does not pre-clip, so a second clip of an already-inside result is not required and a size correction must not be applied."
+  },
+  "geometry": {
+    "source": "Patent section 7.2 in this repo (LayIt_Patent_Description.md), checked by running this app. Hub commits 971473c, 1f20960, and d4dac01 were not readable here (private repo 404).",
+    "grout": "Added once to center spacing. The tile body is the actual size. For a 12 inch square and 1/8 inch grout the body is 12 and the joint is 0.125.",
+    "herringbone": "Patent 7.2.1 pitch is the full-tile diagonal and does not add grout. The body is the full rotated rectangle.",
+    "hexPointy": "Vertices use half-width tw/2 per patent 7.2.1. Column step is tw + grout. Row step is th * 0.75 + grout.",
+    "fullLayout": "tiles[] lists every tile that meets the wall. It is not a single edge and it is not limited to the current 36 inch projection segment.",
+    "edgeTileModes": "F8 edge and tile modes are extras. They do not replace this full-layout file.",
+    "cutVertices": "verts stays the full outline so the preview stroke and the file match. isCut is true when the tile crosses the wall or a void. In-repo WebSocket protocol section 8 said cut verts were already clipped. This 1.1 file does not pre-clip; hub PR2 compiler clips the supplied vertices and must not also rebuild the shape.",
+    "mosaic": "Open choice, not a silent grout invention: the interactive preview draws sub-tile outlines. This file contains sheet outlines only. Those polygons are not the sub-tile grout pattern. The compiler clips the polygons that are here and does not add the missing piece joints."
+  },
+  "projectionNotes": {
+    "notMeasuredHere": true,
+    "repeatHz": "Patent 7.4 repeats every polygon in the segment at about 0.7 to 2 Hz. Static means the lines stay fixed on the wall, not that the scan is 30 Hz.",
+    "field": "Patent +/-20 degree optics fit a 36 inch field at 6 feet. F3 does not pin 36 inches to 3 feet.",
+    "commandMap": "The two-mirror model needs a full 2D command map. Homography-only correction is not the whole model.",
+    "simulatedBow": "Engineering review: a smooth simulated model with 12 LSB bow is about 0.013 inch on a 13 by 13 grid. That is a simulation, not a held-out measurement, and this file does not invent measured data.",
+    "acceptance": "Hardware still has to show held-out error at or under 1/64 inch and three-visit repeatability at or under 1/32 inch."
+  },
+  "limits": {
+    "protocolMaxTiles": 500,
+    "protocolMaxVertices": 8,
+    "tileCount": 11,
+    "maxVertices": 4,
+    "exceedsProtocolTileLimit": false,
+    "exceedsProtocolVertexLimit": false,
+    "capped": false
+  },
+  "wall": {
+    "width": 48,
+    "height": 36,
+    "polygon": [
+      [
+        0,
+        0
+      ],
+      [
+        48,
+        0
+      ],
+      [
+        48,
+        36
+      ],
+      [
+        0,
+        36
+      ]
+    ]
+  },
+  "placement": {
+    "originXInches": 6.0625,
+    "originYFromTopInches": 6.0625
+  },
+  "tile": {
+    "shape": "square",
+    "width": 12,
+    "height": 12,
+    "grout": 0.125,
+    "orientation": "pointy",
+    "pattern": 0
+  },
+  "voids": [
+    {
+      "l": "Inside",
+      "x": 21,
+      "y": 16,
+      "w": 6,
+      "h": 4
+    },
+    {
+      "l": "CrossLeft",
+      "x": -2,
+      "y": 15,
+      "w": 8,
+      "h": 6
+    },
+    {
+      "l": "OverlapInside",
+      "x": 22,
+      "y": 16,
+      "w": 6,
+      "h": 4
+    },
+    {
+      "l": "TouchLeftEdge",
+      "x": 0,
+      "y": 8,
+      "w": 6,
+      "h": 4
+    },
+    {
+      "l": "CoversTile",
+      "x": 0,
+      "y": 23,
+      "w": 13,
+      "h": 14
+    }
+  ],
+  "tiles": [
+    {
+      "x": 18.1875,
+      "y": 29.9375,
+      "row": 0,
+      "col": 1,
+      "verts": [
+        [
+          12.1875,
+          35.9375
+        ],
+        [
+          24.1875,
+          35.9375
+        ],
+        [
+          24.1875,
+          23.9375
+        ],
+        [
+          12.1875,
+          23.9375
+        ]
+      ],
+      "isCut": true
+    },
+    {
+      "x": 30.3125,
+      "y": 29.9375,
+      "row": 0,
+      "col": 2,
+      "verts": [
+        [
+          24.3125,
+          35.9375
+        ],
+        [
+          36.3125,
+          35.9375
+        ],
+        [
+          36.3125,
+          23.9375
+        ],
+        [
+          24.3125,
+          23.9375
+        ]
+      ],
+      "isCut": false
+    },
+    {
+      "x": 42.4375,
+      "y": 29.9375,
+      "row": 0,
+      "col": 3,
+      "verts": [
+        [
+          36.4375,
+          35.9375
+        ],
+        [
+          48.4375,
+          35.9375
+        ],
+        [
+          48.4375,
+          23.9375
+        ],
+        [
+          36.4375,
+          23.9375
+        ]
+      ],
+      "isCut": true
+    },
+    {
+      "x": 6.0625,
+      "y": 17.8125,
+      "row": 1,
+      "col": 0,
+      "verts": [
+        [
+          0.0625,
+          23.8125
+        ],
+        [
+          12.0625,
+          23.8125
+        ],
+        [
+          12.0625,
+          11.8125
+        ],
+        [
+          0.0625,
+          11.8125
+        ]
+      ],
+      "isCut": true
+    },
+    {
+      "x": 18.1875,
+      "y": 17.8125,
+      "row": 1,
+      "col": 1,
+      "verts": [
+        [
+          12.1875,
+          23.8125
+        ],
+        [
+          24.1875,
+          23.8125
+        ],
+        [
+          24.1875,
+          11.8125
+        ],
+        [
+          12.1875,
+          11.8125
+        ]
+      ],
+      "isCut": true
+    },
+    {
+      "x": 30.3125,
+      "y": 17.8125,
+      "row": 1,
+      "col": 2,
+      "verts": [
+        [
+          24.3125,
+          23.8125
+        ],
+        [
+          36.3125,
+          23.8125
+        ],
+        [
+          36.3125,
+          11.8125
+        ],
+        [
+          24.3125,
+          11.8125
+        ]
+      ],
+      "isCut": true
+    },
+    {
+      "x": 42.4375,
+      "y": 17.8125,
+      "row": 1,
+      "col": 3,
+      "verts": [
+        [
+          36.4375,
+          23.8125
+        ],
+        [
+          48.4375,
+          23.8125
+        ],
+        [
+          48.4375,
+          11.8125
+        ],
+        [
+          36.4375,
+          11.8125
+        ]
+      ],
+      "isCut": true
+    },
+    {
+      "x": 6.0625,
+      "y": 5.6875,
+      "row": 2,
+      "col": 0,
+      "verts": [
+        [
+          0.0625,
+          11.6875
+        ],
+        [
+          12.0625,
+          11.6875
+        ],
+        [
+          12.0625,
+          -0.3125
+        ],
+        [
+          0.0625,
+          -0.3125
+        ]
+      ],
+      "isCut": true
+    },
+    {
+      "x": 18.1875,
+      "y": 5.6875,
+      "row": 2,
+      "col": 1,
+      "verts": [
+        [
+          12.1875,
+          11.6875
+        ],
+        [
+          24.1875,
+          11.6875
+        ],
+        [
+          24.1875,
+          -0.3125
+        ],
+        [
+          12.1875,
+          -0.3125
+        ]
+      ],
+      "isCut": true
+    },
+    {
+      "x": 30.3125,
+      "y": 5.6875,
+      "row": 2,
+      "col": 2,
+      "verts": [
+        [
+          24.3125,
+          11.6875
+        ],
+        [
+          36.3125,
+          11.6875
+        ],
+        [
+          36.3125,
+          -0.3125
+        ],
+        [
+          24.3125,
+          -0.3125
+        ]
+      ],
+      "isCut": true
+    },
+    {
+      "x": 42.4375,
+      "y": 5.6875,
+      "row": 2,
+      "col": 3,
+      "verts": [
+        [
+          36.4375,
+          11.6875
+        ],
+        [
+          48.4375,
+          11.6875
+        ],
+        [
+          48.4375,
+          -0.3125
+        ],
+        [
+          36.4375,
+          -0.3125
+        ]
+      ],
+      "isCut": true
+    }
+  ]
+}

@@ -122,8 +122,8 @@ walk(stage, stage);
 hashes.sort();
 fs.writeFileSync(path.join(stage, 'SHA256SUMS.txt'), hashes.join('\n') + '\n');
 
-const fixtureZip = path.join(art, 'layit-fixtures-1.1-998142f.zip');
-const appZip = path.join(art, 'layit-review-app-998142f.zip');
+const fixtureZip = path.join(art, 'layit-fixtures-qa2.zip');
+const appZip = path.join(art, 'layit-review-app-qa2.zip');
 execSync(`rm -f ${JSON.stringify(fixtureZip)} ${JSON.stringify(appZip)}`);
 execSync(`cd ${JSON.stringify(stage)} && zip -q -r ${JSON.stringify(fixtureZip)} fixtures REVIEW.txt SHA256SUMS.txt`);
 execSync(`cd ${JSON.stringify(stage)} && zip -q -r ${JSON.stringify(appZip)} .`);
@@ -227,6 +227,8 @@ const restored = await page.evaluate(() => {
     hw: pat.hardwareCompile,
     ready: pat.hardwareReadyArtifact,
     purchase: pat.purchaseUsd,
+    frac: toFractionInches(3.875),
+    zeroFrac: toFractionInches(0.02),
     afterBadUpdate: beforeW,
     stillW: C.tile.w
   };
