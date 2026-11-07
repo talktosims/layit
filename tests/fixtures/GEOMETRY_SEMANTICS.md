@@ -119,9 +119,11 @@ Zero-width was refused. The file has 5 voids, 11 tiles, 10 with `isCut`. One til
 
 ## Mosaic sheet file and screen pieces
 
-`mosaic-sheet-12-square-pieces.layit` has 4-vertex sheet rectangles, 12 by 12 in, center pitch 12.125 in. `tile.mosaicFile` is `sheet-outlines`. The screen, measured in the same session, drew 2 in pieces with a 0.125 in gap, which is one `subGr`, not two. The file does not contain those piece polygons.
+`mosaic-sheet-12-square-pieces.layit` has 4-vertex sheet rectangles, 12 by 12 in, center pitch 12.125 in. SHA-256 `5fd0f66f8155266f005e9c89d8e73fecb4c79612dff95e6a45eed3e6fac0f001`. The previous file was `1bb5710bc887a53b1c306645673894735ef5c0147e8cd6b0ebfdf8e808b402cb`. Wall, placement, sheet size, and the six sheet polygons are the same. The new bytes add the coverage fields below.
 
-Sheet-only is the app's original projector path. Commit `774f185` draws the piece field on the layout screen and, in projector mode, draws sheet outlines "for laser cutting." Patent 7.2 specifies hex, herringbone, and square/rectangular grout. It does not specify mosaic piece vertices. Patent language that the laser shows each grout joint is not met for mosaic pieces by this file. Compiler 1.3.0 therefore passes the sheet contract and does not receive piece grout. `requirement` is still `F1-full-layout` on these bytes. That claim covers the sheet polygons in the file, not piece joints. A later file can say `pieceGroutInFile: false` without adding piece vertices. This package does not add that field, so the verified fixture bytes stay put.
+`requirement` is `F1-full-layout-not-satisfied`. `coverage.unmetRequirement` is `F1-full-layout`. `coverage.f1FullLayoutSatisfied` is false. `coverage.polygons` is `sheet-outlines-only`. `coverage.pieceGroutInFile` and `tile.pieceGroutInFile` are false. `tile.mosaicFile` is `sheet-outlines`. F1 is not redefined so that sheets count as a pass.
+
+Sheet-only is the app's original projector path. Commit `774f185` draws the piece field on the layout screen and, in projector mode, draws sheet outlines for the laser. Patent 7.2 specifies hex, herringbone, and square or rectangular grout. It does not specify mosaic piece vertices. This file does not add those vertices.
 
 Decorative screen pieces, measured in Chrome, are not all one entered grout at every contact. Triangle rows are one grout apart; a pair cell holds one grout between bounding boxes, and the pointed edges are farther apart. Arabesque same-row joint is the entered grout; staggered rows nest. Ogee horizontal joint is the entered grout; offset rows miss by about 0.04 in at 1/8 in grout. Star and cross cardinal clearance measured 0.107 in at 1/8 in grout and 0.063 in at 1/16 in grout. Those shapes are not redesigned here.
 

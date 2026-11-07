@@ -165,7 +165,7 @@ const locked = {
   'hex-pointy-10in-regular.layit': 'fa3a8ac20513f47cdc815ba99738fb36aad27c64fe2da495cce5c60d3dd56383',
   'herringbone-4x8-grout-eighth.layit': '9b622ca85d3ff2e267cf012c38430aec8dc6eac193051235ac1ad9e834c16fab',
   'square-voids-multi.layit': '51c69676e3cec76d663dfaab5244178d9a25aae57d7becfdd4a31cc59a0c0941',
-  'mosaic-sheet-12-square-pieces.layit': '1bb5710bc887a53b1c306645673894735ef5c0147e8cd6b0ebfdf8e808b402cb',
+  'mosaic-sheet-12-square-pieces.layit': '5fd0f66f8155266f005e9c89d8e73fecb4c79612dff95e6a45eed3e6fac0f001',
   'square-12in-entered-as-cm.layit': '6c2bd142c50bcdd138c26ed63655c5bb455bd42356bfde95d08a060247c93f9c'
 };
 Object.keys(locked).forEach(function(name) {

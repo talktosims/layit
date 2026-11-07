@@ -7,7 +7,7 @@
   "simulationOnly": true,
   "laser": "off",
   "purchaseUsd": 0,
-  "requirement": "F1-full-layout",
+  "requirement": "F1-full-layout-not-satisfied",
   "coordinateSystem": {
     "origin": "bottom-left of the wall",
     "x": "right, inches",
@@ -31,7 +31,7 @@
     "fullLayout": "tiles[] lists every tile that meets the wall. It is not a single edge and it is not limited to the current 36 inch projection segment.",
     "edgeTileModes": "F8 edge and tile modes are extras. They do not replace this full-layout file.",
     "cutVertices": "verts stays the full outline so the preview stroke and the file match. isCut is true when the tile crosses the wall or a void. In-repo WebSocket protocol section 8 said cut verts were already clipped. This 1.1 file does not pre-clip; hub PR2 compiler clips the supplied vertices and must not also rebuild the shape.",
-    "mosaic": "Open choice, not a silent grout invention: the interactive preview draws sub-tile outlines. This file contains sheet outlines only. Those polygons are not the sub-tile grout pattern. The compiler clips the polygons that are here and does not add the missing piece joints."
+    "mosaic": "Sheet outlines only, the original projector path. Individual piece joints are not in this file and are not projected. F1-full-layout is not satisfied and is not redefined to mean sheets."
   },
   "projectionNotes": {
     "notMeasuredHere": true,
@@ -88,7 +88,8 @@
     "subH": 2,
     "subGr": 0.125,
     "mosaicFile": "sheet-outlines",
-    "mosaicPreview": "sub-tile-field"
+    "mosaicPreview": "sub-tile-field",
+    "pieceGroutInFile": false
   },
   "voids": [],
   "tiles": [
@@ -242,5 +243,11 @@
       ],
       "isCut": true
     }
-  ]
+  ],
+  "coverage": {
+    "polygons": "sheet-outlines-only",
+    "pieceGroutInFile": false,
+    "f1FullLayoutSatisfied": false,
+    "unmetRequirement": "F1-full-layout"
+  }
 }

@@ -2084,6 +2084,7 @@
             </div>
             <button type="button" class="btn-secondary" id="downloadLayitBtn" onclick="exportLaser()" style="width:100%;margin-top:14px;">Download full layout (.layit)</button>
             <p class="hint" style="margin-top:8px;text-align:left;">Saves every tile in the layout. Simulation file only. It does not connect to hardware or turn a laser on.</p>
+            <p id="layitExportLimit" class="hint" style="display:none;margin-top:8px;text-align:left;">Individual mosaic piece grout is not exported or projected. The file has sheet outlines only.</p>
         </div>
 
         <div class="section">
@@ -6397,6 +6398,8 @@ function updateMosaicPieceSummary() {
 
 function refreshMosaicFriendlyFields() {
     var isMosaic = document.getElementById('tileShape').value === 'mosaic';
+    var exportLimit = document.getElementById('layitExportLimit');
+    if (exportLimit) exportLimit.style.display = isMosaic ? 'block' : 'none';
     var mainGroutField = document.getElementById('mainGroutField');
     var nominalField = document.getElementById('nominalField');
     var tileDimensionRow = document.getElementById('tileDimensionRow');
@@ -13118,8 +13121,9 @@ function buildLayItPattern(tiles) {
         tile.subGr = C.tile.subGr;
         tile.mosaicFile = 'sheet-outlines';
         tile.mosaicPreview = 'sub-tile-field';
+        tile.pieceGroutInFile = false;
     }
-    return {
+    var pattern = {
         version: '1.1',
         type: 'layit-laser',
         units: 'inches',
@@ -13182,6 +13186,19 @@ function buildLayItPattern(tiles) {
             return { x: t.x, y: t.y, row: t.row, col: t.col, verts: t.verts, isCut: !!t.isCut };
         })
     };
+    if (C.tile.sh === 'mosaic') {
+        // The original F1 token stays the unmet requirement. It is not a pass,
+        // and it is not redefined to mean sheet outlines.
+        pattern.requirement = 'F1-full-layout-not-satisfied';
+        pattern.coverage = {
+            polygons: 'sheet-outlines-only',
+            pieceGroutInFile: false,
+            f1FullLayoutSatisfied: false,
+            unmetRequirement: 'F1-full-layout'
+        };
+        pattern.geometry.mosaic = 'Sheet outlines only, the original projector path. Individual piece joints are not in this file and are not projected. F1-full-layout is not satisfied and is not redefined to mean sheets.';
+    }
+    return pattern;
 }
 
 function exportLayItFormat(tiles, wallPts) {
