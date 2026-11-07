@@ -22,11 +22,12 @@ for (const f of appFiles) fs.copyFileSync(path.join(root, f), path.join(stage, f
 fs.cpSync(path.join(root, 'tests/fixtures'), path.join(stage, 'fixtures'), { recursive: true });
 fs.cpSync(path.join(root, 'tests/evidence'), path.join(stage, 'screenshots'), { recursive: true });
 
-const review = `LayIt review build
-Geometry code commit: 998142ff3ee360a8cd055e2d834be891035298d0
+const review = `LayIt review build qa4
 Branch: cursor/layit-app-audit-fixes-1c7b
 
 This zip is the real index.html app, not a mock UI.
+The .layit fixtures are the previously verified files. This package does not regenerate them.
+Screen piece geometry for decorative mosaics uses the entered piece size and one piece grout. The .layit mosaic file is still sheet outlines only.
 
 How to open
 1. Unzip.
@@ -105,11 +106,26 @@ if (Math.abs(hex10.col - 10.125) > 1e-9) throw new Error('10x10 column step ' + 
 if (Math.abs(hex10.row - 7.625) > 1e-9) throw new Error('10x10 row step ' + hex10.row);
 if (hex10.shoulders < 2 || !hex10.topIsUp) throw new Error('10x10 shoulders/y ' + JSON.stringify(hex10));
 if (hex10.ready !== false || hex10.purchase !== 0) throw new Error('safety flags');
-const hexPath = path.join(stage, 'fixtures/hex-pointy-10x10-grout-eighth.layit');
-fs.writeFileSync(hexPath, JSON.stringify(hex10.pat, null, 2));
-fs.copyFileSync(hexPath, path.join(root, 'tests/fixtures/hex-pointy-10x10-grout-eighth.layit'));
+const hexPath = path.join(root, 'tests/fixtures/hex-pointy-10x10-grout-eighth.layit');
+const fresh = JSON.stringify(hex10.pat, null, 2);
+const existing = fs.readFileSync(hexPath, 'utf8');
+if (fresh !== existing) {
+  throw new Error('10x10 export JSON no longer matches the verified fixture. Not replacing it.');
+}
+const locked = {
+  'square-12in-grout-eighth.layit': '6c2bd142c50bcdd138c26ed63655c5bb455bd42356bfde95d08a060247c93f9c',
+  'hex-pointy-10x10-grout-eighth.layit': '86e80cad414d1479cc690ac67919c4fdbe6b1a612ad823f58e779e15db85de96',
+  'hex-pointy-10in-regular.layit': 'fa3a8ac20513f47cdc815ba99738fb36aad27c64fe2da495cce5c60d3dd56383',
+  'herringbone-4x8-grout-eighth.layit': '9b622ca85d3ff2e267cf012c38430aec8dc6eac193051235ac1ad9e834c16fab',
+  'square-voids-multi.layit': '51c69676e3cec76d663dfaab5244178d9a25aae57d7becfdd4a31cc59a0c0941',
+  'mosaic-sheet-12-square-pieces.layit': '1bb5710bc887a53b1c306645673894735ef5c0147e8cd6b0ebfdf8e808b402cb'
+};
+for (const name of Object.keys(locked)) {
+  const got = sha256(path.join(root, 'tests/fixtures', name));
+  if (got !== locked[name]) throw new Error(name + ' hash changed to ' + got);
+}
 await genBrowser.close();
-console.log('generated 10x10 fixture', hex10.width, hex10.col, hex10.row);
+console.log('10x10 fixture unchanged', hex10.width, hex10.col, hex10.row);
 const hashes = [];
 function walk(dir, base) {
   for (const name of fs.readdirSync(dir)) {
@@ -122,8 +138,8 @@ walk(stage, stage);
 hashes.sort();
 fs.writeFileSync(path.join(stage, 'SHA256SUMS.txt'), hashes.join('\n') + '\n');
 
-const fixtureZip = path.join(art, 'layit-fixtures-qa3.zip');
-const appZip = path.join(art, 'layit-review-app-qa3.zip');
+const fixtureZip = path.join(art, 'layit-fixtures-qa4.zip');
+const appZip = path.join(art, 'layit-review-app-qa4.zip');
 execSync(`rm -f ${JSON.stringify(fixtureZip)} ${JSON.stringify(appZip)}`);
 execSync(`cd ${JSON.stringify(stage)} && zip -q -r ${JSON.stringify(fixtureZip)} fixtures REVIEW.txt SHA256SUMS.txt`);
 execSync(`cd ${JSON.stringify(stage)} && zip -q -r ${JSON.stringify(appZip)} .`);
@@ -261,7 +277,7 @@ const realErrors = pageErrors.filter(function(e) { return e.indexOf('ServiceWork
 check('artifact page has no script errors besides file:// worker', realErrors.length === 0, realErrors.join(' | '));
 
 const summary = {
-  geometryCommit: '998142ff3ee360a8cd055e2d834be891035298d0',
+  indexSha256: sha256(path.join(root, 'index.html')),
   fixtureZip: fixtureZip,
   appZip: appZip,
   fixtureZipSha256: sha256(fixtureZip),

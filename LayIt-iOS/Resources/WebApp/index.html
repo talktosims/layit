@@ -7833,17 +7833,19 @@ function handleAILabelScan(input) {
 
 function applyAIScannedProduct() {
     if (!window._aiScannedProduct) return;
+    // closeProductNotFound clears the barcode. Keep it so the shared-database write still has a key.
+    var barcode = _pendingBarcode;
     closeProductNotFound();
     applyScannedProduct(window._aiScannedProduct);
-    // Also save to Firebase for other users
-    if (_pendingBarcode && _tileDbReady && _tileDbRef) {
+    if (barcode) {
         var product = Object.assign({}, window._aiScannedProduct, {
             addedAt: new Date().toISOString(),
             verified: false,
             source: 'ai-vision',
             labelPhoto: _pendingLabelPhoto
         });
-        _tileDbRef.child(_pendingBarcode).set(product);
+        TILE_DB_LOCAL[barcode] = product;
+        if (_tileDbReady && _tileDbRef) _tileDbRef.child(barcode).set(product);
     }
     window._aiScannedProduct = null;
 }
@@ -9748,7 +9750,7 @@ function drawMosaicField(ox, oy, s, wall, voidPolys, patternOx, patternOy, projM
             cx.arc(px - rw, pointY, rw, 0, -Math.PI / 2, true);
             cx.closePath();
         } else if (subShape === 'diamond') {
-            var hw = (stWpx - stGrPx) / 2, hh = (stHpx - stGrPx) / 2;
+            var hw = stWpx / 2, hh = stHpx / 2;
             cx.moveTo(px, py - hh);
             cx.lineTo(px + hw, py);
             cx.lineTo(px, py + hh);
@@ -9757,8 +9759,8 @@ function drawMosaicField(ox, oy, s, wall, voidPolys, patternOx, patternOy, projM
         } else if (subShape === 'arabesque') {
             // Arabesque/lantern — 8 cubic bezier curves for proper shoulder-waist-hip profile
             // Bilateral + rotational symmetry. Shoulder reaches hw, waist narrows to 0.38*hw.
-            var hw = (stWpx - stGrPx) / 2;
-            var hh = (stHpx - stGrPx) / 2;
+            var hw = stWpx / 2;
+            var hh = stHpx / 2;
             cx.moveTo(px, py - hh);                                                                           // top point
             // Upper-right: top → shoulder peak
             cx.bezierCurveTo(px + hw * 0.4, py - hh * 0.95,
@@ -9795,8 +9797,8 @@ function drawMosaicField(ox, oy, s, wall, voidPolys, patternOx, patternOy, projM
             cx.closePath();
         } else if (subShape === 'picket') {
             // Elongated hexagon (picket): stretched pointy-top hex
-            var hw = (stWpx - stGrPx) / 2;
-            var hh = (stHpx - stGrPx) / 2;
+            var hw = stWpx / 2;
+            var hh = stHpx / 2;
             var pointH = hh * 0.25; // pointed ends are 25% of total height
             cx.moveTo(px, py - hh);
             cx.lineTo(px + hw, py - hh + pointH);
@@ -9807,7 +9809,7 @@ function drawMosaicField(ox, oy, s, wall, voidPolys, patternOx, patternOy, projM
             cx.closePath();
         } else if (subShape === 'octdot') {
             // Octagon: regular 8-sided polygon
-            var r = (stWpx - stGrPx) / 2;
+            var r = stWpx / 2;
             var s45 = r * Math.sin(Math.PI / 4); // ~0.707
             var c45 = r * Math.cos(Math.PI / 4);
             // Side length factor for regular octagon: side = r * 2 * sin(pi/8)
@@ -9823,7 +9825,7 @@ function drawMosaicField(ox, oy, s, wall, voidPolys, patternOx, patternOy, projM
             cx.closePath();
         } else if (subShape === 'rhombus') {
             // 60°/120° parallelogram for 3D cube illusion
-            var hw = (stWpx - stGrPx) / 2, hh = (stHpx - stGrPx) / 2;
+            var hw = stWpx / 2, hh = stHpx / 2;
             cx.moveTo(px, py - hh);
             cx.lineTo(px + hw, py - hh * 0.25);
             cx.lineTo(px, py + hh * 0.5);
@@ -9831,14 +9833,14 @@ function drawMosaicField(ox, oy, s, wall, voidPolys, patternOx, patternOy, projM
             cx.closePath();
         } else if (subShape === 'triangle') {
             // Equilateral triangle (up-pointing)
-            var hw = (stWpx - stGrPx) / 2, hh = (stHpx - stGrPx) / 2;
+            var hw = stWpx / 2, hh = stHpx / 2;
             cx.moveTo(px - hw, py + hh);
             cx.lineTo(px + hw, py + hh);
             cx.lineTo(px, py - hh);
             cx.closePath();
         } else if (subShape === 'capsule') {
             // Rounded rectangle (pill/stadium shape)
-            var hw = (stWpx - stGrPx) / 2, hh = (stHpx - stGrPx) / 2;
+            var hw = stWpx / 2, hh = stHpx / 2;
             var cr = Math.min(hw, hh * 0.4); // cap radius
             cx.moveTo(px + hw, py - hh + cr);
             cx.arc(px, py - hh + cr, hw, 0, Math.PI, true); // top dome
@@ -9847,7 +9849,7 @@ function drawMosaicField(ox, oy, s, wall, voidPolys, patternOx, patternOy, projM
             cx.closePath();
         } else if (subShape === 'quatrefoil') {
             // 4-lobed clover using bezier curves
-            var hw = (stWpx - stGrPx) / 2, hh = (stHpx - stGrPx) / 2;
+            var hw = stWpx / 2, hh = stHpx / 2;
             var lx = hw * 0.85, ly = hh * 0.85;
             cx.moveTo(px, py - hh);
             cx.bezierCurveTo(px + lx, py - hh, px + hw, py - ly, px + hw, py);
@@ -9867,7 +9869,9 @@ function drawMosaicField(ox, oy, s, wall, voidPolys, patternOx, patternOy, projM
             // and tiles are 180°-flipped in alternating rows.
             //
             // A controls curvature: 0.55 gives a nice ogee S-curve shape.
-            var hw = (stWpx - stGrPx) / 2, hh = (stHpx - stGrPx) / 2;
+            // Width stays the entered size so the horizontal joint is one subGr.
+            // Height stays rowSpacing, which this curve needs for the zero-gap vertical interlock.
+            var hw = stWpx / 2, hh = (stHpx - stGrPx) / 2;
             var A = 0.55;
             cx.moveTo(px, py - hh);                                         // top tip
             // Upper right: derived by 180° rotating the anti-symmetric lower-left
@@ -9932,7 +9936,7 @@ function drawMosaicField(ox, oy, s, wall, voidPolys, patternOx, patternOy, projM
             cx.closePath();
         } else if (subShape === 'kite') {
             // 4-sided kite: narrow top, wide middle, pointed bottom
-            var hw = (stWpx - stGrPx) / 2, hh = (stHpx - stGrPx) / 2;
+            var hw = stWpx / 2, hh = stHpx / 2;
             var topH = hh * 0.3;
             cx.moveTo(px, py - hh);
             cx.lineTo(px + hw, py - hh + topH + hh * 0.4);
@@ -9943,7 +9947,7 @@ function drawMosaicField(ox, oy, s, wall, voidPolys, patternOx, patternOy, projM
             // Leaf / teardrop — mathematically derived symmetric shape
             // 2-fold rotational symmetry (180°), bilateral symmetry (left=right)
             // 4 cubic bezier arcs: clean S-curves meeting at sharp tips
-            var hw = (stWpx - stGrPx) / 2, hh = (stHpx - stGrPx) / 2;
+            var hw = stWpx / 2, hh = stHpx / 2;
             var leafW = Math.min(hw, hh * 0.465); // real marble leaf tiles: ~2:3.5 aspect
             cx.moveTo(px, py - hh);                                                                         // top point
             cx.bezierCurveTo(px + leafW * 0.55, py - hh * 0.85, px + leafW * 0.95, py - hh * 0.35,        // upper right
@@ -9957,7 +9961,7 @@ function drawMosaicField(ox, oy, s, wall, voidPolys, patternOx, patternOy, projM
             cx.closePath();
         } else if (subShape === 'dragonscale') {
             // Pointed top, concave sides to stem
-            var hw = (stWpx - stGrPx) / 2, hh = (stHpx - stGrPx) / 2;
+            var hw = stWpx / 2, hh = stHpx / 2;
             cx.moveTo(px, py - hh);
             cx.lineTo(px + hw, py - hh * 0.2);
             cx.quadraticCurveTo(px + hw * 0.1, py + hh * 0.3, px, py + hh);
@@ -9966,7 +9970,7 @@ function drawMosaicField(ox, oy, s, wall, voidPolys, patternOx, patternOy, projM
         } else if (subShape === 'chevron') {
             // Chevron / V-pattern — parallelogram tiles alternating lean by column
             // Even cols lean right, odd cols lean left → creates zigzag V
-            var hw = (stWpx - stGrPx) / 2, hh = (stHpx - stGrPx) / 2;
+            var hw = stWpx / 2, hh = stHpx / 2;
             var chevSkew = Math.min(hw, hh) * 0.45;
             var isRight = ((col % 2 + 2) % 2) === 0;
             var sk = isRight ? chevSkew : -chevSkew;
@@ -10209,8 +10213,8 @@ function drawMosaicField(ox, oy, s, wall, voidPolys, patternOx, patternOy, projM
 
             // Rhombus / 3D Cube: draw 3 faces per cube for tumbling blocks effect
             if (subShape === 'rhombus') {
-                var rHw = (stWpx - stGrPx) / 2;
-                var rHh = (stHpx - stGrPx) / 2;
+                var rHw = stWpx / 2;
+                var rHh = stHpx / 2;
                 // The main draw already drew the top face. Now draw left and right faces.
                 // Left face (darker shade)
                 var savedFill = cx.fillStyle;
@@ -10238,10 +10242,10 @@ function drawMosaicField(ox, oy, s, wall, voidPolys, patternOx, patternOy, projM
 
             // Triangle: draw inverted (down-pointing) triangle to fill the gap
             if (subShape === 'triangle') {
-                var triHw = (stWpx - stGrPx) / 2;
-                var triHh = (stHpx - stGrPx) / 2;
-                // Down-pointing triangle fills the space to the right
-                var invX = px + triHw + stGrPx / 2;
+                var triHw = stWpx / 2;
+                var triHh = stHpx / 2;
+                // Pair pitch is 2*subW + one subGr. The down-pointing mate sits one body plus that grout to the right.
+                var invX = px + stWpx + stGrPx;
                 var invY = py;
                 if (invX > wallMinX && invX < wallMaxX && invY > wallMinY && invY < wallMaxY) {
                     var invInWall = inPoly([invX, invY], wall);
@@ -10262,9 +10266,11 @@ function drawMosaicField(ox, oy, s, wall, voidPolys, patternOx, patternOy, projM
 
             // Octagon + Dot: draw small square "dots" in the corner gaps
             if (subShape === 'octdot') {
-                var octR = (stWpx - stGrPx) / 2;
-                var octSide = octR * 2 * Math.sin(Math.PI / 8); // side length of octagon
-                var dotSize = octSide - stGrPx; // dot fills the gap minus grout
+                var octR = stWpx / 2;
+                var octSin = Math.sin(Math.PI / 8);
+                // One subGr between the octagon's cut corner and the dot, on the 45° normal.
+                var dotSize = octR * (1 - octSin) + stGrPx * (1 - Math.SQRT2);
+                if (dotSize < 0) dotSize = 0;
                 // Dot positions: at each corner of the octagon grid cell
                 var dotOffsets = [
                     [stColPx / 2, stRowPx / 2],
