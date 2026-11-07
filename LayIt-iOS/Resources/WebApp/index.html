@@ -2204,6 +2204,53 @@
     </div>
 
 <script>
+// Storage may throw in a sandboxed preview (no allow-same-origin). Never touch
+// window.localStorage outside this adapter. Memory fallback is not durable.
+var layitMemoryStore = Object.create(null);
+var layitStorePersistent = false;
+(function probeLayitStore() {
+    try {
+        var probeKey = '__layit_storage_probe__';
+        var disk = window['local' + 'Storage'];
+        disk.setItem(probeKey, '1');
+        disk.removeItem(probeKey);
+        layitStorePersistent = true;
+    } catch (e) {
+        layitStorePersistent = false;
+    }
+})();
+function layitDisk() {
+    return window['local' + 'Storage'];
+}
+var layitStore = {
+    persistent: function() { return layitStorePersistent; },
+    getItem: function(key) {
+        if (layitStorePersistent) {
+            try { return layitDisk().getItem(key); }
+            catch (e) { layitStorePersistent = false; }
+        }
+        return Object.prototype.hasOwnProperty.call(layitMemoryStore, key) ? layitMemoryStore[key] : null;
+    },
+    setItem: function(key, value) {
+        var stored = String(value);
+        layitMemoryStore[key] = stored;
+        if (!layitStorePersistent) return false;
+        try {
+            layitDisk().setItem(key, stored);
+            return true;
+        } catch (e) {
+            layitStorePersistent = false;
+            return false;
+        }
+    },
+    removeItem: function(key) {
+        delete layitMemoryStore[key];
+        if (!layitStorePersistent) return;
+        try { layitDisk().removeItem(key); }
+        catch (e) { layitStorePersistent = false; }
+    }
+};
+
 // ==================== PRO SUBSCRIPTION SYSTEM ====================
 
 var proFeatureDescriptions = {
@@ -2217,7 +2264,7 @@ var proFeatureDescriptions = {
 };
 
 function isProUser() {
-    return localStorage.getItem('layit_pro') === 'true';
+    return layitStore.getItem('layit_pro') === 'true';
 }
 
 function requirePro(featureName) {
@@ -5845,7 +5892,7 @@ var TAB_INFO = {
 };
 
 function getVisitedTabs() {
-    try { return JSON.parse(localStorage.getItem('layit_visited_tabs')) || []; }
+    try { return JSON.parse(layitStore.getItem('layit_visited_tabs')) || []; }
     catch(e) { return []; }
 }
 
@@ -5853,7 +5900,7 @@ function markTabVisited(tabId) {
     var visited = getVisitedTabs();
     if (visited.indexOf(tabId) === -1) {
         visited.push(tabId);
-        localStorage.setItem('layit_visited_tabs', JSON.stringify(visited));
+        layitStore.setItem('layit_visited_tabs', JSON.stringify(visited));
     }
 }
 
@@ -5861,7 +5908,7 @@ function showTabInfoPopup(tabId) {
     // Don't show during demo mode
     if (typeof _demoActive !== 'undefined' && _demoActive) return;
     // Don't show if onboarding hasn't been completed
-    if (!localStorage.getItem('layit_onboarded')) return;
+    if (!layitStore.getItem('layit_onboarded')) return;
     // Don't show if already visited
     if (getVisitedTabs().indexOf(tabId) !== -1) return;
     // Don't show if no info for this tab
@@ -5932,7 +5979,7 @@ function showTab(id) {
     if (id === 'calc') updateTileCount();
     if (id === 'tile') {
         // Update scan badge (FREE vs PRO)
-        var sc = parseInt(localStorage.getItem('layit_scan_count') || '0');
+        var sc = parseInt(layitStore.getItem('layit_scan_count') || '0');
         var badge = document.getElementById('scanBadge');
         if (badge) {
             if (proUser) badge.style.display = 'none';
@@ -6092,13 +6139,13 @@ var CUSTOM_PRESETS_KEY = 'layit-custom-presets';
 
 function getCustomPresets() {
     try {
-        var raw = localStorage.getItem(CUSTOM_PRESETS_KEY);
+        var raw = layitStore.getItem(CUSTOM_PRESETS_KEY);
         return raw ? JSON.parse(raw) : [];
     } catch(e) { return []; }
 }
 
 function saveCustomPresets(list) {
-    localStorage.setItem(CUSTOM_PRESETS_KEY, JSON.stringify(list));
+    layitStore.setItem(CUSTOM_PRESETS_KEY, JSON.stringify(list));
 }
 
 // ── Tile Browser (searchable preset list) ──
@@ -6969,7 +7016,7 @@ function classifyTilePattern(imageBase64, callback) {
 // ── PATTERN SCAN UI ──
 // Opens camera, takes photo, classifies the tile pattern
 function openPatternScanner() {
-    var scanCount = parseInt(localStorage.getItem('layit_scan_count') || '0');
+    var scanCount = parseInt(layitStore.getItem('layit_scan_count') || '0');
     if (scanCount > 0 && !window.proUser) {
         if (typeof requirePro === 'function') requirePro('Pattern Scanner');
         return;
@@ -7045,8 +7092,8 @@ function capturePatternPhoto() {
             '</div>';
 
         // Track scan count
-        var sc = parseInt(localStorage.getItem('layit_scan_count') || '0');
-        localStorage.setItem('layit_scan_count', String(sc + 1));
+        var sc = parseInt(layitStore.getItem('layit_scan_count') || '0');
+        layitStore.setItem('layit_scan_count', String(sc + 1));
     });
 }
 
@@ -7074,7 +7121,7 @@ function closePatternScanner() {
 // ── PRIMARY: AI Label Scanner (photo → AI → auto-populate) ──
 function openTileScanner() {
     // First scan is free — Pro required after that
-    var scanCount = parseInt(localStorage.getItem('layit_scan_count') || '0');
+    var scanCount = parseInt(layitStore.getItem('layit_scan_count') || '0');
     // Update badge
     var badge = document.getElementById('scanBadge');
     if (badge) {
@@ -7477,8 +7524,8 @@ function applyScannedProduct(product) {
     updateTile();
     showToast('✅ Applied: ' + (product.brand ? product.brand + ' ' : '') + product.name);
     // Track scan count for free tier (first scan free)
-    var sc = parseInt(localStorage.getItem('layit_scan_count') || '0');
-    localStorage.setItem('layit_scan_count', String(sc + 1));
+    var sc = parseInt(layitStore.getItem('layit_scan_count') || '0');
+    layitStore.setItem('layit_scan_count', String(sc + 1));
     checkPendingNextStep();
 }
 
@@ -7518,10 +7565,10 @@ function previewLabelPhoto(input) {
 // AI Label Scan — sends photo to Claude Vision API to extract tile specs
 // AI API key / proxy configuration injected by the native wrapper
 var _AI_API_KEY = '';
-var _AI_PROXY_URL = localStorage.getItem('layit_ai_proxy_url') || '';
-var _AI_PROXY_PROFILE = localStorage.getItem('layit_ai_proxy_profile') || '';
-var _AI_TEXT_MODEL = localStorage.getItem('layit_ai_text_model') || '';
-var _AI_VISION_MODEL = localStorage.getItem('layit_ai_vision_model') || '';
+var _AI_PROXY_URL = layitStore.getItem('layit_ai_proxy_url') || '';
+var _AI_PROXY_PROFILE = layitStore.getItem('layit_ai_proxy_profile') || '';
+var _AI_TEXT_MODEL = layitStore.getItem('layit_ai_text_model') || '';
+var _AI_VISION_MODEL = layitStore.getItem('layit_ai_vision_model') || '';
 
 function hasAIServiceConfig(apiKeyOverride) {
     return !!_AI_PROXY_URL;
@@ -11186,7 +11233,7 @@ function generateId() {
 // Get all projects from localStorage
 function getProjects() {
     try {
-        return JSON.parse(localStorage.getItem('tileProjects') || '{}');
+        return JSON.parse(layitStore.getItem('tileProjects') || '{}');
     } catch(e) {
         return {};
     }
@@ -11194,7 +11241,7 @@ function getProjects() {
 
 // Save projects to localStorage
 function saveProjects(projects) {
-    localStorage.setItem('tileProjects', JSON.stringify(projects));
+    return layitStore.setItem('tileProjects', JSON.stringify(projects));
 }
 
 // Mark as unsaved
@@ -11208,8 +11255,10 @@ function updateSaveStatus() {
     var statusEl = document.getElementById('saveStatus');
     if (!currentProjectId) {
         statusEl.innerHTML = '<span style="color:#FF9800">● New project - not saved</span>';
-    } else if (unsavedChanges) {
-        statusEl.innerHTML = '<span style="color:#FF9800">● Unsaved changes</span>';
+    } else if (unsavedChanges || !layitStore.persistent()) {
+        statusEl.innerHTML = layitStore.persistent()
+            ? '<span style="color:#FF9800">● Unsaved changes</span>'
+            : '<span style="color:#FF9800">● Not saved — this preview cannot store projects</span>';
     } else {
         var projects = getProjects();
         var proj = projects[currentProjectId];
@@ -11261,13 +11310,15 @@ function saveCurrentProject() {
         savedAt: Date.now()
     };
     
-    saveProjects(projects);
-    unsavedChanges = false;
+    var persisted = saveProjects(projects);
+    unsavedChanges = !persisted;
     updateSaveStatus();
     updateProjectList();
-    
-    // Brief visual feedback
-    showToast('✓ Project saved', 1500);
+    if (persisted) {
+        showToast('✓ Project saved', 1500);
+    } else {
+        showToast('Kept for this preview only. It is not saved on this device. Export a file if you need a copy.', 4000);
+    }
 }
 
 // Load a project
@@ -11483,15 +11534,15 @@ function exportProject() {
 // SHARE PROJECT (PRO FEATURE)
 // ============================================
 
-var companyLogo = localStorage.getItem('layit_company_logo') || '';
+var companyLogo = layitStore.getItem('layit_company_logo') || '';
 
 function saveCompanyBranding() {
-    localStorage.setItem('layit_company_name', document.getElementById('companyName').value);
+    layitStore.setItem('layit_company_name', document.getElementById('companyName').value);
 }
 
 function loadCompanyBranding() {
-    var name = localStorage.getItem('layit_company_name') || '';
-    var logo = localStorage.getItem('layit_company_logo') || '';
+    var name = layitStore.getItem('layit_company_name') || '';
+    var logo = layitStore.getItem('layit_company_logo') || '';
     document.getElementById('companyName').value = name;
     companyLogo = logo;
     if (logo) {
@@ -11510,7 +11561,7 @@ function handleLogoUpload(e) {
     var reader = new FileReader();
     reader.onload = function(ev) {
         companyLogo = ev.target.result;
-        localStorage.setItem('layit_company_logo', companyLogo);
+        layitStore.setItem('layit_company_logo', companyLogo);
         document.getElementById('logoPreview').style.display = 'block';
         document.getElementById('logoPreviewImg').src = companyLogo;
         showToast('Logo saved');
@@ -11521,7 +11572,7 @@ function handleLogoUpload(e) {
 
 function clearCompanyLogo() {
     companyLogo = '';
-    localStorage.removeItem('layit_company_logo');
+    layitStore.removeItem('layit_company_logo');
     document.getElementById('logoPreview').style.display = 'none';
     document.getElementById('logoPreviewImg').src = '';
     showToast('Logo removed');
@@ -11742,7 +11793,7 @@ function nativeShareProject() {
 }
 
 // ==================== WORKSPACE PHOTO ====================
-var workspacePhoto = localStorage.getItem('layit_workspace_photo') || null;
+var workspacePhoto = layitStore.getItem('layit_workspace_photo') || null;
 
 function handleWorkspacePhoto(e) {
     var file = e.target.files[0];
@@ -11760,7 +11811,7 @@ function handleWorkspacePhoto(e) {
             var ctx = canvas.getContext('2d');
             ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
             workspacePhoto = canvas.toDataURL('image/jpeg', 0.7);
-            localStorage.setItem('layit_workspace_photo', workspacePhoto);
+            layitStore.setItem('layit_workspace_photo', workspacePhoto);
             updateWorkspacePhotoUI();
             showToast('Workspace photo saved');
         };
@@ -12893,9 +12944,9 @@ function joinWaitlist() {
         } catch(e) { console.warn('Waitlist save error:', e); }
     }
     // Save locally too
-    var list = JSON.parse(localStorage.getItem('layit_waitlist') || '[]');
+    var list = JSON.parse(layitStore.getItem('layit_waitlist') || '[]');
     list.push({ email: email, date: new Date().toISOString() });
-    localStorage.setItem('layit_waitlist', JSON.stringify(list));
+    layitStore.setItem('layit_waitlist', JSON.stringify(list));
 
     document.getElementById('waitlistEmail').style.display = 'none';
     document.querySelector('#proj .btn-success').style.display = 'none';
@@ -13255,15 +13306,15 @@ var INITIAL_BOOTSTRAP_KEY = 'layit_initial_bootstrap_version';
 
 (function ensureInitialExperienceState() {
     try {
-        if (localStorage.getItem(INITIAL_BOOTSTRAP_KEY) === INITIAL_BOOTSTRAP_VERSION) return;
-        localStorage.removeItem('layit_onboarding_seen');
-        localStorage.removeItem('layit_onboarded');
-        localStorage.removeItem('layit_visited_tabs');
-        localStorage.removeItem('layit_autosave');
-        localStorage.removeItem('tileProjects');
-        localStorage.removeItem('layit_captured_tile_info_v1');
-        localStorage.removeItem('layit_scan_count');
-        localStorage.setItem(INITIAL_BOOTSTRAP_KEY, INITIAL_BOOTSTRAP_VERSION);
+        if (layitStore.getItem(INITIAL_BOOTSTRAP_KEY) === INITIAL_BOOTSTRAP_VERSION) return;
+        layitStore.removeItem('layit_onboarding_seen');
+        layitStore.removeItem('layit_onboarded');
+        layitStore.removeItem('layit_visited_tabs');
+        layitStore.removeItem('layit_autosave');
+        layitStore.removeItem('tileProjects');
+        layitStore.removeItem('layit_captured_tile_info_v1');
+        layitStore.removeItem('layit_scan_count');
+        layitStore.setItem(INITIAL_BOOTSTRAP_KEY, INITIAL_BOOTSTRAP_VERSION);
     } catch (e) {}
 })();
 
@@ -13277,7 +13328,7 @@ function autoSaveState() {
             savedPatternPosition: savedPatternPosition ? JSON.parse(JSON.stringify(savedPatternPosition)) : null,
             timestamp: Date.now()
         };
-        localStorage.setItem('layit_autosave', JSON.stringify(state));
+        layitStore.setItem('layit_autosave', JSON.stringify(state));
     } catch (e) {
         // localStorage might be full or unavailable
     }
@@ -13286,7 +13337,7 @@ function autoSaveState() {
 // Restore last session state on load
 function autoRestoreState() {
     try {
-        var saved = localStorage.getItem('layit_autosave');
+        var saved = layitStore.getItem('layit_autosave');
         if (!saved) return false;
         
         var state = JSON.parse(saved);
@@ -13294,7 +13345,7 @@ function autoRestoreState() {
         // Check if save is recent (within 7 days)
         var age = Date.now() - state.timestamp;
         if (age > 7 * 24 * 60 * 60 * 1000) {
-            localStorage.removeItem('layit_autosave');
+            layitStore.removeItem('layit_autosave');
             return false;
         }
         
@@ -13358,7 +13409,7 @@ draw = function() {
 // ==================== END AUTO-SAVE ====================
 
 // ==================== LAYIT PRO SUBSCRIPTION ====================
-var proUser = localStorage.getItem('layit_pro') === 'true';
+var proUser = layitStore.getItem('layit_pro') === 'true';
 var _isNativeApp = !!(window._nativeApp || (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.purchase));
 
 // requirePro defined earlier (near line 2007) with contextual feature descriptions
@@ -13369,7 +13420,7 @@ var _isNativeApp = !!(window._nativeApp || (window.webkit && window.webkit.messa
 function activateProDev() {
     if (!window._layitDebugBuild) return;
     proUser = true;
-    localStorage.setItem('layit_pro', 'true');
+    layitStore.setItem('layit_pro', 'true');
     if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.setDevProOverride) {
         window.webkit.messageHandlers.setDevProOverride.postMessage(true);
     }
@@ -13382,7 +13433,7 @@ function activateProDev() {
 function deactivateProDev() {
     if (!window._layitDebugBuild) return;
     proUser = false;
-    localStorage.removeItem('layit_pro');
+    layitStore.removeItem('layit_pro');
     if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.setDevProOverride) {
         window.webkit.messageHandlers.setDevProOverride.postMessage(false);
     }
@@ -13462,7 +13513,7 @@ if (restored) {
 
 // ==================== UNIT TOGGLE (inches / cm) ====================
 var UNIT_MODE_STORAGE_KEY = 'layit_use_cm';
-var useCm = localStorage.getItem(UNIT_MODE_STORAGE_KEY) === '1';
+var useCm = layitStore.getItem(UNIT_MODE_STORAGE_KEY) === '1';
 
 function formatPlainNumber(val) {
     if (val === '' || val === null || typeof val === 'undefined') return '';
@@ -13621,7 +13672,7 @@ function toggleUnitsFromControl(control) {
         });
     }
     useCm = nextUseCm;
-    localStorage.setItem(UNIT_MODE_STORAGE_KEY, useCm ? '1' : '0');
+    layitStore.setItem(UNIT_MODE_STORAGE_KEY, useCm ? '1' : '0');
     refreshUnitLabels();
     draw();
 }
@@ -13734,7 +13785,7 @@ function checkPendingNextStep() {
 }
 
 function completeOnboarding() {
-    localStorage.setItem('layit_onboarded', '1');
+    layitStore.setItem('layit_onboarded', '1');
     var overlay = document.getElementById('onboardingOverlay');
     overlay.classList.remove('visible');
     setTimeout(function() {
@@ -13743,15 +13794,27 @@ function completeOnboarding() {
 }
 
 function restartOnboarding() {
-    localStorage.removeItem('layit_onboarded');
-    localStorage.removeItem('layit_visited_tabs');
+    layitStore.removeItem('layit_onboarded');
+    layitStore.removeItem('layit_visited_tabs');
     showOnboarding();
 }
 
 // Auto-show on first launch
-if (!localStorage.getItem('layit_onboarded')) {
+if (!layitStore.getItem('layit_onboarded')) {
     setTimeout(function() { showOnboarding(); }, 600);
 }
+
+function showStorageRestrictionNotice() {
+    if (layitStore.persistent()) return;
+    if (document.getElementById('storageNotice')) return;
+    var note = document.createElement('div');
+    note.id = 'storageNotice';
+    note.setAttribute('role', 'status');
+    note.style.cssText = 'position:fixed;left:12px;right:12px;bottom:12px;z-index:10001;background:#3b2a12;color:#fde68a;border:1px solid #92400e;border-radius:10px;padding:10px 12px;font-size:13px;line-height:1.4;';
+    note.textContent = 'This preview cannot store projects on this device. The layout still works. Export or download a file if you need a copy. Nothing is kept after you leave.';
+    document.body.appendChild(note);
+}
+showStorageRestrictionNotice();
 
 // ==================== END ONBOARDING WIZARD ====================
 
@@ -14321,7 +14384,9 @@ function stopDemoAudio() {
 // ==================== END DEMO WALKTHROUGH ====================
 </script>
 <script>
-if("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js");
+try {
+    if (navigator.serviceWorker) navigator.serviceWorker.register('sw.js');
+} catch (e) {}
 </script>
 
 <!-- Demo Walkthrough HTML Elements -->
