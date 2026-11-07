@@ -1876,7 +1876,7 @@
                 </div>
             </div>
             <div class="field"><label>Label</label><input type="text" id="voidLabel" placeholder="Niche"></div>
-            <div id="voidPositionHint" style="font-size:11px;color:var(--text-muted);margin-bottom:6px;">📏 Position — measure from wall edges to the center of the cutout</div>
+            <div id="voidPositionHint" style="font-size:11px;color:var(--text-muted);margin-bottom:6px;">📏 Position — measure to the cutout's lower-left corner</div>
             <div class="row"><div class="field"><label id="voidXLabel">From Left Edge (in)</label><input type="number" id="voidX"></div><div class="field"><label id="voidYLabel">From Bottom Edge (in)</label><input type="number" id="voidY"></div></div>
             <div id="voidSizeHint" style="font-size:11px;color:var(--text-muted);margin-bottom:6px;">📐 Size — width and height of the cutout opening</div>
             <div class="row"><div class="field"><label id="voidWLabel">Width (in)</label><input type="number" id="voidW" min="0"></div><div class="field"><label id="voidHLabel">Height (in)</label><input type="number" id="voidH" min="0"></div></div>
@@ -2072,6 +2072,8 @@
             <div id="waitlistConfirm" style="display:none;color:var(--success);margin-top:12px;font-weight:600;">
                 ✓ You're on the list! We'll notify you.
             </div>
+            <button type="button" class="btn-secondary" id="downloadLayitBtn" onclick="exportLaser()" style="width:100%;margin-top:14px;">Download full layout (.layit)</button>
+            <p class="hint" style="margin-top:8px;text-align:left;">Saves every tile in the layout. Simulation file only. It does not connect to hardware or turn a laser on.</p>
         </div>
 
         <div class="section">
@@ -7992,44 +7994,54 @@ function onShape() {
     document.getElementById('patternDiv').style.display = (s === 'square' || s === 'rectangle') ? 'block' : 'none';
     // Show/hide mosaic sub-tile fields
     document.getElementById('mosaicFields').style.display = (s === 'mosaic') ? 'block' : 'none';
-    if (s === 'square') {
+    var switchingShape = s !== currentShape;
+    if (switchingShape && s === 'square') {
         document.getElementById('tileW').value = '';
         document.getElementById('tileH').value = '';
     }
+    function keepOrient(html) {
+        var el = document.getElementById('tileOrient');
+        var prev = el.value;
+        el.innerHTML = html;
+        for (var oi = 0; oi < el.options.length; oi++) {
+            if (el.options[oi].value === prev) { el.value = prev; break; }
+        }
+    }
     // For herringbone, orientation means the direction of the pattern
     if (s === 'herringbone') {
-        document.getElementById('tileOrient').innerHTML = '<option value="pointy">45° Right</option><option value="flat">45° Left</option>';
-        // Set default herringbone sizes (3" x 6")
-        setLengthInputValue('tileW', 3);
-        setLengthInputValue('tileH', 6);
+        keepOrient('<option value="pointy">45° Right</option><option value="flat">45° Left</option>');
+        if (switchingShape) {
+            setLengthInputValue('tileW', 3);
+            setLengthInputValue('tileH', 6);
+        }
     } else if (s === 'fishscale') {
         var fishW = readLengthInputValue('tileW');
         var fishH = readLengthInputValue('tileH');
         if (fishW < 1) setLengthInputValue('tileW', 2);
         if (fishH < 1) setLengthInputValue('tileH', 2.25);
     } else if (s === 'hexagon') {
-        document.getElementById('tileOrient').innerHTML = '<option value="pointy">Vertical</option><option value="flat">Horizontal</option>';
+        keepOrient('<option value="pointy">Vertical</option><option value="flat">Horizontal</option>');
     } else if (s === 'mosaic') {
-        document.getElementById('tileOrient').innerHTML = '<option value="pointy">Vertical</option><option value="flat">Horizontal</option>';
+        keepOrient('<option value="pointy">Vertical</option><option value="flat">Horizontal</option>');
         document.getElementById('nominalMode').checked = false;
         document.getElementById('nominalHint').style.display = 'none';
         document.getElementById('actualReadout').style.display = 'none';
-        if (parseFloat(document.getElementById('grout').value || '0') === 0.125) {
+        if (switchingShape && parseFloat(document.getElementById('grout').value || '0') === 0.125) {
             syncMosaicGroutFields('0.0625');
-        } else {
+        } else if (switchingShape) {
             syncMosaicGroutFields();
         }
         applyDefaultMosaicSubtileForShape(false);
         // Switching into mosaic from a non-mosaic tile should start from the
         // standard 12 x 12 sheet instead of carrying over prior tile dimensions.
         var curW = readLengthInputValue('tileW');
-        if (C.tile.sh !== 'mosaic' || curW < 5) {
+        if (switchingShape) {
             setLengthInputValue('tileW', 12);
             setLengthInputValue('tileH', 12);
         }
         onSubShapeChange();
     } else {
-        document.getElementById('tileOrient').innerHTML = '<option value="pointy">Vertical</option><option value="flat">Horizontal</option>';
+        keepOrient('<option value="pointy">Vertical</option><option value="flat">Horizontal</option>');
     }
     refreshTileDimensionLabels();
     refreshMosaicFriendlyFields();
@@ -8253,6 +8265,159 @@ function updateZoom() {
     draw();
 }
 
+// Patent 7.2 geometry. Screen formulas are Y-down (top = smaller Y).
+// .layit files flip to Y-up with origin at the bottom-left of the wall.
+// Odd rows/columns are staggered, matching the on-screen preview.
+// Patent 7.2.1 text says even rows/columns; that parity is not applied,
+// because the preview has always staggered the odd index and the file must match the preview.
+function screenWallInches() {
+    if (C.polygon && C.polygon.length >= 3) {
+        var h = C.wall.lH;
+        return {
+            flipH: h,
+            polygonDown: C.polygon.map(function(p) { return [p.x, h - p.y]; }),
+            polygonUp: C.polygon.map(function(p) { return [p.x, p.y]; }),
+            width: C.wall.tW,
+            height: h
+        };
+    }
+    var lH = C.wall.lH || 0;
+    var tW = C.wall.tW || 0;
+    var rV = C.wall.rV || 0;
+    var bV = C.wall.bV || 0;
+    var flipH = lH + rV;
+    var down = [
+        [0, lH],
+        [tW, lH + rV],
+        [tW + bV, 0],
+        [0, 0]
+    ];
+    return {
+        flipH: flipH,
+        polygonDown: down,
+        polygonUp: down.map(function(p) { return [p[0], flipH - p[1]]; }),
+        width: Math.max(tW, tW + bV),
+        height: flipH
+    };
+}
+
+function layoutPitchInches() {
+    var g = C.tile.gr || 0;
+    var tw = C.tile.w;
+    var th = C.tile.h;
+    var col;
+    var row;
+    if (C.tile.sh === 'hexagon') {
+        if (C.tile.or === 'flat') {
+            col = th * 0.75 + g;
+            row = tw + g;
+        } else {
+            col = tw + g;
+            row = th * 0.75 + g;
+        }
+    } else if (C.tile.sh === 'square') {
+        col = tw + g;
+        row = th + g;
+    } else if (C.tile.sh === 'fishscale') {
+        col = tw + g;
+        row = (tw * 0.5) + g;
+    } else if (C.tile.sh === 'mosaic') {
+        var mosaicGap = (C.tile.subGr || C.tile.subGr === 0) ? C.tile.subGr : g;
+        col = tw + mosaicGap;
+        row = th + mosaicGap;
+        if (C.tile.subShape === 'hex') {
+            var interlockH = (C.tile.or === 'pointy') ? (C.tile.subW || 0) / 2 : 0;
+            var interlockV = (C.tile.or === 'pointy') ? 0 : (C.tile.subH || 0) / 2;
+            col = tw - interlockH + mosaicGap;
+            row = th - interlockV + mosaicGap;
+        }
+    } else if (C.tile.sh === 'herringbone') {
+        // Patent 7.2.1: diagonal pitch of the full tile. Grout is not added again.
+        var smIn = Math.min(tw, th);
+        var lgIn = Math.max(tw, th);
+        var sqrt2 = Math.SQRT2;
+        col = lgIn * 0.5 * sqrt2;
+        row = smIn * sqrt2;
+    } else {
+        var smIn2 = Math.min(tw, th);
+        var lgIn2 = Math.max(tw, th);
+        if (C.tile.or === 'pointy') {
+            col = smIn2 + g;
+            row = lgIn2 + g;
+        } else {
+            col = lgIn2 + g;
+            row = smIn2 + g;
+        }
+    }
+    return { col: col, row: row };
+}
+
+function layoutCellOffsetInches(row, col, pitch) {
+    var dx = 0;
+    var dy = 0;
+    var oddRow = ((row % 2 + 2) % 2) === 1;
+    var oddCol = ((col % 2 + 2) % 2) === 1;
+    if (C.tile.sh === 'hexagon') {
+        if (C.tile.or !== 'flat' && oddRow) dx += pitch.col / 2;
+        if (C.tile.or === 'flat' && oddCol) dy += pitch.row / 2;
+    } else if (C.tile.sh === 'fishscale') {
+        if (oddRow) dx += pitch.col / 2;
+    } else if (C.tile.sh === 'herringbone') {
+        if (oddCol) dy += pitch.row / 2;
+    }
+    if (C.tile.sh === 'square' || C.tile.sh === 'rectangle' || C.tile.sh === 'mosaic') {
+        var patternOffset = C.tile.pattern || 0;
+        if (patternOffset > 0 && oddRow) dx += pitch.col * patternOffset;
+    }
+    return { dx: dx, dy: dy };
+}
+
+function buildLayoutWall(ox, oy, s) {
+    var frame = screenWallInches();
+    var wall = frame.polygonDown.map(function(p) {
+        return [ox + p[0] * s, oy + p[1] * s];
+    });
+    var voidPolys = [];
+    var lH = C.wall.lH || 0;
+    for (var vi = 0; vi < C.voids.length; vi++) {
+        var v = C.voids[vi];
+        var top = lH - v.y - v.h;
+        var bot = lH - v.y;
+        voidPolys.push([
+            [ox + v.x * s, oy + top * s],
+            [ox + (v.x + v.w) * s, oy + top * s],
+            [ox + (v.x + v.w) * s, oy + bot * s],
+            [ox + v.x * s, oy + bot * s]
+        ]);
+    }
+    return { wall: wall, voidPolys: voidPolys, frame: frame };
+}
+
+function classifyTile(verts, wall, voidPolys) {
+    var allIn = true;
+    var anyIn = false;
+    for (var i = 0; i < verts.length; i++) {
+        if (inPoly(verts[i], wall)) anyIn = true;
+        else allIn = false;
+    }
+    var touchesVoid = false;
+    var fullyInVoid = voidPolys.length > 0;
+    for (var vpi = 0; vpi < voidPolys.length; vpi++) {
+        var vp = voidPolys[vpi];
+        var allVertsInThisVoid = true;
+        for (var j = 0; j < verts.length; j++) {
+            if (inPoly(verts[j], vp)) touchesVoid = true;
+            else allVertsInThisVoid = false;
+        }
+        for (var k = 0; k < vp.length; k++) {
+            if (inPoly(vp[k], verts)) touchesVoid = true;
+        }
+        if (!allVertsInThisVoid) fullyInVoid = false;
+    }
+    if (!voidPolys.length) fullyInVoid = false;
+    return { anyIn: anyIn, allIn: allIn, touchesVoid: touchesVoid, fullyInVoid: fullyInVoid, isCut: !allIn || touchesVoid };
+}
+
 function draw() {
     var s = C.view.z;
     var g = C.tile.gr;
@@ -8336,130 +8501,46 @@ function draw() {
     var tw = C.tile.w * s;
     var th = C.tile.h * s;
     
-    // Wall polygon
-    var wall;
-    if (C.polygon && C.polygon.length >= 3) {
-        // Use custom polygon from perimeter drawing
-        // Polygon is stored with Y=0 at bottom, but canvas Y=0 is at top
-        // So we flip: canvasY = wallHeight - polygonY
-        wall = C.polygon.map(function(p) {
-            return [ox + p.x * s, oy + (C.wall.lH - p.y) * s];
-        });
-    } else {
-        // Legacy rectangle mode with variance
-        var hDiff = rH - C.wall.lH;
-        var topRightY = oy - (hDiff * s);
-        wall = [
-            [ox, oy + C.wall.lH * s],  // Bottom-left
-            [ox + C.wall.tW * s, oy + C.wall.lH * s + (C.wall.rV * s)],  // Bottom-right
-            [ox + (C.wall.tW + C.wall.bV) * s, oy],  // Top-right
-            [ox, oy]  // Top-left
-        ];
-    }
-    
-    // Void polygons
-    var voidPolys = [];
-    for (var vi = 0; vi < C.voids.length; vi++) {
-        var v = C.voids[vi];
-        voidPolys.push([
-            [ox + v.x * s, oy + (C.wall.lH - v.y - v.h) * s],
-            [ox + (v.x + v.w) * s, oy + (C.wall.lH - v.y - v.h) * s],
-            [ox + (v.x + v.w) * s, oy + (C.wall.lH - v.y) * s],
-            [ox + v.x * s, oy + (C.wall.lH - v.y) * s]
-        ]);
-    }
-    
-    // Calculate spacing (tile size + grout) in PIXELS for drawing
-    var groutPx = g * s; // Grout in pixels
-    var colSp, rowSp;
-    
-    // Also calculate spacing in INCHES for stable tile keys
-    var colSpInches, rowSpInches;
-    
-    if (C.tile.sh === 'hexagon') {
-        if (C.tile.or === 'flat') {
-            colSp = th * 0.75 + groutPx;
-            rowSp = tw + groutPx;
-            colSpInches = C.tile.h * 0.75 + g;
-            rowSpInches = C.tile.w + g;
-        } else {
-            colSp = tw + groutPx;
-            rowSp = th * 0.75 + groutPx;
-            colSpInches = C.tile.w + g;
-            rowSpInches = C.tile.h * 0.75 + g;
-        }
-    } else if (C.tile.sh === 'square') {
-        colSp = tw + groutPx;
-        rowSp = th + groutPx;
-        colSpInches = C.tile.w + g;
-        rowSpInches = C.tile.h + g;
-    } else if (C.tile.sh === 'fishscale') {
-        colSp = tw + groutPx;
-        rowSp = (tw * 0.5) + groutPx;
-        colSpInches = C.tile.w + g;
-        rowSpInches = (C.tile.w * 0.5) + g;
-    } else if (C.tile.sh === 'mosaic') {
-        // Mosaic sheets: step = sheet size + one sub-tile grout gap.
-        // The gap between drawn sheets equals subGr, matching within-sheet grout.
-        var mosaicGap = C.tile.subGr || g;
-        colSpInches = C.tile.w + mosaicGap;
-        rowSpInches = C.tile.h + mosaicGap;
-        // Hex sub-tiles: adjacent sheets interlock, reducing effective spacing
-        if (C.tile.subShape === 'hex') {
-            var interlockH = (C.tile.or === 'pointy') ? C.tile.subW / 2 : 0;
-            var interlockV = (C.tile.or === 'pointy') ? 0 : C.tile.subH / 2;
-            colSpInches = C.tile.w - interlockH + mosaicGap;
-            rowSpInches = C.tile.h - interlockV + mosaicGap;
-        }
-        colSp = colSpInches * s;
-        rowSp = rowSpInches * s;
-    } else if (C.tile.sh === 'herringbone') {
-        // Herringbone geometry - CORRECT FORMULA
-        // colSp = lg × 0.5 × √2 (half long side diagonal)
-        // rowSp = sm × √2 (short side diagonal)
-        var sm = Math.min(tw, th);
-        var lg = Math.max(tw, th);
-        var smIn = Math.min(C.tile.w, C.tile.h);
-        var lgIn = Math.max(C.tile.w, C.tile.h);
+    // Wall polygon and voids — same inches model as .layit export
+    var layoutWall = buildLayoutWall(ox, oy, s);
+    var wall = layoutWall.wall;
+    var voidPolys = layoutWall.voidPolys;
 
-        var sqrt2 = Math.SQRT2;
+    // Patent 7.2 pitch. Grout is added once, to center spacing, not subtracted from the body.
+    var groutPx = g * s;
+    var pitchIn = layoutPitchInches();
+    var colSpInches = pitchIn.col;
+    var rowSpInches = pitchIn.row;
+    var colSp = colSpInches * s;
+    var rowSp = rowSpInches * s;
 
-        colSp = lg * 0.5 * sqrt2;
-        rowSp = sm * sqrt2;
-        colSpInches = lgIn * 0.5 * sqrt2;
-        rowSpInches = smIn * sqrt2;
-    } else {
-        var sm = Math.min(tw, th);
-        var lg = Math.max(tw, th);
-        var smIn = Math.min(C.tile.w, C.tile.h);
-        var lgIn = Math.max(C.tile.w, C.tile.h);
-        if (C.tile.or === 'pointy') {
-            colSp = sm + groutPx;
-            rowSp = lg + groutPx;
-            colSpInches = smIn + g;
-            rowSpInches = lgIn + g;
-        } else {
-            colSp = lg + groutPx;
-            rowSp = sm + groutPx;
-            colSpInches = lgIn + g;
-            rowSpInches = smIn + g;
-        }
-    }
-    
-    // Grid bounds - calculate how many tiles we need to draw based on viewport
-    // Use larger buffer for herringbone and offset patterns to ensure full edge coverage
-    // Buffer scales with tile ratio for very long tiles
+    // Count every tile that can meet the wall. Drawing still skips tiles outside the viewport.
     var viewW = cv.width / 2;
     var viewH = cv.height / 2;
-    var buffer = 4;
-    if (C.tile.sh === 'herringbone') {
-        var ratio = Math.max(tw, th) / Math.min(tw, th);
-        buffer = Math.max(20, Math.ceil(ratio * 8));
+    var maxFromLeft = 0;
+    var maxFromTop = 0;
+    for (var bi = 0; bi < layoutWall.frame.polygonDown.length; bi++) {
+        if (layoutWall.frame.polygonDown[bi][0] > maxFromLeft) maxFromLeft = layoutWall.frame.polygonDown[bi][0];
+        if (layoutWall.frame.polygonDown[bi][1] > maxFromTop) maxFromTop = layoutWall.frame.polygonDown[bi][1];
     }
-    var startCol = Math.floor((-ox - patternOx) / colSp) - buffer;
-    var endCol = Math.ceil((viewW - ox - patternOx) / colSp) + buffer;
-    var startRow = Math.floor((-oy - patternOy) / rowSp) - buffer;
-    var endRow = Math.ceil((viewH - oy - patternOy) / rowSp) + buffer;
+    var reach = Math.max(C.tile.w, C.tile.h, 1) * 2 + (g || 0);
+    var startCol = Math.floor((-reach - patternOxInches) / colSpInches) - 2;
+    var endCol = Math.ceil((maxFromLeft + reach - patternOxInches) / colSpInches) + 2;
+    var startRow = Math.floor((-reach - patternOyInches) / rowSpInches) - 2;
+    var endRow = Math.ceil((maxFromTop + reach - patternOyInches) / rowSpInches) + 2;
+    var layoutSpan = (endCol - startCol) * (endRow - startRow);
+    if (!(colSpInches > 0) || !(rowSpInches > 0) || layoutSpan > 250000) {
+        startCol = Math.floor((-ox - patternOx) / colSp) - 4;
+        endCol = Math.ceil((viewW - ox - patternOx) / colSp) + 4;
+        startRow = Math.floor((-oy - patternOy) / rowSp) - 4;
+        endRow = Math.ceil((viewH - oy - patternOy) / rowSp) + 4;
+        if (!window._layoutCountClipped) {
+            window._layoutCountClipped = true;
+            showToast('Layout is too large to count every tile. Zoom in or use a larger tile.');
+        }
+    } else {
+        window._layoutCountClipped = false;
+    }
     
     full = 0;
     part = 0;
@@ -8518,51 +8599,14 @@ function draw() {
             var tileXInches = col * colSpInches;
             var tileYInches = row * rowSpInches;
             
-            // Hex offset
-            if (C.tile.sh === 'hexagon') {
-                if (C.tile.or === 'pointy' && ((row % 2 + 2) % 2) === 1) {
-                    x += colSp / 2;
-                    tileXInches += colSpInches / 2;
-                }
-                if (C.tile.or === 'flat' && ((col % 2 + 2) % 2) === 1) {
-                    y += rowSp / 2;
-                    tileYInches += rowSpInches / 2;
-                }
-            } else if (C.tile.sh === 'fishscale') {
-                if (((row % 2 + 2) % 2) === 1) {
-                    x += colSp / 2;
-                    tileXInches += colSpInches / 2;
-                }
-            }
-            
-            // Herringbone offset - odd columns shift by half row spacing
-            if (C.tile.sh === 'herringbone') {
-                var sm = Math.min(tw, th);
-                var smIn = Math.min(C.tile.w, C.tile.h);
-                var sqrt2 = Math.SQRT2;
-                
-                var rowSpacing = sm * sqrt2;
-                var rowSpacingIn = smIn * sqrt2;
-                
-                if (((col % 2 + 2) % 2) === 1) {
-                    y += rowSpacing / 2;
-                    tileYInches += rowSpacingIn / 2;
-                }
-            }
-            
-            // Brick pattern offset for square/rectangle/mosaic tiles
-            if (C.tile.sh === 'square' || C.tile.sh === 'rectangle' || C.tile.sh === 'mosaic') {
-                var patternOffset = C.tile.pattern || 0;
-                if (patternOffset > 0 && ((row % 2 + 2) % 2) === 1) {
-                    var offsetAmount = colSp * patternOffset;
-                    var offsetAmountInches = colSpInches * patternOffset;
-                    x += offsetAmount;
-                    tileXInches += offsetAmountInches;
-                }
-            }
-            
-            // Quick bounding-box reject: skip tiles clearly outside the wall
-            var tileHalfW = Math.max(tw, th) / 2 + groutPx;
+            var cellOff = layoutCellOffsetInches(row, col, pitchIn);
+            x += cellOff.dx * s;
+            y += cellOff.dy * s;
+            tileXInches += cellOff.dx;
+            tileYInches += cellOff.dy;
+
+            // Generous reject so diagonal and fish-scale tiles are not dropped from the count.
+            var tileHalfW = Math.max(tw, th) * 1.25 + groutPx;
             if (x + tileHalfW < wallMinX || x - tileHalfW > wallMaxX ||
                 y + tileHalfW < wallMinY || y - tileHalfW > wallMaxY) {
                 continue;
@@ -8572,53 +8616,18 @@ function draw() {
             var stableKey = Math.round(tileXInches * 1000) + ',' + Math.round(tileYInches * 1000);
 
             var verts = getVerts(x, y, tw, th, row, col);
-            var allIn = true, anyIn = false;
-            
-            for (var i = 0; i < verts.length; i++) {
-                if (inPoly(verts[i], wall)) {
-                    anyIn = true;
-                } else {
-                    allIn = false;
-                }
-            }
-            
-            // Check void intersection
-            var touchesVoid = false;
-            var fullyInVoid = true;
-            
-            for (var vpi = 0; vpi < voidPolys.length; vpi++) {
-                var vp = voidPolys[vpi];
-                var allVertsInThisVoid = true;
-                
-                for (var i = 0; i < verts.length; i++) {
-                    if (inPoly(verts[i], vp)) {
-                        touchesVoid = true;
-                    } else {
-                        allVertsInThisVoid = false;
-                    }
-                }
-                // Also check if void corners are inside tile
-                for (var i = 0; i < vp.length; i++) {
-                    if (inPoly(vp[i], verts)) {
-                        touchesVoid = true;
-                    }
-                }
-                
-                if (!allVertsInThisVoid) {
-                    fullyInVoid = false;
-                }
-            }
-            
-            if (C.voids.length === 0) {
-                fullyInVoid = false;
-            }
-            
+            var cls = classifyTile(verts, wall, voidPolys);
+            var anyIn = cls.anyIn;
+            var fullyInVoid = cls.fullyInVoid;
+
             // Draw tile if it's in the wall and not fully in a void
             if (anyIn && !fullyInVoid) {
-                var isCut = !allIn || touchesVoid;
+                var isCut = cls.isCut;
                 var key = stableKey; // Use stable key based on position in inches
                 var tileState = cutTileStates[key] || 0; // 0=pending, 1=selected, 2=cut
-                
+                var viewVisible = x + tileHalfW >= -40 && x - tileHalfW <= viewW + 40 &&
+                    y + tileHalfW >= -40 && y - tileHalfW <= viewH + 40;
+                if (viewVisible) {
                 if (window._reportMode) {
                     // Client report: outline only, no fill
                     cx.fillStyle = '#ffffff';
@@ -8653,7 +8662,6 @@ function draw() {
                         // Red - cut/done
                         cx.fillStyle = '#f44336';
                         cx.strokeStyle = '#c62828';
-                        cutDoneCount++;
                     }
                     cx.lineWidth = tileState === 1 ? 3 : 1; // Thicker border when selected
                 } else {
@@ -8699,8 +8707,10 @@ function draw() {
                     });
                 }
                 
+                }
                 if (isCut) {
                     part++;
+                    if (tileState === 2) cutDoneCount++;
                 } else {
                     full++;
                 }
@@ -9306,70 +9316,16 @@ function getHexMosaicBoundary(x, y, tw, th, forExport) {
 
 function drawTile(x, y, tw, th, g, row, col) {
     cx.beginPath();
-    if (C.tile.sh === 'mosaic') {
-        // Draw the sheet at its full tile size; the gap between sheets comes
-        // entirely from the step spacing (tileSize + subGr).
-        var mVerts = getMosaicSheetVerts(x, y, tw, th, false);
-        cx.moveTo(mVerts[0][0], mVerts[0][1]);
-        for (var mi = 1; mi < mVerts.length; mi++) {
-            cx.lineTo(mVerts[mi][0], mVerts[mi][1]);
-        }
-        cx.closePath();
-        return;
-    }
-    if (C.tile.sh === 'hexagon') {
-        if (C.tile.or === 'flat') {
-            var w = th - g, h = tw - g;
-            cx.moveTo(x-w/4, y-h/2);
-            cx.lineTo(x+w/4, y-h/2);
-            cx.lineTo(x+w/2, y);
-            cx.lineTo(x+w/4, y+h/2);
-            cx.lineTo(x-w/4, y+h/2);
-            cx.lineTo(x-w/2, y);
-        } else {
-            var w = tw - g, h = th - g;
-            cx.moveTo(x, y-h/2);
-            cx.lineTo(x+w/2, y-h/4);
-            cx.lineTo(x+w/2, y+h/4);
-            cx.lineTo(x, y+h/2);
-            cx.lineTo(x-w/2, y+h/4);
-            cx.lineTo(x-w/2, y-h/4);
-        }
-    } else if (C.tile.sh === 'square') {
-        cx.rect(x - (tw-g)/2, y - (th-g)/2, tw - g, th - g);
-    } else if (C.tile.sh === 'herringbone') {
-        // Herringbone: rotated rectangle based on column stripe
-        var w = Math.min(tw, th) - g;
-        var h = Math.max(tw, th) - g;
-        
-        // Direction based on column only
-        var angle = (col % 2 === 0) ? 45 : -45;
-        if (C.tile.or === 'flat') angle = -angle;
-        
-        var rad = angle * Math.PI / 180;
-        var cos = Math.cos(rad);
-        var sin = Math.sin(rad);
-        
-        var corners = [[-w/2, -h/2], [w/2, -h/2], [w/2, h/2], [-w/2, h/2]];
-        
-        cx.moveTo(x + corners[0][0] * cos - corners[0][1] * sin, 
-                  y + corners[0][0] * sin + corners[0][1] * cos);
-        for (var i = 1; i < 4; i++) {
-            cx.lineTo(x + corners[i][0] * cos - corners[i][1] * sin,
-                      y + corners[i][0] * sin + corners[i][1] * cos);
-        }
-    } else if (C.tile.sh === 'fishscale') {
-        var fishVerts = getFishscaleVerts(x, y, tw - g);
-        cx.moveTo(fishVerts[0][0], fishVerts[0][1]);
-        for (var fi = 1; fi < fishVerts.length; fi++) {
-            cx.lineTo(fishVerts[fi][0], fishVerts[fi][1]);
-        }
-    } else {
-        var sm = Math.min(tw, th) - g, lg = Math.max(tw, th) - g;
-        var w = C.tile.or === 'pointy' ? sm : lg;
-        var h = C.tile.or === 'pointy' ? lg : sm;
-        cx.rect(x - w/2, y - h/2, w, h);
-    }
+    // Stroke the same polygon that hit-testing and .layit export use.
+    // Grout is the gap between centers (patent 7.2.2), not a second inset of the body.
+    // Mosaic interactive preview draws sub-tiles elsewhere; this path is the sheet outline
+    // used by projector mode and by the full-layout .layit file.
+    var outline = (C.tile.sh === 'mosaic')
+        ? getMosaicSheetVerts(x, y, tw, th, false)
+        : getVerts(x, y, tw, th, row, col);
+    if (!outline || !outline.length) return;
+    cx.moveTo(outline[0][0], outline[0][1]);
+    for (var oi = 1; oi < outline.length; oi++) cx.lineTo(outline[oi][0], outline[oi][1]);
     cx.closePath();
 }
 
@@ -11066,47 +11022,14 @@ function countTilesForOptimize() {
     var ox = 40;
     var oy = 40;
     
-    // Build wall polygon (same as draw function)
-    var rH = C.wall.lH + C.wall.rV;
-    var bW = C.wall.tW + C.wall.bV;
-    var hDiff = rH - C.wall.lH;
-    var topRightY = oy - (hDiff * s);
-    var wall = [
-        [ox, oy],
-        [ox + C.wall.tW * s, topRightY],
-        [ox + bW * s, topRightY + rH * s],
-        [ox, oy + C.wall.lH * s]
-    ];
-    
-    // Void polygons
-    var voidPolys = [];
-    for (var i = 0; i < C.voids.length; i++) {
-        var v = C.voids[i];
-        voidPolys.push([
-            [ox + v.x * s, oy + (C.wall.lH - v.y - v.h) * s],
-            [ox + (v.x + v.w) * s, oy + (C.wall.lH - v.y - v.h) * s],
-            [ox + (v.x + v.w) * s, oy + (C.wall.lH - v.y) * s],
-            [ox + v.x * s, oy + (C.wall.lH - v.y) * s]
-        ]);
-    }
-    
-    // Calculate spacing
-    var colSp, rowSp;
-    if (C.tile.sh === 'hexagon') {
-        if (C.tile.or === 'pointy') {
-            colSp = tw + g * s;
-            rowSp = th * 0.75 + g * s;
-        } else {
-            colSp = tw * 0.75 + g * s;
-            rowSp = th + g * s;
-        }
-    } else {
-        colSp = tw + g * s;
-        rowSp = th + g * s;
-    }
-    
-    var colSpInches = colSp / s;
-    var rowSpInches = rowSp / s;
+    var built = buildLayoutWall(ox, oy, s);
+    var wall = built.wall;
+    var voidPolys = built.voidPolys;
+    var pitchIn = layoutPitchInches();
+    var colSpInches = pitchIn.col;
+    var rowSpInches = pitchIn.row;
+    var colSp = colSpInches * s;
+    var rowSp = rowSpInches * s;
     
     // Pattern offset in pixels
     var patternOxInches = C.view.oxInches || 0;
@@ -11128,28 +11051,13 @@ function countTilesForOptimize() {
             var tileXInches = col * colSpInches;
             var tileYInches = row * rowSpInches;
             
-            // Hex offset
-            if (C.tile.sh === 'hexagon') {
-                if (C.tile.or === 'pointy' && ((row % 2 + 2) % 2) === 1) {
-                    x += colSp / 2;
-                    tileXInches += colSpInches / 2;
-                }
-                if (C.tile.or === 'flat' && ((col % 2 + 2) % 2) === 1) {
-                    y += rowSp / 2;
-                    tileYInches += rowSpInches / 2;
-                }
-            }
-            
-            // Brick pattern offset
-            if (C.tile.sh === 'square' || C.tile.sh === 'rectangle') {
-                var patternOffset = C.tile.pattern || 0;
-                if (patternOffset > 0 && ((row % 2 + 2) % 2) === 1) {
-                    x += colSp * patternOffset;
-                    tileXInches += colSpInches * patternOffset;
-                }
-            }
-            
-            var verts = getVerts(x, y, tw, th);
+            var cellOff = layoutCellOffsetInches(row, col, pitchIn);
+            x += cellOff.dx * s;
+            y += cellOff.dy * s;
+            tileXInches += cellOff.dx;
+            tileYInches += cellOff.dy;
+
+            var verts = getVerts(x, y, tw, th, row, col);
             var allIn = true, anyIn = false;
             
             for (var i = 0; i < verts.length; i++) {
@@ -11433,7 +11341,7 @@ function loadProject(id) {
     setLengthInputValue('botVar', C.wall.bV);
     document.getElementById('tileShape').value = C.tile.sh;
     document.getElementById('tileOrient').value = C.tile.or;
-    document.getElementById('tilePattern').value = C.tile.pattern || 0.5;
+    document.getElementById('tilePattern').value = (C.tile.pattern === 0 || C.tile.pattern) ? String(C.tile.pattern) : '0';
     setLengthInputValue('tileW', C.tile.w);
     setLengthInputValue('tileH', C.tile.h);
     document.getElementById('grout').value = C.tile.gr || 0.125;
@@ -11557,12 +11465,12 @@ function updateProjectList() {
         
         html += '<div class="project-item' + (isActive ? ' active' : '') + '">';
         html += '<div class="project-item-info" onclick="loadProject(\'' + proj.id + '\')">';
-        html += '<div class="project-item-name">' + (isActive ? '✓ ' : '') + proj.name + '</div>';
+        html += '<div class="project-item-name">' + (isActive ? '✓ ' : '') + escapeShareHtml(proj.name) + '</div>';
         html += '<div class="project-item-date">' + formatTimeAgo(date) + '</div>';
         html += '</div>';
         html += '<div class="project-item-actions">';
         html += '<button class="btn-primary" onclick="loadProject(\'' + proj.id + '\')">Open</button>';
-        html += '<button class="btn-secondary" onclick="deleteProject(\'' + proj.id + '\')" style="background:#c00;">🗑</button>';
+        html += '<button class="btn-secondary" aria-label="Delete project" onclick="deleteProject(\'' + proj.id + '\')" style="background:#c00;">🗑</button>';
         html += '</div>';
         html += '</div>';
     }
@@ -11577,6 +11485,10 @@ function exportProject() {
         name: name,
         config: C,
         cutTileStates: cutTileStates,
+        patternLocked: patternLocked,
+        groutColor: groutColor,
+        tileColor: tileColor,
+        tileStroke: tileStroke,
         exportedAt: Date.now()
     }, null, 2);
     
@@ -12244,23 +12156,38 @@ function importProject(e) {
     reader.onload = function(ev) {
         try {
             var data = JSON.parse(ev.target.result);
+            if (data && data.type === 'layit-laser' && !data.config) {
+                alert('That file is a layout export, not a saved project. Open it from the compiler toolchain.');
+                return;
+            }
+            if (!data || (!data.config && !(data.wall && data.tile))) {
+                alert('This file is not a LayIt project.');
+                return;
+            }
             
             // Support old format (config) and new format
             C = data.config || data;
+            if (!C.wall || !C.tile) {
+                alert('This file is not a LayIt project.');
+                return;
+            }
             cutTileStates = data.cutTileStates || {};
+            if (data.groutColor) groutColor = data.groutColor;
+            if (data.tileColor) { tileColor = data.tileColor; tileStroke = data.tileStroke || tileStroke; }
+            patternLocked = !!data.patternLocked;
             currentProjectId = null; // Treat as new project
             unsavedChanges = true;
             
             document.getElementById('projName').value = data.name || 'Imported Project';
-            document.getElementById('leftH').value = C.wall.lH;
-            document.getElementById('rightVar').value = C.wall.rV;
-            document.getElementById('topW').value = C.wall.tW;
-            document.getElementById('botVar').value = C.wall.bV;
+            setLengthInputValue('leftH', C.wall.lH);
+            setLengthInputValue('rightVar', C.wall.rV);
+            setLengthInputValue('topW', C.wall.tW);
+            setLengthInputValue('botVar', C.wall.bV);
             document.getElementById('tileShape').value = C.tile.sh;
-            document.getElementById('tileOrient').value = C.tile.or;
-            document.getElementById('tilePattern').value = C.tile.pattern || 0.5;
-            document.getElementById('tileW').value = C.tile.w;
-            document.getElementById('tileH').value = C.tile.h;
+            document.getElementById('tileOrient').value = C.tile.or || 'pointy';
+            document.getElementById('tilePattern').value = (C.tile.pattern === 0 || C.tile.pattern) ? String(C.tile.pattern) : '0';
+            setLengthInputValue('tileW', C.tile.w);
+            setLengthInputValue('tileH', C.tile.h);
             document.getElementById('grout').value = C.tile.gr || 0.125;
             document.getElementById('tilePreset').value = 'custom';
             document.getElementById('nominalMode').checked = false;
@@ -12268,6 +12195,14 @@ function importProject(e) {
 
             // Show/hide pattern option based on shape
             onShape();
+            if (C.tile.sh === 'mosaic' && C.tile.subShape) {
+                document.getElementById('subShape').value = C.tile.subShape;
+                setLengthInputValue('subW', C.tile.subW || 1);
+                setLengthInputValue('subH', C.tile.subH || 1);
+                document.getElementById('subGr').value = C.tile.subGr || 0.0625;
+            }
+            if (patternLocked) doLock();
+            else doUnlock();
             
             updateVoidList();
             updateSaveStatus();
@@ -13005,177 +12940,84 @@ function exportLaser() {
     }
 }
 
-function getTilesForExport(area) {
-    // Collect all tile data for export
+function enumerateLayoutTiles() {
+    // F1: every tile that meets the wall. Not an edge-only subset and not one projection segment.
+    var pitch = layoutPitchInches();
+    var frame = screenWallInches();
+    var wall = frame.polygonDown;
+    var lH = C.wall.lH || 0;
+    var voidPolys = [];
+    var voids = C.voids || [];
+    for (var vi = 0; vi < voids.length; vi++) {
+        var vd = voids[vi];
+        var top = lH - vd.y - vd.h;
+        var bot = lH - vd.y;
+        voidPolys.push([
+            [vd.x, top],
+            [vd.x + vd.w, top],
+            [vd.x + vd.w, bot],
+            [vd.x, bot]
+        ]);
+    }
+    var ox = C.view.oxInches || 0;
+    var oy = C.view.oyInches || 0;
+    var tw = C.tile.w;
+    var th = C.tile.h;
+    var maxL = 0;
+    var maxT = 0;
+    for (var i = 0; i < wall.length; i++) {
+        if (wall[i][0] > maxL) maxL = wall[i][0];
+        if (wall[i][1] > maxT) maxT = wall[i][1];
+    }
+    var empty = { tiles: [], frame: frame, pitch: pitch, capped: false, span: 0 };
+    if (!(pitch.col > 0) || !(pitch.row > 0) || !(tw > 0) || !(th > 0)) return empty;
+    var reach = Math.max(tw, th, 1) * 2 + (C.tile.gr || 0);
+    var startCol = Math.floor((-reach - ox) / pitch.col) - 2;
+    var endCol = Math.ceil((maxL + reach - ox) / pitch.col) + 2;
+    var startRow = Math.floor((-reach - oy) / pitch.row) - 2;
+    var endRow = Math.ceil((maxT + reach - oy) / pitch.row) + 2;
+    var span = (endCol - startCol) * (endRow - startRow);
+    if (span > 250000) return { tiles: [], frame: frame, pitch: pitch, capped: true, span: span };
     var tiles = [];
-    var g = C.tile.gr;
-    var tw = C.tile.w * 1; // in inches
-    var th = C.tile.h * 1;
-    
-    // Calculate spacing in inches (same logic as draw())
-    var sm = Math.min(tw, th);
-    var lg = Math.max(tw, th);
-    var sqrt2 = Math.SQRT2;
-    
-    var colSpInches, rowSpInches;
-    
-    if (C.tile.sh === 'mosaic') {
-        var mosaicGap = C.tile.subGr || g;
-        colSpInches = tw + mosaicGap;
-        rowSpInches = th + mosaicGap;
-        // Hex sub-tiles: adjacent sheets interlock
-        if (C.tile.subShape === 'hex') {
-            var interlockH = (C.tile.or === 'pointy') ? C.tile.subW / 2 : 0;
-            var interlockV = (C.tile.or === 'pointy') ? 0 : C.tile.subH / 2;
-            colSpInches = tw - interlockH + mosaicGap;
-            rowSpInches = th - interlockV + mosaicGap;
-        }
-    } else if (C.tile.sh === 'herringbone') {
-        colSpInches = lg * 0.5 * sqrt2;
-        rowSpInches = sm * sqrt2;
-    } else if (C.tile.sh === 'fishscale') {
-        colSpInches = tw + g;
-        rowSpInches = (tw * 0.5) + g;
-    } else if (C.tile.sh === 'hexagon') {
-        if (C.tile.or === 'pointy') {
-            colSpInches = tw * 0.75 + g;
-            rowSpInches = th * 0.866 + g;
-        } else {
-            colSpInches = tw * 0.866 + g;
-            rowSpInches = th * 0.75 + g;
-        }
-    } else {
-        colSpInches = tw + g;
-        rowSpInches = th + g;
-    }
-
-    // Generate tile grid
-    var oxInches = C.view.oxInches || 0;
-    var oyInches = C.view.oyInches || 0;
-
-    for (var row = -50; row < 50; row++) {
-        for (var col = -50; col < 50; col++) {
-            var x = col * colSpInches + oxInches;
-            var y = row * rowSpInches + oyInches;
-
-            // Apply offsets for different tile types
-            if (C.tile.sh === 'hexagon') {
-                if (C.tile.or === 'pointy' && ((row % 2 + 2) % 2) === 1) {
-                    x += colSpInches / 2;
-                }
-                if (C.tile.or === 'flat' && ((col % 2 + 2) % 2) === 1) {
-                    y += rowSpInches / 2;
-                }
-            } else if (C.tile.sh === 'fishscale') {
-                if (((row % 2 + 2) % 2) === 1) {
-                    x += colSpInches / 2;
-                }
+    for (var row = startRow; row < endRow; row++) {
+        for (var col = startCol; col < endCol; col++) {
+            var off = layoutCellOffsetInches(row, col, pitch);
+            var fromLeft = col * pitch.col + ox + off.dx;
+            var fromTop = row * pitch.row + oy + off.dy;
+            var vertsDown = getTileVertsInches(fromLeft, fromTop, tw, th, row, col);
+            var cls = classifyTile(vertsDown, wall, voidPolys);
+            if (!cls.anyIn || cls.fullyInVoid) continue;
+            var vertsUp = [];
+            for (var pi = 0; pi < vertsDown.length; pi++) {
+                vertsUp.push([vertsDown[pi][0], frame.flipH - vertsDown[pi][1]]);
             }
-
-            if (C.tile.sh === 'herringbone') {
-                if (((col % 2 + 2) % 2) === 1) {
-                    y += rowSpInches / 2;
-                }
-            }
-
-            // Brick pattern offset for mosaic/square/rectangle
-            if (C.tile.sh === 'mosaic' || C.tile.sh === 'square' || C.tile.sh === 'rectangle') {
-                var patternOffset = C.tile.pattern || 0;
-                if (patternOffset > 0 && ((row % 2 + 2) % 2) === 1) {
-                    x += colSpInches * patternOffset;
-                }
-            }
-            
-            // Get tile vertices
-            var verts = getTileVertsInches(x, y, tw, th, row, col);
-            
-            // Check if tile intersects wall
-            var wallPoly = getWallPolyInches();
-            if (polyIntersects(verts, wallPoly)) {
-                // Determine if tile needs cutting (not fully inside wall or touches a void)
-                var allIn = true;
-                for (var vi = 0; vi < verts.length; vi++) {
-                    if (!inPoly(verts[vi], wallPoly)) { allIn = false; break; }
-                }
-                var touchesVoid = false;
-                if (C.voids && C.voids.length > 0) {
-                    for (var vdi = 0; vdi < C.voids.length; vdi++) {
-                        var v = C.voids[vdi];
-                        var voidPoly = [[v.x, v.y], [v.x + v.w, v.y], [v.x + v.w, v.y + v.h], [v.x, v.y + v.h]];
-                        if (polyIntersects(verts, voidPoly)) { touchesVoid = true; break; }
-                    }
-                }
-                tiles.push({
-                    x: x,
-                    y: y,
-                    verts: verts,
-                    row: row,
-                    col: col,
-                    isCut: !allIn || touchesVoid
-                });
-            }
+            tiles.push({
+                x: fromLeft,
+                y: frame.flipH - fromTop,
+                verts: vertsUp,
+                row: row,
+                col: col,
+                isCut: cls.isCut
+            });
         }
     }
-    
-    return tiles;
+    return { tiles: tiles, frame: frame, pitch: pitch, capped: false, span: span };
 }
 
-function getTileVertsInches(x, y, tw, th, row, col) {
-    var g = C.tile.gr;
-    var w = tw - g;
-    var h = th - g;
+function getTilesForExport(area) {
+    return enumerateLayoutTiles().tiles;
+}
 
-    if (C.tile.sh === 'mosaic') {
-        return getMosaicSheetVerts(x, y, w, h, true);
-    }
-    if (C.tile.sh === 'herringbone') {
-        var sm = Math.min(w, h);
-        var lg = Math.max(w, h);
-        var angle = (col % 2 === 0) ? 45 : -45;
-        if (C.tile.or === 'flat') angle = -angle;
-        var rad = angle * Math.PI / 180;
-        var cos = Math.cos(rad);
-        var sin = Math.sin(rad);
-        
-        var corners = [[-sm/2, -lg/2], [sm/2, -lg/2], [sm/2, lg/2], [-sm/2, lg/2]];
-        return corners.map(function(c) {
-            return [x + c[0] * cos - c[1] * sin, y + c[0] * sin + c[1] * cos];
-        });
-    } else if (C.tile.sh === 'hexagon') {
-        if (C.tile.or === 'pointy') {
-            return [
-                [x, y - h/2], [x + w/4, y - h/4], [x + w/4, y + h/4],
-                [x, y + h/2], [x - w/4, y + h/4], [x - w/4, y - h/4]
-            ];
-        } else {
-            return [
-                [x - w/2, y], [x - w/4, y - h/4], [x + w/4, y - h/4],
-                [x + w/2, y], [x + w/4, y + h/4], [x - w/4, y + h/4]
-            ];
-        }
-    } else if (C.tile.sh === 'fishscale') {
-        return getFishscaleVerts(x, y, w);
-    } else {
-        // Rectangle/Square
-        return [[x - w/2, y - h/2], [x + w/2, y - h/2], [x + w/2, y + h/2], [x - w/2, y + h/2]];
-    }
+
+function getTileVertsInches(x, y, tw, th, row, col) {
+    // Same body as the preview stroke. x/y here are Y-down inches (from the top-left).
+    // Callers that write .layit flip Y so the file origin is the bottom-left.
+    if (C.tile.sh === 'mosaic') return getMosaicSheetVerts(x, y, tw, th, true);
+    return getVerts(x, y, tw, th, row, col);
 }
 
 function getWallPolyInches() {
-    // If we have a custom polygon from perimeter drawing, use it
-    if (C.polygon && C.polygon.length >= 3) {
-        return C.polygon.map(function(p) {
-            return [p.x, p.y];
-        });
-    }
-    
-    // Legacy rectangle mode with optional variance
-    return [
-        [0, 0],
-        [C.wall.tW, C.wall.rV],
-        [C.wall.tW + C.wall.bV, C.wall.lH + C.wall.rV],
-        [C.wall.bV, C.wall.lH]
-    ];
+    return screenWallInches().polygonUp;
 }
 
 function polyIntersects(poly1, poly2) {
@@ -13196,30 +13038,99 @@ function getBounds(poly) {
     };
 }
 
-function exportLayItFormat(tiles, wallPts) {
-    var data = {
-        version: '1.0',
+function buildLayItPattern(tiles) {
+    var listed = tiles ? null : enumerateLayoutTiles();
+    var useTiles = tiles || listed.tiles;
+    var frame = (listed && listed.frame) ? listed.frame : screenWallInches();
+    var maxVerts = 0;
+    for (var i = 0; i < useTiles.length; i++) {
+        if (useTiles[i].verts && useTiles[i].verts.length > maxVerts) maxVerts = useTiles[i].verts.length;
+    }
+    var lH = C.wall.lH || 0;
+    var voids = (C.voids || []).map(function(v) {
+        return { l: v.l || '', x: v.x, y: frame.flipH - lH + v.y, w: v.w, h: v.h };
+    });
+    var tile = {
+        shape: C.tile.sh,
+        width: C.tile.w,
+        height: C.tile.h,
+        grout: C.tile.gr,
+        orientation: C.tile.or,
+        pattern: (C.tile.pattern === 0 || C.tile.pattern) ? C.tile.pattern : 0
+    };
+    if (C.tile.sh === 'mosaic') {
+        tile.subShape = C.tile.subShape;
+        tile.subW = C.tile.subW;
+        tile.subH = C.tile.subH;
+        tile.subGr = C.tile.subGr;
+        tile.mosaicFile = 'sheet-outlines';
+        tile.mosaicPreview = 'sub-tile-field';
+    }
+    return {
+        version: '1.1',
         type: 'layit-laser',
-        wall: {
-            width: C.wall.tW,
-            height: C.wall.lH,
-            polygon: getWallPolyInches()
+        units: 'inches',
+        hardwareCompile: false,
+        simulationOnly: true,
+        laser: 'off',
+        requirement: 'F1-full-layout',
+        coordinateSystem: {
+            origin: 'bottom-left of the wall',
+            x: 'right, inches',
+            y: 'up, inches',
+            previewStroke: 'tiles[].verts is the on-screen stroke after flipping Y from top-left canvas inches',
+            stagger: 'odd rows and odd columns, matching the preview. Patent 7.2.1 text says even; this file follows the preview.'
         },
-        tile: (function() {
-            var t = { shape: C.tile.sh, width: C.tile.w, height: C.tile.h, grout: C.tile.gr };
-            if (C.tile.sh === 'mosaic') {
-                t.subShape = C.tile.subShape;
-                t.subW = C.tile.subW;
-                t.subH = C.tile.subH;
-                t.subGr = C.tile.subGr;
-            }
-            return t;
-        })(),
-        voids: C.voids,
-        tiles: tiles.map(function(t) {
-            return { x: t.x, y: t.y, verts: t.verts, isCut: t.isCut || false };
+        compiler: {
+            geometryRevision: '1.1-patent-7.2',
+            clipSuppliedVertices: true,
+            rebuildShapes: false,
+            doNotApplyLegacyCompensation: true,
+            legacyCompensation: 'Do not expand bodies or double hex width. Older hub exports were wrong: a 12 inch square with 1/8 inch grout came out as an 11.875 inch body and a 0.250 inch joint, and a pointy hex outline was about half the patent width on a different grid. This file is already the patent size. Applying that fix again would double-compensate.',
+            vertexMeaning: 'tiles[].verts is the full unclipped tile body in inches, the same polygon as the preview stroke. The compiler clips these vertices to the wall. The app does not pre-clip, so a second clip of an already-inside result is not required and a size correction must not be applied.'
+        },
+        geometry: {
+            source: 'Patent section 7.2 in this repo (LayIt_Patent_Description.md), checked by running this app. Hub commits 971473c, 1f20960, and d4dac01 were not readable here (private repo 404).',
+            grout: 'Added once to center spacing. The tile body is the actual size. For a 12 inch square and 1/8 inch grout the body is 12 and the joint is 0.125.',
+            herringbone: 'Patent 7.2.1 pitch is the full-tile diagonal and does not add grout. The body is the full rotated rectangle.',
+            hexPointy: 'Vertices use half-width tw/2 per patent 7.2.1. Column step is tw + grout. Row step is th * 0.75 + grout.',
+            fullLayout: 'tiles[] lists every tile that meets the wall. It is not a single edge and it is not limited to the current 36 inch projection segment.',
+            edgeTileModes: 'F8 edge and tile modes are extras. They do not replace this full-layout file.',
+            cutVertices: 'verts stays the full outline so the preview stroke and the file match. isCut is true when the tile crosses the wall or a void. In-repo WebSocket protocol section 8 said cut verts were already clipped. This 1.1 file does not pre-clip; hub PR2 compiler clips the supplied vertices and must not also rebuild the shape.',
+            mosaic: 'Left as the existing product split: the interactive preview draws sub-tiles, and this file uses sheet outlines. That choice is not resolved here.'
+        },
+        projectionNotes: {
+            notMeasuredHere: true,
+            repeatHz: 'Patent 7.4 repeats every polygon in the segment at about 0.7 to 2 Hz. Static means the lines stay fixed on the wall, not that the scan is 30 Hz.',
+            field: 'Patent +/-20 degree optics fit a 36 inch field at 6 feet. F3 does not pin 36 inches to 3 feet.',
+            commandMap: 'The two-mirror model needs a full 2D command map. Homography-only correction is not the whole model.',
+            simulatedBow: 'Engineering review: a smooth simulated model with 12 LSB bow is about 0.013 inch on a 13 by 13 grid. That is a simulation, not a held-out measurement, and this file does not invent measured data.',
+            acceptance: 'Hardware still has to show held-out error at or under 1/64 inch and three-visit repeatability at or under 1/32 inch.'
+        },
+        limits: {
+            protocolMaxTiles: 500,
+            protocolMaxVertices: 8,
+            tileCount: useTiles.length,
+            maxVertices: maxVerts,
+            exceedsProtocolTileLimit: useTiles.length > 500,
+            exceedsProtocolVertexLimit: maxVerts > 8,
+            capped: listed ? !!listed.capped : false
+        },
+        wall: { width: frame.width, height: frame.height, polygon: frame.polygonUp },
+        placement: {
+            originXInches: C.view.oxInches || 0,
+            originYFromTopInches: C.view.oyInches || 0
+        },
+        tile: tile,
+        voids: voids,
+        tiles: useTiles.map(function(t) {
+            return { x: t.x, y: t.y, row: t.row, col: t.col, verts: t.verts, isCut: !!t.isCut };
         })
     };
+}
+
+function exportLayItFormat(tiles, wallPts) {
+    var data = buildLayItPattern(tiles);
     
     try {
         var jsonStr = JSON.stringify(data, null, 2);
@@ -13237,41 +13148,34 @@ function exportLayItFormat(tiles, wallPts) {
 }
 
 function exportSVGFormat(tiles, wallPts) {
-    var wallPoly = getWallPolyInches();
-    
-    // Use wall bounds, not tile bounds
-    var w = Math.max(C.wall.tW, C.wall.tW + C.wall.bV);
-    var h = Math.max(C.wall.lH, C.wall.lH + C.wall.rV);
-    var scale = 10; // 10 pixels per inch for reasonable file size
+    var frame = screenWallInches();
+    var w = frame.width;
+    var h = frame.height;
+    function sy(y) { return h - y; }
+    var scale = 10;
     
     var svg = '<?xml version="1.0" encoding="UTF-8"?>\n';
     svg += '<svg xmlns="http://www.w3.org/2000/svg" width="' + (w * scale) + '" height="' + (h * scale) + '" viewBox="0 0 ' + w + ' ' + h + '">\n';
-    svg += '  <desc>LayIt Tile Pattern Export</desc>\n';
+    svg += '  <desc>LayIt full layout. SVG Y is down so the picture matches the screen. Source inches are Y-up.</desc>\n';
     
-    // Wall outline
-    svg += '  <polygon points="' + wallPoly.map(function(p) { 
-        return p[0] + ',' + p[1]; 
+    svg += '  <polygon points="' + frame.polygonUp.map(function(p) {
+        return p[0] + ',' + sy(p[1]);
     }).join(' ') + '" fill="none" stroke="#333" stroke-width="0.1"/>\n';
     
-    // Tiles - filter to only those within wall bounds
     svg += '  <g id="tiles" fill="none" stroke="#000" stroke-width="0.05">\n';
     tiles.forEach(function(t) {
-        // Check if tile center is within wall bounds (simple check)
-        if (t.x >= 0 && t.x <= w && t.y >= 0 && t.y <= h) {
-            svg += '    <polygon points="' + t.verts.map(function(p) { 
-                return p[0] + ',' + p[1]; 
-            }).join(' ') + '"/>\n';
-        }
+        svg += '    <polygon points="' + t.verts.map(function(p) {
+            return p[0] + ',' + sy(p[1]);
+        }).join(' ') + '"/>\n';
     });
     svg += '  </g>\n';
     
-    // Voids - Y is stored as "from bottom", SVG Y goes down from top
     if (C.voids && C.voids.length > 0) {
         svg += '  <g id="voids" fill="none" stroke="#f00" stroke-width="0.1">\n';
+        var lH = C.wall.lH || 0;
         C.voids.forEach(function(v) {
-            // Flip Y: wall height - void Y - void height
-            var svgY = h - v.y - v.h;
-            svg += '    <rect x="' + v.x + '" y="' + svgY + '" width="' + v.w + '" height="' + v.h + '"/>\n';
+            var yUp = frame.flipH - lH + v.y;
+            svg += '    <rect x="' + v.x + '" y="' + sy(yUp + v.h) + '" width="' + v.w + '" height="' + v.h + '"/>\n';
         });
         svg += '  </g>\n';
     }
@@ -13319,9 +13223,12 @@ function exportDXFFormat(tiles, wallPts) {
     
     // Voids
     if (C.voids && C.voids.length > 0) {
+        var frame = screenWallInches();
+        var lH = C.wall.lH || 0;
         C.voids.forEach(function(v) {
+            var yUp = frame.flipH - lH + v.y;
             dxf += '0\nPOLYLINE\n8\nVOIDS\n66\n1\n70\n1\n';
-            [[v.x, v.y], [v.x + v.w, v.y], [v.x + v.w, v.y + v.h], [v.x, v.y + v.h]].forEach(function(p) {
+            [[v.x, yUp], [v.x + v.w, yUp], [v.x + v.w, yUp + v.h], [v.x, yUp + v.h]].forEach(function(p) {
                 dxf += '0\nVERTEX\n8\nVOIDS\n10\n' + p[0] + '\n20\n' + p[1] + '\n30\n0\n';
             });
             dxf += '0\nSEQEND\n';
@@ -13428,7 +13335,7 @@ function autoRestoreState() {
                 document.getElementById('nominalMode').checked = false;
                 onNominalToggle();
                 if (document.getElementById('tilePattern')) {
-                    document.getElementById('tilePattern').value = C.tile.pattern || 0.5;
+                    document.getElementById('tilePattern').value = (C.tile.pattern === 0 || C.tile.pattern) ? String(C.tile.pattern) : '0';
                 }
                 onShape(); // Update UI based on shape
                 if (C.tile.sh === 'mosaic' && C.tile.subShape) {
@@ -13539,7 +13446,25 @@ generateAppIcon();
 loadCompanyBranding();
 
 // Try to restore last session first
+function syncEditorsFromState() {
+    var shapeEl = document.getElementById('tileShape');
+    if (!shapeEl || !C || !C.tile) return;
+    shapeEl.value = C.tile.sh || 'hexagon';
+    setLengthInputValue('tileW', C.tile.w || '');
+    setLengthInputValue('tileH', C.tile.h || '');
+    var groutEl = document.getElementById('grout');
+    if (groutEl && C.tile.gr) groutEl.value = String(C.tile.gr);
+    var pat = document.getElementById('tilePattern');
+    if (pat) pat.value = (C.tile.pattern === 0 || C.tile.pattern) ? String(C.tile.pattern) : '0';
+    onShape();
+    var orient = document.getElementById('tileOrient');
+    if (orient && C.tile.or) orient.value = C.tile.or;
+}
+
 var restored = autoRestoreState();
+if (!restored) {
+    syncEditorsFromState();
+}
 
 updateVoidList();
 draw();
