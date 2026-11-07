@@ -1216,6 +1216,54 @@
             color: #fca5a5;
         }
         /* ==================== END DEMO WALKTHROUGH CSS ==================== */
+        #layitTourRing {
+            position: fixed;
+            z-index: 10040;
+            border: 3px solid #4ade80;
+            border-radius: 12px;
+            box-shadow: 0 0 0 9999px rgba(8, 11, 18, 0.45);
+            pointer-events: none;
+            display: none;
+        }
+        #layitTourDock {
+            position: fixed;
+            z-index: 10050;
+            left: 12px;
+            right: 12px;
+            bottom: 12px;
+            max-height: 46vh;
+            overflow: auto;
+            background: #0f172a;
+            color: #f8fafc;
+            border: 1px solid rgba(74, 222, 128, 0.45);
+            border-radius: 16px;
+            padding: 12px;
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+            display: none;
+        }
+        #layitTourDock h2 { font-size: 16px; margin: 0 0 4px; }
+        #layitTourMeta { font-size: 12px; color: #94a3b8; margin-bottom: 6px; }
+        #layitTourCaption { font-size: 15px; line-height: 1.45; margin: 0 0 8px; }
+        #layitTourVoice { font-size: 12px; color: #86efac; margin-bottom: 8px; }
+        #layitTourDock .tour-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+        #layitTourDock button, #layitTourDock select {
+            width: auto;
+            flex: 1 1 120px;
+            margin-top: 0;
+            min-height: 44px;
+            padding: 8px 10px;
+            border-radius: 10px;
+            border: 1px solid rgba(255,255,255,0.2);
+            background: #1e293b;
+            color: #f8fafc;
+            font-size: 14px;
+            font-weight: 600;
+        }
+        #layitTourDock button:focus, #layitTourDock select:focus { outline: 3px solid #4ade80; outline-offset: 2px; }
+        @media (max-width: 520px) {
+            #layitTourDock { left: 8px; right: 8px; padding: 10px; }
+            #layitTourCaption { font-size: 14px; }
+        }
 
     </style>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
@@ -1640,6 +1688,7 @@
             </button>
         </div>
         <div class="hint mb-3" id="controlsHint">📱 One finger: move pattern • Two fingers: pan & zoom<br>💻 Drag: move pattern • Shift+drag: pan • Scroll: zoom</div>
+        <button type="button" class="btn-primary" id="startGuidedTourBtn" onclick="startLayitTour()" style="width:100%;margin-bottom:10px;">Start guided tour</button>
         <div class="row">
             <button class="btn-secondary" onclick="resetView()">📍 Reset View</button>
             <button class="btn-success" onclick="runOptimize('balanced')" style="flex:1;" id="optimizeBtn">🎯 Optimize</button>
@@ -1744,7 +1793,7 @@
 
     <div id="tile" class="panel">
         <div class="section" style="margin-bottom:16px;">
-            <button onclick="openTileScanner()" style="width:100%;padding:18px 16px;background:linear-gradient(135deg,rgba(34,197,94,0.08),rgba(34,197,94,0.02));border:2px dashed var(--success);border-radius:var(--radius-md);cursor:pointer;display:flex;align-items:center;gap:14px;text-align:left;color:var(--text-primary);">
+            <button type="button" id="identifyTileBtn" onclick="openTileScanner()" style="width:100%;padding:18px 16px;background:linear-gradient(135deg,rgba(34,197,94,0.08),rgba(34,197,94,0.02));border:2px dashed var(--success);border-radius:var(--radius-md);cursor:pointer;display:flex;align-items:center;gap:14px;text-align:left;color:var(--text-primary);">
                 <span style="font-size:32px;line-height:1;">📸</span>
                 <div style="flex:1;">
                     <div style="display:flex;align-items:center;gap:8px;">
@@ -2029,7 +2078,7 @@
         <div class="section">
             <h3>📊 Client Report <span style="background:var(--success);color:#fff;font-size:9px;padding:2px 6px;border-radius:4px;font-weight:700;letter-spacing:0.5px;margin-left:4px;">PRO</span></h3>
             <p class="hint mb-3" style="text-align:left;">Generate a 3-page professional B&W report (8.5×11) with your branding, workspace photo, layout, measurements, tile specs, and notes page. Print-ready PDF.</p>
-            <button class="btn-success" onclick="if(!requirePro('Client Report Share'))return;generateClientReport()" style="width:100%;display:flex;align-items:center;justify-content:center;gap:8px;padding:14px;">
+            <button type="button" class="btn-success" id="clientReportBtn" onclick="if(!requirePro('Client Report Share'))return;generateClientReport()" style="width:100%;display:flex;align-items:center;justify-content:center;gap:8px;padding:14px;">
                 <span style="font-size:18px;">📋</span> Generate Client Report
             </button>
         </div>
@@ -2201,6 +2250,7 @@
                 New to LayIt? Replay the guided walkthrough to learn the basics.
             </p>
             <button class="btn-secondary" onclick="restartOnboarding()" style="width:100%;margin-bottom:8px;">Restart Tutorial</button>
+            <button type="button" class="btn-primary" id="replayGuidedTourBtn" onclick="startLayitTour()" style="width:100%;margin-bottom:8px;">Replay guided tour</button>
             <button class="btn-secondary" onclick="startDemoMode()" style="width:100%;background:linear-gradient(135deg,rgba(139,92,246,0.2),rgba(239,68,68,0.15));border-color:rgba(139,92,246,0.4);">▶ Watch Demo (2 min)</button>
         </div>
     </div>
@@ -14418,6 +14468,312 @@ function stopDemoAudio() {
 }
 
 // ==================== END DEMO WALKTHROUGH ====================
+
+// Optional spoken tour. Starts only from a button. Does not save, export, buy, or open the camera.
+var LAYIT_TOUR_STEPS = [
+    { chapter: 'Welcome', title: 'How LayIt works', tab: 'diagram', target: '#tabBar',
+      say: 'Welcome to LayIt. This tour shows the screens in this app. It does not change your project, and you can leave whenever you want.' },
+    { chapter: 'Welcome', title: 'The tabs', tab: 'diagram', target: '#tabBar',
+      say: 'These tabs are the app. Layout is the picture. Wall is the room. Tile is the product. Cutouts, Calc, and Files hold the openings, the counts, and your saved work. Laser is a simulation preview, not a connected projector.' },
+    { chapter: 'Wall', title: 'The room', tab: 'wall', target: '#perimeterCanvasContainer',
+      say: 'On Wall, outline the surface. Choose wall or floor, tap the corners, then type the real lengths. The inches and centimeters switch only changes how you type. The layout underneath stays in inches.' },
+    { chapter: 'Tile', title: 'Size, pattern, and grout', tab: 'tile', target: '#tileDimensionRow',
+      say: 'Enter the actual face of the tile, unless you turn on Nominal. Nominal subtracts one grout joint from the box size. The pattern menu sets the stagger, including no stagger. Grout is added once between tile centers.' },
+    { chapter: 'Layout', title: 'Move, lock, and counts', tab: 'diagram', target: '#lockBtn',
+      say: 'On Layout, drag to move the pattern. The lock keeps that position. Full and Cuts count the tiles in this layout. Orange pieces are clipped by the wall or a cutout. This tour does not mark any cuts done.' },
+    { chapter: 'Layout', title: 'Optimize stays yours', tab: 'diagram', target: '#optimizeBtn',
+      say: 'Optimize shifts the pattern to reduce awkward cuts. Reset View recenters the picture. This tour does not press either button.' },
+    { chapter: 'Cutouts', title: 'Openings', tab: 'voids', target: '#voidPositionHint',
+      say: 'Cutouts are windows, niches, and outlets. Measure to the center of the opening from the left and from the bottom, then enter its width and height. A tile drops out only when it sits fully inside one cutout. Overlapping cutouts stay separate.' },
+    { chapter: 'Calc', title: 'Counts and cost', tab: 'calc', target: '#calcTotalCount',
+      say: 'Calc turns the layout into a count, with a waste allowance, a cost estimate, and a materials list. Prices stay blank until you type them. This tour does not look up prices or open a store.' },
+    { chapter: 'Files', title: 'Save and move a project', tab: 'projects', target: '#projName',
+      say: 'Give the project a name here. Save keeps it on this device when storage works. If this preview cannot store projects, the app says so and keeps the work only for this visit. This tour will not save, export, import, or share.' },
+    { chapter: 'Files', title: 'Client report', tab: 'projects', target: '#clientReportBtn',
+      say: 'A client report is a local preview, and on this page it asks for Pro before it builds. Buying Pro is not completed in the browser. This tour does not buy anything and does not send a report.' },
+    { chapter: 'Scan', title: 'Labels, camera, and AI', tab: 'tile', target: '#identifyTileBtn',
+      say: 'Identify Tile can read a box sticker when this build has an AI service configured. If it is not configured, the app says so and leaves the fields for you to type. The camera and barcode scanner depend on the phone. This tour does not open the camera, call an AI service, or write to a shared database. A barcode already stored in the app can still be looked up offline.' },
+    { chapter: 'Laser', title: 'Simulation only', tab: 'proj', target: '#downloadLayitBtn',
+      say: 'Laser is a simulation. Download full layout writes a review file. It does not turn a laser on, and this build is not hardware ready. Ordinary tiles export the full layout. A mosaic sheet exports the sheet outlines only. Individual piece grout is not exported or projected.' },
+    { chapter: 'Tile', title: 'Decorative pieces', tab: 'tile', target: '#tileShape',
+      say: 'Some decorative pieces do not use one grout on every edge. Triangle rows use one grout, and the pointed edges sit farther apart. Arabesque rows nest. Ogee offset rows do not meet exactly. Star and cross tips extend past the cell, and their gap is not the entered grout at every size. The tile screen says this when you pick those pieces.' },
+    { chapter: "What's changed", title: 'What this copy already fixes', tab: 'diagram', target: '#startGuidedTourBtn', optional: true,
+      say: 'A few fixes are already in this copy. The preview line matches the tile body, and grout is added once. A pattern offset of zero stays zero. A blocked preview does not pretend the project was saved. Mosaic downloads say full piece coverage is not included. This tour does not claim the laser, the iPhone app, or a live camera were tested here.' }
+];
+
+var layitTourIndex = 0;
+var layitTourActive = false;
+var layitTourPaused = false;
+var layitTourMuted = false;
+var layitTourRate = 1;
+var layitTourGen = 0;
+var layitTourUtterance = null;
+var layitTourVoiceState = 'ready';
+var layitTourReturnTab = 'diagram';
+var layitTourPerimeterEmpty = false;
+var layitTourSpeakTimer = null;
+var layitTourVoiceRetried = false;
+
+function layitTourSetVoice(state, text) {
+    layitTourVoiceState = state;
+    var el = document.getElementById('layitTourVoice');
+    if (el) el.textContent = text;
+}
+
+function layitTourCancelSpeech() {
+    layitTourGen++;
+    layitTourUtterance = null;
+    if (layitTourSpeakTimer) { clearTimeout(layitTourSpeakTimer); layitTourSpeakTimer = null; }
+    try { if (window.speechSynthesis) window.speechSynthesis.cancel(); } catch (e) {}
+}
+
+function layitTourPickVoice() {
+    var voices = [];
+    try { voices = window.speechSynthesis.getVoices() || []; } catch (e) { return null; }
+    var best = null;
+    var bestScore = 0;
+    for (var i = 0; i < voices.length; i++) {
+        var v = voices[i];
+        var lang = String(v.lang || '').toLowerCase();
+        var name = String(v.name || '').toLowerCase();
+        var score = 0;
+        if (lang.indexOf('en') === 0) score += 5;
+        if (lang === 'en-us') score += 3;
+        if (v.localService) score += 2;
+        if (name.indexOf('samantha') >= 0 || name.indexOf('daniel') >= 0 || name.indexOf('google us english') >= 0) score += 2;
+        if (score > bestScore) { best = v; bestScore = score; }
+    }
+    return bestScore > 0 ? best : null;
+}
+
+function layitTourSpeak(text) {
+    layitTourCancelSpeech();
+    var gen = layitTourGen;
+    if (layitTourMuted) {
+        layitTourSetVoice('muted', 'Voice muted. Captions stay on.');
+        return;
+    }
+    if (layitTourPaused) {
+        layitTourSetVoice('paused', 'Paused.');
+        return;
+    }
+    if (!window.speechSynthesis || typeof window.SpeechSynthesisUtterance !== 'function') {
+        layitTourSetVoice('unavailable', 'Voice isn\'t available here. Read the caption.');
+        return;
+    }
+    var utter;
+    try {
+        utter = new SpeechSynthesisUtterance(text);
+    } catch (e) {
+        layitTourSetVoice('unavailable', 'Voice isn\'t available here. Read the caption.');
+        return;
+    }
+    utter.rate = layitTourRate;
+    var voice = layitTourPickVoice();
+    if (voice) utter.voice = voice;
+    utter.onstart = function() {
+        if (gen !== layitTourGen) return;
+        if (layitTourSpeakTimer) { clearTimeout(layitTourSpeakTimer); layitTourSpeakTimer = null; }
+        layitTourSetVoice('speaking', 'Speaking.');
+    };
+    utter.onend = function() {
+        if (gen !== layitTourGen) return;
+        if (layitTourVoiceState === 'speaking') layitTourSetVoice('ready', 'Voice ready.');
+    };
+    utter.onerror = function(ev) {
+        if (gen !== layitTourGen) return;
+        var reason = ev && ev.error ? ev.error : '';
+        if (reason === 'canceled' || reason === 'interrupted') return;
+        layitTourSetVoice('unavailable', 'Voice isn\'t available here. Read the caption.');
+    };
+    layitTourUtterance = utter;
+    layitTourSetVoice('starting', 'Starting voice…');
+    layitTourSpeakTimer = setTimeout(function() {
+        if (gen !== layitTourGen) return;
+        if (layitTourVoiceState !== 'speaking') {
+            layitTourSetVoice('unavailable', 'Voice didn\'t start. Read the caption.');
+        }
+    }, 2500);
+    try {
+        window.speechSynthesis.resume();
+        window.speechSynthesis.speak(utter);
+    } catch (err) {
+        layitTourSetVoice('unavailable', 'Voice isn\'t available here. Read the caption.');
+    }
+}
+
+function layitTourPlace() {
+    var step = LAYIT_TOUR_STEPS[layitTourIndex];
+    var target = document.querySelector(step.target);
+    var ring = document.getElementById('layitTourRing');
+    var dock = document.getElementById('layitTourDock');
+    if (!target || !ring || !dock) return;
+    target.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    var preferTop = target.getBoundingClientRect().top > window.innerHeight * 0.45;
+    dock.style.bottom = preferTop ? 'auto' : '12px';
+    dock.style.top = preferTop ? '64px' : 'auto';
+    var dockRect = dock.getBoundingClientRect();
+    var rect = target.getBoundingClientRect();
+    var freeTop = preferTop ? dockRect.bottom + 8 : 8;
+    var freeBottom = preferTop ? window.innerHeight - 8 : dockRect.top - 8;
+    if (rect.bottom > freeBottom) window.scrollBy(0, rect.bottom - freeBottom + 12);
+    if (rect.top < freeTop) window.scrollBy(0, rect.top - freeTop - 12);
+    rect = target.getBoundingClientRect();
+    dockRect = dock.getBoundingClientRect();
+    freeTop = preferTop ? dockRect.bottom + 8 : 8;
+    freeBottom = preferTop ? window.innerHeight - 8 : dockRect.top - 8;
+    var top = Math.max(rect.top, freeTop);
+    var bottom = Math.min(rect.bottom, freeBottom);
+    var left = Math.max(4, rect.left);
+    var right = Math.min(window.innerWidth - 4, rect.right);
+    if (bottom - top < 24) {
+        top = freeTop;
+        bottom = Math.min(freeBottom, freeTop + Math.min(rect.height, 80));
+    }
+    ring.style.display = 'block';
+    ring.hidden = false;
+    ring.style.left = left + 'px';
+    ring.style.top = top + 'px';
+    ring.style.width = Math.max(24, right - left) + 'px';
+    ring.style.height = Math.max(24, bottom - top) + 'px';
+}
+
+function layitTourShow() {
+    var step = LAYIT_TOUR_STEPS[layitTourIndex];
+    var dock = document.getElementById('layitTourDock');
+    dock.hidden = false;
+    dock.style.display = 'block';
+    layitTourVoiceRetried = false;
+    if (step.tab) showTab(step.tab);
+    document.getElementById('layitTourMeta').textContent = 'Step ' + (layitTourIndex + 1) + ' of ' + LAYIT_TOUR_STEPS.length + ' · ' + step.chapter + (step.optional ? ' · Optional' : '');
+    document.getElementById('layitTourTitle').textContent = step.title;
+    document.getElementById('layitTourCaption').textContent = step.say;
+    var next = document.getElementById('layitTourNext');
+    next.textContent = layitTourIndex === LAYIT_TOUR_STEPS.length - 1 ? 'Finish' : 'Next';
+    document.getElementById('layitTourPrev').disabled = layitTourIndex === 0;
+    setTimeout(layitTourPlace, 60);
+    if (!layitTourPaused) layitTourSpeak(step.say);
+    else layitTourSetVoice('paused', 'Paused.');
+    var focusEl = document.getElementById('layitTourNext');
+    if (focusEl && focusEl.focus) { try { focusEl.focus({ preventScroll: true }); } catch (e) { focusEl.focus(); } }
+}
+
+function layitTourRestorePerimeter() {
+    if (!layitTourPerimeterEmpty || typeof perimeterState === 'undefined') return;
+    perimeterState.points = [];
+    perimeterState.closed = false;
+    perimeterState.segments = [];
+    if (perimeterState.canvas) perimeterState.canvas.style.pointerEvents = '';
+    var hint = document.getElementById('perimeterHint');
+    if (hint) hint.style.display = '';
+    var seg = document.getElementById('segmentMeasurements');
+    if (seg) seg.style.display = 'none';
+    if (typeof updatePerimeterUI === 'function') updatePerimeterUI();
+}
+
+function startLayitTour() {
+    if (layitTourActive) layitTourEnd();
+    layitTourActive = true;
+    layitTourIndex = 0;
+    layitTourPaused = false;
+    layitTourReturnTab = (document.querySelector('.panel.active') || {}).id || 'diagram';
+    layitTourPerimeterEmpty = !(typeof perimeterState !== 'undefined' && perimeterState.points && perimeterState.points.length);
+    document.getElementById('layitTourPause').textContent = 'Pause';
+    document.getElementById('layitTourPause').setAttribute('aria-pressed', 'false');
+    layitTourShow();
+}
+
+function layitTourEnd() {
+    if (!layitTourActive && document.getElementById('layitTourDock').style.display !== 'block') return;
+    layitTourActive = false;
+    layitTourPaused = false;
+    layitTourCancelSpeech();
+    var ring = document.getElementById('layitTourRing');
+    var dock = document.getElementById('layitTourDock');
+    ring.style.display = 'none';
+    ring.hidden = true;
+    dock.style.display = 'none';
+    dock.hidden = true;
+    layitTourRestorePerimeter();
+    layitTourPerimeterEmpty = false;
+    if (layitTourReturnTab) showTab(layitTourReturnTab);
+}
+
+function layitTourNext() {
+    if (!layitTourActive) return;
+    if (layitTourIndex >= LAYIT_TOUR_STEPS.length - 1) { layitTourEnd(); return; }
+    layitTourIndex++;
+    layitTourShow();
+}
+
+function layitTourPrev() {
+    if (!layitTourActive || layitTourIndex === 0) return;
+    layitTourIndex--;
+    layitTourShow();
+}
+
+function layitTourReplay() {
+    if (!layitTourActive) return;
+    layitTourPaused = false;
+    document.getElementById('layitTourPause').textContent = 'Pause';
+    document.getElementById('layitTourPause').setAttribute('aria-pressed', 'false');
+    layitTourSpeak(LAYIT_TOUR_STEPS[layitTourIndex].say);
+}
+
+function layitTourTogglePause() {
+    if (!layitTourActive) return;
+    layitTourPaused = !layitTourPaused;
+    var btn = document.getElementById('layitTourPause');
+    btn.textContent = layitTourPaused ? 'Resume' : 'Pause';
+    btn.setAttribute('aria-pressed', layitTourPaused ? 'true' : 'false');
+    if (layitTourPaused) {
+        layitTourCancelSpeech();
+        layitTourSetVoice('paused', 'Paused.');
+    } else {
+        layitTourSpeak(LAYIT_TOUR_STEPS[layitTourIndex].say);
+    }
+}
+
+function layitTourToggleMute() {
+    layitTourMuted = !layitTourMuted;
+    var btn = document.getElementById('layitTourMute');
+    btn.textContent = layitTourMuted ? 'Unmute voice' : 'Mute voice';
+    btn.setAttribute('aria-pressed', layitTourMuted ? 'true' : 'false');
+    if (layitTourMuted) {
+        layitTourCancelSpeech();
+        layitTourSetVoice('muted', 'Voice muted. Captions stay on.');
+    } else if (layitTourActive && !layitTourPaused) {
+        layitTourSpeak(LAYIT_TOUR_STEPS[layitTourIndex].say);
+    }
+}
+
+function layitTourSetRate(value) {
+    var rate = parseFloat(value);
+    if (!isNaN(rate)) layitTourRate = rate;
+    if (layitTourActive && !layitTourPaused && !layitTourMuted) layitTourSpeak(LAYIT_TOUR_STEPS[layitTourIndex].say);
+}
+
+document.addEventListener('keydown', function(ev) {
+    if (!layitTourActive) return;
+    var tag = ev.target && ev.target.tagName;
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+    if (ev.key === 'Escape') { ev.preventDefault(); layitTourEnd(); }
+    else if (ev.key === 'ArrowRight') { ev.preventDefault(); layitTourNext(); }
+    else if (ev.key === 'ArrowLeft') { ev.preventDefault(); layitTourPrev(); }
+    else if (ev.key === ' ' || ev.key === 'Spacebar') { ev.preventDefault(); layitTourTogglePause(); }
+    else if (ev.key === 'r' || ev.key === 'R') { ev.preventDefault(); layitTourReplay(); }
+});
+
+window.addEventListener('resize', function() { if (layitTourActive) layitTourPlace(); });
+if (window.speechSynthesis && speechSynthesis.addEventListener) {
+    speechSynthesis.addEventListener('voiceschanged', function() {
+        if (!layitTourActive || layitTourPaused || layitTourMuted) return;
+        if (!layitTourVoiceRetried && layitTourVoiceState === 'starting') {
+            layitTourVoiceRetried = true;
+            layitTourSpeak(LAYIT_TOUR_STEPS[layitTourIndex].say);
+        }
+    });
+}
 </script>
 <script>
 try {
@@ -14446,5 +14802,23 @@ try {
     </div>
 </div>
 
+<div id="layitTourRing" hidden></div>
+<div id="layitTourDock" role="dialog" aria-modal="false" aria-labelledby="layitTourTitle" hidden>
+    <div id="layitTourMeta"></div>
+    <h2 id="layitTourTitle"></h2>
+    <p id="layitTourCaption" aria-live="polite"></p>
+    <p id="layitTourVoice" aria-live="polite"></p>
+    <div class="tour-row">
+        <button type="button" id="layitTourPrev" onclick="layitTourPrev()">Previous</button>
+        <button type="button" id="layitTourReplay" onclick="layitTourReplay()">Replay step</button>
+        <button type="button" id="layitTourPause" onclick="layitTourTogglePause()" aria-pressed="false">Pause</button>
+        <button type="button" id="layitTourNext" onclick="layitTourNext()">Next</button>
+        <button type="button" id="layitTourEnd" onclick="layitTourEnd()">End tour</button>
+    </div>
+    <div class="tour-row" style="margin-top:8px;">
+        <label for="layitTourRate">Speed <select id="layitTourRate" onchange="layitTourSetRate(this.value)"><option value="0.9">Slower</option><option value="1" selected>Normal</option><option value="1.15">Faster</option></select></label>
+        <button type="button" id="layitTourMute" onclick="layitTourToggleMute()" aria-pressed="false">Mute voice</button>
+    </div>
+</div>
 </body>
 </html>
