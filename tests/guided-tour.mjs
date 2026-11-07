@@ -21,7 +21,7 @@ function sha(file) { return crypto.createHash('sha256').update(fs.readFileSync(f
 const browser = await puppeteer.launch({
   executablePath: process.env.CHROME_PATH || '/usr/local/bin/google-chrome',
   headless: 'new',
-  args: ['--no-sandbox', '--disable-dev-shm-usage']
+  args: ['--no-sandbox', '--disable-dev-shm-usage', '--autoplay-policy=no-user-gesture-required']
 });
 
 async function openPage(width, height) {
@@ -30,7 +30,14 @@ async function openPage(width, height) {
   const errors = [];
   page.on('pageerror', (e) => errors.push(String(e)));
   await page.goto('file://' + path.join(root, 'index.html'), { waitUntil: 'domcontentloaded' });
-  await page.waitForFunction(() => typeof startLayitTour === 'function' && Array.isArray(LAYIT_TOUR_STEPS));
+  await page.waitForFunction(() => typeof startLayitTour === 'function' && Array.isArray(LAYIT_TOUR_AUDIO) && LAYIT_TOUR_AUDIO.length === 14);
+  await page.evaluate(() => {
+    window.__browserVoice = false;
+    if (window.speechSynthesis && window.speechSynthesis.speak) {
+      const orig = window.speechSynthesis.speak.bind(window.speechSynthesis);
+      window.speechSynthesis.speak = function() { window.__browserVoice = true; return orig.apply(window.speechSynthesis, arguments); };
+    }
+  });
   return { page: page, errors: errors };
 }
 
@@ -49,7 +56,11 @@ const before = await page.evaluate(() => ({
   c: JSON.stringify(C),
   cuts: JSON.stringify(cutTileStates)
 }));
-await page.click('#startGuidedTourBtn');
+await page.evaluate(() => showOnboarding());
+await page.waitForSelector('#welcomeTourBtn');
+const beforeWelcome = await page.evaluate(() => layitTourActive);
+check('welcome popup lists the tour and does not start it', beforeWelcome === false);
+await page.evaluate(() => document.getElementById('welcomeTourBtn').click());
 await page.waitForFunction(() => layitTourActive === true);
 const steps = await page.evaluate(() => LAYIT_TOUR_STEPS.map((s) => ({ chapter: s.chapter, title: s.title, say: s.say, target: s.target, tab: s.tab, optional: !!s.optional })));
 const seen = [];
@@ -78,6 +89,26 @@ for (let i = 0; i < steps.length; i++) {
   check('step ' + (i + 1) + ' target ' + steps[i].target, row.box && row.box.width > 2 && row.box.height > 2 && row.shown, JSON.stringify(row.box));
   check('step ' + (i + 1) + ' caption matches the script', row.caption === steps[i].say);
   check('step ' + (i + 1) + ' highlight is visible and clear of the dock', row.ring && row.ring.width > 20 && row.ring.height > 20 && row.ring.top >= -1 && row.ring.bottom <= 801 && !overlap(row.ring, row.dock), JSON.stringify({ ring: row.ring, dock: row.dock }));
+  const clip = await page.evaluate(() => {
+    const step = LAYIT_TOUR_STEPS[layitTourIndex];
+    const audio = document.getElementById('layitTourAudio');
+    const matched = layitTourClipFor(step);
+    return {
+      id: audio ? audio.getAttribute('data-clip') : null,
+      expected: matched ? String(matched.id) : null,
+      mpeg: !!(audio && audio.currentSrc.indexOf('data:audio/mpeg') === 0),
+      elements: document.querySelectorAll('audio#layitTourAudio').length
+    };
+  });
+  check('step ' + (i + 1) + ' plays its matched recording', clip.id === String(i + 1) && clip.expected === String(i + 1) && clip.mpeg && clip.elements === 1, JSON.stringify(clip));
+  if (i === 0) {
+    const moved = await page.evaluate(() => new Promise((resolve) => {
+      const audio = document.getElementById('layitTourAudio');
+      const start = audio.currentTime;
+      setTimeout(() => resolve({ start: start, now: audio.currentTime, ready: audio.readyState, paused: audio.paused, status: document.getElementById('layitTourVoice').textContent }), 450);
+    }));
+    check('first clip decodes and currentTime advances', moved.ready >= 2 && moved.now > moved.start && moved.paused === false, JSON.stringify(moved));
+  }
   if (i === 0) await page.screenshot({ path: path.join(art, 'layit-tour-desktop.png') });
   if (i < steps.length - 1) await page.click('#layitTourNext');
 }
@@ -86,12 +117,24 @@ await page.click('#layitTourPrev');
 const backTitle = await page.$eval('#layitTourTitle', (el) => el.textContent);
 check('previous returns to the decorative step', backTitle === 'Decorative pieces', backTitle);
 await page.click('#layitTourReplay');
-const replayCaption = await page.$eval('#layitTourCaption', (el) => el.textContent);
-check('replay keeps the same caption', replayCaption.indexOf('decorative pieces') >= 0, replayCaption.slice(0, 80));
-await page.click('#layitTourPause');
-const paused = await page.$eval('#layitTourVoice', (el) => el.textContent);
-check('pause is labeled and is not a fake speaking state', paused === 'Paused.', paused);
-await page.click('#layitTourPause');
+const replay = await page.evaluate(() => new Promise((resolve) => {
+  const audio = document.getElementById('layitTourAudio');
+  setTimeout(() => resolve({ t: audio.currentTime, caption: document.getElementById('layitTourCaption').textContent }), 200);
+}));
+check('replay restarts the current clip', replay.t < 0.35 && replay.caption.indexOf('decorative pieces') >= 0, JSON.stringify(replay));
+const held = await page.evaluate(() => new Promise((resolve) => {
+  const audio = document.getElementById('layitTourAudio');
+  setTimeout(() => {
+    const atPause = audio.currentTime;
+    document.getElementById('layitTourPause').click();
+    setTimeout(() => {
+      const whilePaused = audio.currentTime;
+      document.getElementById('layitTourPause').click();
+      setTimeout(() => resolve({ atPause: atPause, whilePaused: whilePaused, later: audio.currentTime, paused: audio.paused, status: document.getElementById('layitTourVoice').textContent }), 350);
+    }, 250);
+  }, 400);
+}));
+check('pause holds the clip and resume continues it', held.whilePaused + 0.05 >= held.atPause && held.later > held.whilePaused + 0.05 && held.paused === false, JSON.stringify(held));
 await page.click('#layitTourEnd');
 const closed = await page.evaluate(() => document.getElementById('layitTourDock').style.display === 'none' && layitTourActive === false);
 check('end closes the tour', closed);
@@ -112,11 +155,40 @@ const after = await page.evaluate(() => ({
   tab: (document.querySelector('.panel.active') || {}).id
 }));
 check('project state is unchanged', before.name === after.name && before.w === after.w && before.shape === after.shape && before.c === after.c && before.cuts === after.cuts, after.tab);
+const transport = await page.evaluate(() => {
+  startLayitTour();
+  const audio = document.getElementById('layitTourAudio');
+  audio.playbackRate = 1;
+  document.getElementById('layitTourRate').value = '1.15';
+  layitTourSetRate('1.15');
+  const rate = audio.playbackRate;
+  document.getElementById('layitTourMute').click();
+  const muted = audio.muted;
+  const status = document.getElementById('layitTourVoice').textContent;
+  const beforeSkip = layitTourIndex;
+  layitTourNext(); layitTourNext(); layitTourNext();
+  return {
+    rate: rate,
+    muted: muted,
+    status: status,
+    skipped: layitTourIndex - beforeSkip,
+    clip: audio.getAttribute('data-clip'),
+    elements: document.querySelectorAll('audio').length,
+    browserVoice: window.__browserVoice === true,
+    auto: document.getElementById('layitTourAuto').checked
+  };
+});
+check('speed, mute, and rapid next stay on one clip', transport.rate === 1.15 && transport.muted === true && transport.status.indexOf('muted') >= 0 && transport.skipped === 3 && transport.clip === '4' && transport.elements === 1 && transport.browserVoice === false && transport.auto === false, JSON.stringify(transport));
+await page.evaluate(() => layitTourEnd());
 const desktopErrors = desktop.errors.filter(function(e) { return e.indexOf('ServiceWorker') < 0; });
 check('no script errors during the tour', desktopErrors.length === 0, desktopErrors.join(' | '));
 
 const phone = await openPage(390, 844);
-await phone.page.click('#startGuidedTourBtn');
+await phone.page.evaluate(() => {
+  const btn = document.getElementById('welcomeTourBtn');
+  if (btn) btn.click();
+  else document.getElementById('startGuidedTourBtn').click();
+});
 await phone.page.waitForFunction(() => layitTourActive === true);
 await new Promise((r) => setTimeout(r, 150));
 const phoneRow = await phone.page.evaluate(() => {
@@ -135,13 +207,14 @@ check('phone tour has no script errors', phoneErrors.length === 0, phoneErrors.j
 
 const denied = await openPage(1000, 700);
 await denied.page.evaluate(() => {
-  window.speechSynthesis = { speak: function() { throw new Error('blocked'); }, cancel: function() {}, getVoices: function() { return []; }, pause: function() {}, resume: function() {}, addEventListener: function() {} };
+  HTMLAudioElement.prototype.play = function() { return Promise.reject(new DOMException('denied', 'NotAllowedError')); };
 });
-await denied.page.click('#startGuidedTourBtn');
-await denied.page.waitForFunction(() => (document.getElementById('layitTourVoice').textContent || '').indexOf('available') >= 0);
+await denied.page.evaluate(() => document.getElementById('startGuidedTourBtn').click());
+await denied.page.waitForFunction(() => (document.getElementById('layitTourVoice').textContent || '').indexOf('Tap Play') >= 0);
 const deniedText = await denied.page.$eval('#layitTourVoice', (el) => el.textContent);
+const playShown = await denied.page.$eval('#layitTourPlay', (el) => el.style.display !== 'none');
 const deniedCaption = await denied.page.$eval('#layitTourCaption', (el) => el.textContent.length);
-check('blocked speech stays readable and does not claim it is speaking', deniedText.indexOf('isn\'t available') >= 0 && deniedText.indexOf('Speaking') < 0 && deniedCaption > 20, deniedText);
+check('autoplay denial asks for Play and does not claim the clip is playing', playShown && deniedText.indexOf('Tap Play') >= 0 && deniedText.indexOf('Playing') < 0 && deniedCaption > 20, deniedText);
 
 const sandboxPage = await browser.newPage();
 const sandboxErrors = [];
@@ -158,15 +231,27 @@ const frame = await new Promise((resolve, reject) => {
   }, 40);
 });
 await frame.waitForFunction(() => typeof startLayitTour === 'function', { timeout: 15000 });
-const sand = await frame.evaluate(() => {
+const sand = await frame.evaluate(() => new Promise((resolve) => {
   const beforeC = JSON.stringify(C);
   startLayitTour();
-  layitTourNext();
-  const caption = document.getElementById('layitTourCaption').textContent;
-  layitTourEnd();
-  return { caption: caption, same: JSON.stringify(C) === beforeC, active: layitTourActive, persistent: layitStore.persistent() };
-});
-check('sandboxed preview can start and end the tour without changing the layout', sand.same && sand.active === false && sand.caption.length > 20 && sand.persistent === false, JSON.stringify(sand));
+  setTimeout(() => {
+    const audio = document.getElementById('layitTourAudio');
+    const first = audio ? { ready: audio.readyState, mpeg: audio.currentSrc.indexOf('data:audio/mpeg') === 0, clip: audio.getAttribute('data-clip') } : null;
+    layitTourNext();
+    const caption = document.getElementById('layitTourCaption').textContent;
+    layitTourEnd();
+    const after = document.getElementById('layitTourAudio');
+    resolve({
+      caption: caption,
+      same: JSON.stringify(C) === beforeC,
+      active: layitTourActive,
+      persistent: layitStore.persistent(),
+      first: first,
+      endedPaused: !!(after && after.paused)
+    });
+  }, 400);
+}));
+check('sandboxed preview plays an embedded clip and does not change the layout', sand.same && sand.active === false && sand.caption.length > 20 && sand.persistent === false && sand.first && sand.first.mpeg && sand.first.clip === '1' && sand.first.ready >= 2 && sand.endedPaused, JSON.stringify(sand));
 check('sandboxed tour has no script errors', sandboxErrors.length === 0, sandboxErrors.join(' | '));
 
 const locked = {
